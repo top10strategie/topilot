@@ -43,10 +43,10 @@ export function TeamCard({
         className,
       )}
     >
-      <CardHeader className="pb-3">
+      <CardHeader className="p-3 pb-1.5">
         <CardTitle className="text-base">{team.team_name}</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-2">
+      <CardContent className="space-y-2 p-3 pt-0">
         {team.members.length === 0 ? (
           <p className="text-xs text-muted-foreground">Aucun collaborateur</p>
         ) : (

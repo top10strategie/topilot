@@ -1,5 +1,23 @@
 # Suivi des actions — TOPilot
 
+## **[2026-07-29] — UX cartes Top10 + fix recherche globale**
+
+**Type :** `fix`
+**Fichiers concernés :** `components/collaborators/collaborator-card.tsx`, `components/collaborators/team-card.tsx`, `components/search/global-search-dialog.tsx`, `supabase/migrations/20260729124000_search_global_prefix_tsquery.sql`, `suivi.md`
+
+### Description
+
+- Badge Manager → icône Phosphor `star` ancrée en haut à droite de la carte
+- Padding des cartes pôle `/top10` réduit de moitié (`p-6` → `p-3`)
+- Recherche globale : debounce + état « Recherche… » pendant l’attente (corrige le faux « Aucun résultat » dû à `useDeferredValue`) ; FTS en préfixe (`token:*`) pour la saisie progressive
+
+### Détails techniques
+
+- Migration `search_global_prefix_tsquery` appliquée sur le projet Supabase distant
+- Checks : lint + typecheck OK
+
+---
+
 ## **[2026-07-29] — Fix Suspense Cache Components (/top10, /administration)**
 
 **Type :** `fix`
