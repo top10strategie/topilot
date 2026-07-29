@@ -1,5 +1,20 @@
 # Suivi des actions — TOPilot
 
+## **[2026-07-29] — Fix Suspense Cache Components (/top10, /administration)**
+
+**Type :** `fix`
+**Fichiers concernés :** `app/(app)/top10/page.tsx`, `app/(app)/administration/page.tsx`, `suivi.md`
+
+### Description
+
+Correction de l'erreur Next.js `blocking-route` (`cacheComponents`) : les `await` de données session/DB étaient hors `<Suspense>`, ce qui bloquait la navigation.
+
+### Détails techniques
+
+- Contenu async extrait dans un composant serveur enfant wrappé par `<Suspense>` + fallback skeleton (même pattern que `entity-detail-placeholder`)
+
+---
+
 ## **[2026-07-29] — Point 3 itération B : CRUD Pôles**
 
 **Type :** `feature`
