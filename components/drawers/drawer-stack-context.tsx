@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -20,7 +21,8 @@ type DrawerEntry = {
   id: string;
   title: string;
   content: ReactNode;
-  resolve: (value: unknown) => void;
+  /** Clôture unique (évite de fermer le tiroir parent sur onOpenChange après resolve). */
+  settle: (value: unknown) => void;
 };
 
 type PushDrawerOptions<T> = {
@@ -32,6 +34,8 @@ type DrawerStackContextValue = {
   stack: ReadonlyArray<Pick<DrawerEntry, "id" | "title" | "content">>;
   pushDrawer: <T>(options: PushDrawerOptions<T>) => Promise<T | null>;
   dismissTop: () => void;
+  /** Ferme uniquement si `id` est encore au sommet (ignore les onOpenChange fantômes). */
+  dismissEntry: (id: string) => void;
   clearStack: () => void;
   depth: number;
 };
@@ -44,32 +48,39 @@ function createDrawerId(): string {
 
 export function DrawerStackProvider({ children }: { children: ReactNode }) {
   const [stack, setStack] = useState<DrawerEntry[]>([]);
+  const stackRef = useRef(stack);
+  stackRef.current = stack;
 
   const dismissTop = useCallback(() => {
-    setStack((prev) => {
-      if (prev.length === 0) {
-        return prev;
-      }
-      const top = prev[prev.length - 1];
-      top.resolve(null);
-      return prev.slice(0, -1);
-    });
+    const top = stackRef.current[stackRef.current.length - 1];
+    top?.settle(null);
+  }, []);
+
+  const dismissEntry = useCallback((id: string) => {
+    const top = stackRef.current[stackRef.current.length - 1];
+    if (!top || top.id !== id) {
+      return;
+    }
+    top.settle(null);
   }, []);
 
   const clearStack = useCallback(() => {
-    setStack((prev) => {
-      for (const entry of prev) {
-        entry.resolve(null);
-      }
-      return [];
-    });
+    const current = stackRef.current;
+    for (const entry of current) {
+      entry.settle(null);
+    }
   }, []);
 
   const pushDrawer = useCallback(<T,>(options: PushDrawerOptions<T>) => {
     return new Promise<T | null>((resolvePromise) => {
       const id = createDrawerId();
+      let settled = false;
 
       const settle = (value: unknown) => {
+        if (settled) {
+          return;
+        }
+        settled = true;
         setStack((prev) => prev.filter((entry) => entry.id !== id));
         resolvePromise((value as T | null) ?? null);
       };
@@ -83,7 +94,7 @@ export function DrawerStackProvider({ children }: { children: ReactNode }) {
         id,
         title: options.title,
         content: options.content(helpers),
-        resolve: settle,
+        settle,
       };
 
       setStack((prev) => [...prev, entry]);
@@ -95,10 +106,11 @@ export function DrawerStackProvider({ children }: { children: ReactNode }) {
       stack: stack.map(({ id, title, content }) => ({ id, title, content })),
       pushDrawer,
       dismissTop,
+      dismissEntry,
       clearStack,
       depth: stack.length,
     }),
-    [stack, pushDrawer, dismissTop, clearStack],
+    [stack, pushDrawer, dismissTop, dismissEntry, clearStack],
   );
 
   return (
