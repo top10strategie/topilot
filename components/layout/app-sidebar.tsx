@@ -46,7 +46,7 @@ export function AppSidebar({ collaborator }: AppSidebarProps) {
 
   return (
     <Sidebar collapsible="icon" variant="floating">
-      <SidebarHeader className="h-14 justify-center">
+      <SidebarHeader className="h-17 justify-center">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
@@ -54,6 +54,7 @@ export function AppSidebar({ collaborator }: AppSidebarProps) {
               size="lg"
               isActive={pathname === "/"}
               tooltip="TOPilot"
+              className="h-auto text-2xl"
             >
               <Link href="/">
                 {/* SVG local : balise img (next/image gère mal les SVG en public) */}
@@ -64,7 +65,7 @@ export function AppSidebar({ collaborator }: AppSidebarProps) {
                   height={36}
                   className="size-10 shrink-0"
                 />
-                <span className="truncate text-base font-semibold tracking-tight">
+                <span className="truncate text-2xl font-semibold tracking-tight">
                   TOPilot
                 </span>
               </Link>

@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import type { CurrentCollaborator } from "@/lib/auth/collaborator-display";
+import type { CollaboratorRole } from "@/lib/collaborators/types";
 
 export type { CurrentCollaborator } from "@/lib/auth/collaborator-display";
 
@@ -24,5 +25,11 @@ export async function getCurrentCollaborator(): Promise<CurrentCollaborator | nu
     return null;
   }
 
-  return data;
+  return {
+    id: data.id,
+    first_name: data.first_name,
+    last_name: data.last_name,
+    email: data.email,
+    role: data.role as CollaboratorRole,
+  };
 }

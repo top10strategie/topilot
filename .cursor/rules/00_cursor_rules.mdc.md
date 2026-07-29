@@ -61,6 +61,9 @@ Explication claire et concise de ce qui a été fait et pourquoi.
 
 ## Workflow Git
 
+- **Répartition des rôles (local / remote) :**
+    - **Cursor (agent)** : crée les branches, rédige et exécute les commits, lance les checks locaux (`lint`, `typecheck`, et `build` si impact `main` / CI complète) **avant** de signaler que c’est prêt.
+    - **Humain** : valide, puis **pousse manuellement** vers GitHub (GitHub Desktop). L’agent ne fait **pas** de `git push` sauf demande explicite contraire.
 - **`main` est protégée : aucun push direct, jamais.** Toute modification passe par une branche dédiée mergée d'abord dans `dev`.
 - **`dev`** est la branche d'intégration intermédiaire et source des branches suivantes. Les petites modifications peuvent y être ajoutées directement, au compte-goutte, mais une branche dédiée reste à privilégier pour toute fonctionnalité conséquente.
 - **Branches** : `type/description-courte`, avec le même vocabulaire que `suivi.md` (`feature/`, `fix/`, `refactor/`, `docs/`, `config/`, `test/`, `chore/`, `audit/`). Ex : `feature/drawer-mission`, `fix/rls-tool-access`.
