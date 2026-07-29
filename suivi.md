@@ -1,5 +1,16 @@
 # Suivi des actions — TOPilot
 
+## **[2026-07-29] — Titre NavBar TOPilot en text-2xl**
+
+**Type :** `fix`
+**Fichiers concernés :** `components/layout/app-sidebar.tsx`, `suivi.md`
+
+### Description
+
+Le `SidebarMenuButton` (size `lg`) imposait `text-sm` et écrasait le titre. Ajout de `className="h-auto text-2xl"` + `text-2xl` sur le span « TOPilot ».
+
+---
+
 ## **[2026-07-29] — SidebarHeader plus haut (h-17)**
 
 **Type :** `chore`
