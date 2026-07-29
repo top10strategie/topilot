@@ -25,6 +25,7 @@ import {
   getCollaboratorRoleLabel,
   getCollaboratorStatusLabel,
 } from "@/lib/collaborators/labels";
+import type { CategoryItem } from "@/lib/categories/types";
 import type {
   CollaboratorListItem,
   CollaboratorRole,
@@ -38,6 +39,7 @@ type CollaboratorFormDrawerProps = {
   mode: "create" | "edit";
   collaborator?: CollaboratorListItem;
   teams: TeamOption[];
+  availableCategories?: CategoryItem[];
   helpers: DrawerHelpers<{ id: string }>;
 };
 
@@ -48,6 +50,7 @@ export function CollaboratorFormDrawer({
   mode,
   collaborator,
   teams: initialTeams,
+  availableCategories = [],
   helpers,
 }: CollaboratorFormDrawerProps) {
   const { pushDrawer } = useDrawerStack();
@@ -86,7 +89,11 @@ export function CollaboratorFormDrawer({
     const created = await pushDrawer<{ id: string; team_name: string }>({
       title: "Nouveau Pôle",
       content: (nestedHelpers) => (
-        <TeamFormDrawer mode="create" helpers={nestedHelpers} />
+        <TeamFormDrawer
+          mode="create"
+          helpers={nestedHelpers}
+          availableCategories={availableCategories}
+        />
       ),
     });
     if (created) {
