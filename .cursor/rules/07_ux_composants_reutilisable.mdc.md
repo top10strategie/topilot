@@ -29,7 +29,8 @@ Breakpoints : standards Tailwind (`sm`, `md`, `lg`, `xl`).
 
 - Logo + nom "TOPilot" en haut de la NavBar, au même niveau vertical que le Header.
 - Clic sur ce duo → redirige vers la page d'accueil (`Home`).
-- La page d'accueil est **le seul état où aucun item de menu n'est en surbrillance** dans la NavBar (aucun highlight actif).
+- Même états interactifs que les items de menu (`SidebarMenuButton` : hover, sélectionné quand `pathname === "/"`).
+- Sur la Home, le logo est l'unique élément en surbrillance (aucun item des groupes principal/secondaire).
 
 ### 2.2 Groupes de menus
 
@@ -45,7 +46,7 @@ Breakpoints : standards Tailwind (`sm`, `md`, `lg`, `xl`).
 |Documents|`file`|
 |Wikis|`book-open`|
 
-**Séparateur** : ligne fine `Separator` de ShadCN, séparant visuellement le groupe principal du groupe secondaire.
+**Séparateur** : composant ShadCN `Separator`, largeur max `max-w-[80%]` (centré, pas pleine largeur NavBar), séparant le groupe principal du groupe secondaire.
 
 **Groupe secondaire :**
 
@@ -54,12 +55,12 @@ Breakpoints : standards Tailwind (`sm`, `md`, `lg`, `xl`).
 |Études et Analyses|`chart-donut`|
 |Gestion Admin|`intersect`|
 
-**Séparateur** : ligne fine `Separator` de ShadCN, séparant visuellement le groupe principal du groupe secondaire.
+**Séparateur** : même `Separator` ShadCN (`max-w-[80%]`), utilisé aussi en mobile entre le groupe secondaire et les actions Header.
 
 **Item utilisateur (bas de NavBar) :**
 
 - Avatar ShadCN (photo de profil) + nom de l'utilisateur.
-- Ouvre le menu utilisateur.
+- Lien direct vers `/settings` (pas de menu déroulant intermédiaire).
 
 ### 2.3 États des items de menu
 
