@@ -1,5 +1,24 @@
 # Suivi des actions — TOPilot
 
+## **[2026-07-29] — Point 3 itération C : invitation + CRUD collaborateurs**
+
+**Type :** `feature`
+**Fichiers concernés :** `actions/collaborators.ts`, `components/collaborators/collaborator-form-drawer.tsx`, `components/collaborators/anonymize-collaborator-dialog.tsx`, `components/collaborators/administration-page-client.tsx`, `lib/collaborators/profile-picture.ts`, `lib/app-url.ts`, `components/ui/select.tsx`, `supabase/migrations/20260729140000_profile_picture_type_and_visuels_bucket.sql`, `.env.example`, `suivi.md`
+
+### Description
+
+CRUD collaborateurs sur `/administration` : création via `inviteUserByEmail` + INSERT immédiat (`auth_user_id`), édition, offboarding par anonymisation. Avatar optionnel (bucket `visuels`). Empilement tiroir « Nouveau Pôle » depuis le formulaire collaborateur.
+
+### Détails techniques
+
+- Rollback Auth (`deleteUser`) si l'INSERT `collaborator` échoue après l'invitation
+- `redirectTo` invitation → `/auth/confirm?next=/auth/update-password` (`NEXT_PUBLIC_SITE_URL` ou localhost)
+- Seed `document_type` « Photo de profil » + bucket `visuels` (migration appliquée)
+- Impossible de s'anonymiser soi-même ; statut `sorti` exclu de la grille admin
+- Checks : lint + typecheck OK
+
+---
+
 ## **[2026-07-29] — UX cartes Top10 + fix recherche globale**
 
 **Type :** `fix`

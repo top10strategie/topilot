@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { PencilSimple, Plus, Trash } from "@phosphor-icons/react";
+import { PencilSimple, Plus, Trash, UserPlus } from "@phosphor-icons/react";
 import { PageHero } from "@/components/layout/page-hero";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { AnonymizeCollaboratorDialog } from "@/components/collaborators/anonymize-collaborator-dialog";
 import { CollaboratorCard } from "@/components/collaborators/collaborator-card";
+import { CollaboratorFormDrawer } from "@/components/collaborators/collaborator-form-drawer";
 import {
   CollaboratorConsultationContent,
   TeamConsultationContent,
@@ -20,7 +22,10 @@ import {
 import { DeleteTeamDialog } from "@/components/collaborators/delete-team-dialog";
 import { TeamFormDrawer } from "@/components/collaborators/team-form-drawer";
 import { useDrawerStack } from "@/components/drawers/drawer-stack-context";
-import { getCollaboratorFullName } from "@/lib/collaborators/labels";
+import {
+  getCollaboratorFullName,
+  getCollaboratorStatusLabel,
+} from "@/lib/collaborators/labels";
 import type {
   CollaboratorListItem,
   TeamListItem,
@@ -32,10 +37,15 @@ type AdministrationPageClientProps = {
   collaborators: CollaboratorListItem[];
 };
 
-type PendingDelete = {
+type PendingDeleteTeam = {
   id: string;
   team_name: string;
   memberCount: number;
+};
+
+type PendingAnonymize = {
+  id: string;
+  name: string;
 };
 
 export function AdministrationPageClient({
@@ -45,15 +55,21 @@ export function AdministrationPageClient({
 }: AdministrationPageClientProps) {
   const router = useRouter();
   const { pushDrawer } = useDrawerStack();
-  const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(
-    null,
+  const [pendingDeleteTeam, setPendingDeleteTeam] =
+    useState<PendingDeleteTeam | null>(null);
+  const [pendingAnonymize, setPendingAnonymize] =
+    useState<PendingAnonymize | null>(null);
+
+  const manageableCollaborators = collaborators.filter(
+    (person) => person.status !== "sorti",
   );
 
-  const activeCollaborators = collaborators.filter(
-    (person) => person.status === "actif",
-  );
+  const teamOptions = teams.map((team) => ({
+    id: team.id,
+    team_name: team.team_name,
+  }));
 
-  const openCollaboratorDrawer = (collaboratorId: string) => {
+  const openCollaboratorConsultation = (collaboratorId: string) => {
     const collaborator = collaborators.find((c) => c.id === collaboratorId);
     if (!collaborator) {
       return;
@@ -76,7 +92,7 @@ export function AdministrationPageClient({
             ...team,
             members: team.members.filter((m) => m.status === "actif"),
           }}
-          onOpenCollaborator={openCollaboratorDrawer}
+          onOpenCollaborator={openCollaboratorConsultation}
         />
       ),
     });
@@ -114,11 +130,38 @@ export function AdministrationPageClient({
     });
   };
 
-  const requestDeleteTeam = (team: TeamListItem) => {
-    setPendingDelete({
-      id: team.id,
-      team_name: team.team_name,
-      memberCount: team.members.length,
+  const openCreateCollaborator = () => {
+    void pushDrawer({
+      title: "Nouveau Collaborateur",
+      content: (helpers) => (
+        <CollaboratorFormDrawer
+          mode="create"
+          teams={teamOptions}
+          helpers={helpers}
+        />
+      ),
+    }).then((created) => {
+      if (created) {
+        router.refresh();
+      }
+    });
+  };
+
+  const openEditCollaborator = (collaborator: CollaboratorListItem) => {
+    void pushDrawer({
+      title: "Édition Collaborateur",
+      content: (helpers) => (
+        <CollaboratorFormDrawer
+          mode="edit"
+          collaborator={collaborator}
+          teams={teamOptions}
+          helpers={helpers}
+        />
+      ),
+    }).then((updated) => {
+      if (updated) {
+        router.refresh();
+      }
     });
   };
 
@@ -214,7 +257,13 @@ export function AdministrationPageClient({
                                   size="icon"
                                   className="size-8"
                                   aria-label={`Supprimer ${team.team_name}`}
-                                  onClick={() => requestDeleteTeam(team)}
+                                  onClick={() =>
+                                    setPendingDeleteTeam({
+                                      id: team.id,
+                                      team_name: team.team_name,
+                                      memberCount: team.members.length,
+                                    })
+                                  }
                                 >
                                   <Trash className="size-4" />
                                 </Button>
@@ -244,23 +293,71 @@ export function AdministrationPageClient({
               <section className="space-y-3">
                 <div className="flex items-center justify-between gap-2">
                   <h2 className="text-base font-semibold">Collaborateurs</h2>
-                  <p className="text-xs text-muted-foreground">
-                    Invitation / édition — prochaine étape
-                  </p>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={openCreateCollaborator}
+                    className="gap-1.5"
+                    disabled={teams.length === 0}
+                  >
+                    <UserPlus className="size-4" weight="bold" />
+                    Nouveau Collaborateur
+                  </Button>
                 </div>
-                {activeCollaborators.length === 0 ? (
+                {teams.length === 0 ? (
                   <p className="text-sm text-muted-foreground">
-                    Aucun collaborateur actif
+                    Créez d&apos;abord un pôle avant d&apos;inviter un
+                    collaborateur.
+                  </p>
+                ) : manageableCollaborators.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    Aucun collaborateur
                   </p>
                 ) : (
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                    {activeCollaborators.map((collaborator) => (
-                      <CollaboratorCard
-                        key={collaborator.id}
-                        collaborator={collaborator}
-                        variant="full"
-                        onClick={() => openCollaboratorDrawer(collaborator.id)}
-                      />
+                    {manageableCollaborators.map((collaborator) => (
+                      <div key={collaborator.id} className="relative">
+                        <CollaboratorCard
+                          collaborator={collaborator}
+                          variant="full"
+                          className="pr-20"
+                          onClick={() =>
+                            openCollaboratorConsultation(collaborator.id)
+                          }
+                        />
+                        <div className="absolute top-2 right-2 flex gap-1">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            className="size-8"
+                            aria-label={`Modifier ${getCollaboratorFullName(collaborator)}`}
+                            onClick={() => openEditCollaborator(collaborator)}
+                          >
+                            <PencilSimple className="size-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="icon"
+                            className="size-8"
+                            aria-label={`Supprimer ${getCollaboratorFullName(collaborator)}`}
+                            onClick={() =>
+                              setPendingAnonymize({
+                                id: collaborator.id,
+                                name: getCollaboratorFullName(collaborator),
+                              })
+                            }
+                          >
+                            <Trash className="size-4" />
+                          </Button>
+                        </div>
+                        {collaborator.status === "inactif" ? (
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {getCollaboratorStatusLabel(collaborator.status)}
+                          </p>
+                        ) : null}
+                      </div>
                     ))}
                   </div>
                 )}
@@ -270,19 +367,36 @@ export function AdministrationPageClient({
         </Tabs>
       </div>
 
-      {pendingDelete ? (
+      {pendingDeleteTeam ? (
         <DeleteTeamDialog
           open
           onOpenChange={(open) => {
             if (!open) {
-              setPendingDelete(null);
+              setPendingDeleteTeam(null);
             }
           }}
-          teamId={pendingDelete.id}
-          teamName={pendingDelete.team_name}
-          memberCount={pendingDelete.memberCount}
+          teamId={pendingDeleteTeam.id}
+          teamName={pendingDeleteTeam.team_name}
+          memberCount={pendingDeleteTeam.memberCount}
           onDeleted={() => {
-            setPendingDelete(null);
+            setPendingDeleteTeam(null);
+            router.refresh();
+          }}
+        />
+      ) : null}
+
+      {pendingAnonymize ? (
+        <AnonymizeCollaboratorDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) {
+              setPendingAnonymize(null);
+            }
+          }}
+          collaboratorId={pendingAnonymize.id}
+          collaboratorName={pendingAnonymize.name}
+          onAnonymized={() => {
+            setPendingAnonymize(null);
             router.refresh();
           }}
         />
