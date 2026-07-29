@@ -1,5 +1,24 @@
 # Suivi des actions — TOPilot
 
+## **[2026-07-29] — Point 3 itération B : CRUD Pôles**
+
+**Type :** `feature`
+**Fichiers concernés :** `actions/teams.ts`, `components/collaborators/team-form-drawer.tsx`, `components/collaborators/delete-team-dialog.tsx`, `components/collaborators/administration-page-client.tsx`, `components/ui/textarea.tsx`, `suivi.md`
+
+### Description
+
+CRUD des pôles sur `/administration` : création / édition via tiroirs, suppression avec confirmation. Suppression refusée tant que des collaborateurs (tous statuts) restent rattachés — déplacement obligatoire avant. Catégories de pôle reportées (placeholder).
+
+### Détails techniques
+
+- Server actions `createTeam` / `updateTeam` / `deleteTeam` gardées par `requireManagerOrDirectionAction`
+- Unicité `team_name` gérée (erreur 23505 → message inline)
+- `notes_updated_at` mis à jour uniquement si les notes changent
+- Modale suppression : bouton désactivé + message si `memberCount > 0`
+- Checks : `npm run lint` + `npm run typecheck` OK
+
+---
+
 ## **[2026-07-29] — Point 3 itération A : consultation Collaborateurs & Pôles**
 
 **Type :** `feature`
