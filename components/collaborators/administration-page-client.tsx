@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { PencilSimple, Plus, Trash, UserPlus } from "@phosphor-icons/react";
+import { PencilSimple, Trash, UserPlus } from "@phosphor-icons/react";
 import { PageHero } from "@/components/layout/page-hero";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,34 @@ import type {
   TeamListItem,
 } from "@/lib/collaborators/types";
 
+/** Bouton d'action icon-only (spec §11 — pas de texte visible). */
+function IconActionButton({
+  label,
+  variant = "outline",
+  disabled,
+  onClick,
+  children,
+}: {
+  label: string;
+  variant?: "outline" | "destructive" | "default" | "ghost";
+  disabled?: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <Button
+      type="button"
+      variant={variant}
+      size="icon"
+      aria-label={label}
+      title={label}
+      disabled={disabled}
+      onClick={onClick}
+    >
+      {children}
+    </Button>
+  );
+}
 type AdministrationPageClientProps = {
   canManagePeople: boolean;
   teams: TeamListItem[];
@@ -208,15 +236,12 @@ export function AdministrationPageClient({
               <section className="space-y-3">
                 <div className="flex items-center justify-between gap-2">
                   <h2 className="text-base font-semibold">Pôles</h2>
-                  <Button
-                    type="button"
-                    size="sm"
+                  <IconActionButton
+                    label="Nouveau Pôle"
                     onClick={openCreateTeam}
-                    className="gap-1.5"
                   >
-                    <Plus className="size-4" weight="bold" />
-                    Nouveau Pôle
-                  </Button>
+                    <UserPlus className="size-4" />
+                  </IconActionButton>
                 </div>
                 {teams.length === 0 ? (
                   <p className="text-sm text-muted-foreground">Aucun pôle</p>
@@ -241,22 +266,15 @@ export function AdministrationPageClient({
                                 </CardTitle>
                               </button>
                               <div className="flex shrink-0 gap-1">
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="icon"
-                                  className="size-8"
-                                  aria-label={`Modifier ${team.team_name}`}
+                                <IconActionButton
+                                  label={`Modifier ${team.team_name}`}
                                   onClick={() => openEditTeam(team)}
                                 >
                                   <PencilSimple className="size-4" />
-                                </Button>
-                                <Button
-                                  type="button"
+                                </IconActionButton>
+                                <IconActionButton
+                                  label={`Supprimer ${team.team_name}`}
                                   variant="destructive"
-                                  size="icon"
-                                  className="size-8"
-                                  aria-label={`Supprimer ${team.team_name}`}
                                   onClick={() =>
                                     setPendingDeleteTeam({
                                       id: team.id,
@@ -266,7 +284,7 @@ export function AdministrationPageClient({
                                   }
                                 >
                                   <Trash className="size-4" />
-                                </Button>
+                                </IconActionButton>
                               </div>
                             </div>
                           </CardHeader>
@@ -293,16 +311,13 @@ export function AdministrationPageClient({
               <section className="space-y-3">
                 <div className="flex items-center justify-between gap-2">
                   <h2 className="text-base font-semibold">Collaborateurs</h2>
-                  <Button
-                    type="button"
-                    size="sm"
+                  <IconActionButton
+                    label="Nouveau Collaborateur"
                     onClick={openCreateCollaborator}
-                    className="gap-1.5"
                     disabled={teams.length === 0}
                   >
-                    <UserPlus className="size-4" weight="bold" />
-                    Nouveau Collaborateur
-                  </Button>
+                    <UserPlus className="size-4" />
+                  </IconActionButton>
                 </div>
                 {teams.length === 0 ? (
                   <p className="text-sm text-muted-foreground">
@@ -320,28 +335,21 @@ export function AdministrationPageClient({
                         <CollaboratorCard
                           collaborator={collaborator}
                           variant="full"
-                          className="pr-20"
+                          className="pr-24"
                           onClick={() =>
                             openCollaboratorConsultation(collaborator.id)
                           }
                         />
                         <div className="absolute top-2 right-2 flex gap-1">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            className="size-8"
-                            aria-label={`Modifier ${getCollaboratorFullName(collaborator)}`}
+                          <IconActionButton
+                            label={`Modifier ${getCollaboratorFullName(collaborator)}`}
                             onClick={() => openEditCollaborator(collaborator)}
                           >
                             <PencilSimple className="size-4" />
-                          </Button>
-                          <Button
-                            type="button"
+                          </IconActionButton>
+                          <IconActionButton
+                            label={`Supprimer ${getCollaboratorFullName(collaborator)}`}
                             variant="destructive"
-                            size="icon"
-                            className="size-8"
-                            aria-label={`Supprimer ${getCollaboratorFullName(collaborator)}`}
                             onClick={() =>
                               setPendingAnonymize({
                                 id: collaborator.id,
@@ -350,7 +358,7 @@ export function AdministrationPageClient({
                             }
                           >
                             <Trash className="size-4" />
-                          </Button>
+                          </IconActionButton>
                         </div>
                         {collaborator.status === "inactif" ? (
                           <p className="mt-1 text-xs text-muted-foreground">
