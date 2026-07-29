@@ -1,5 +1,16 @@
 # Suivi des actions — TOPilot
 
+## **[2026-07-29] — Favicon TOPilot**
+
+**Type :** `chore`
+**Fichiers concernés :** `app/icon.svg`, `app/layout.tsx`, `suivi.md`
+
+### Description
+
+Favicon projet basé sur `public/topilot-favicon.svg` : copie en `app/icon.svg` (convention App Router) + déclaration `metadata.icons`.
+
+---
+
 ## **[2026-07-29] — Boutons icon-only /administration**
 
 **Type :** `fix`
