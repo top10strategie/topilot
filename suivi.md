@@ -1,5 +1,16 @@
 # Suivi des actions — TOPilot
 
+## **[2026-07-29] — Workflow push : GitHub Desktop (humain)**
+
+**Type :** `docs`
+**Fichiers concernés :** `.cursor/rules/00_cursor_rules.mdc.md`, `suivi.md`
+
+### Description
+
+Décision permanente : l’agent Cursor gère branches, commits et checks locaux ; les push vers GitHub sont faits manuellement via GitHub Desktop.
+
+---
+
 ## **[2026-07-29] — CI/CD GitHub Actions (dev + main)**
 
 **Type :** `config`
