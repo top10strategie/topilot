@@ -19,7 +19,7 @@ export function AppSidebarFallback() {
             height={28}
             className="size-7 shrink-0 opacity-50"
           />
-          <span className="truncate text-base font-semibold tracking-tight opacity-50 group-data-[collapsible=icon]:hidden">
+          <span className="truncate text-2xl font-semibold tracking-tight opacity-50 group-data-[collapsible=icon]:hidden">
             TOPilot
           </span>
         </div>

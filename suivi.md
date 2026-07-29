@@ -1,5 +1,16 @@
 # Suivi des actions — TOPilot
 
+## **[2026-07-29] — Logo NavBar simplifié + text-2xl fallback**
+
+**Type :** `chore`
+**Fichiers concernés :** `public/logo_topilot.svg`, `public/topilot-mark-mono-dark.svg`, `public/topilot-mark-mono-white.svg`, `components/layout/app-sidebar-fallback.tsx`, `suivi.md`
+
+### Description
+
+Remplacement du logo NavBar par une version SVG simplifiée (marque T), ajout des variantes mono dark/white, alignement du titre fallback sur `text-2xl`.
+
+---
+
 ## **[2026-07-29] — Titre NavBar TOPilot en text-2xl**
 
 **Type :** `fix`
