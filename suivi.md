@@ -1,5 +1,23 @@
 # Suivi des actions — TOPilot
 
+## **[2026-07-29] — CI/CD GitHub Actions (dev + main)**
+
+**Type :** `config`
+**Fichiers concernés :** `.github/workflows/ci-dev.yml`, `.github/workflows/ci-main.yml`, `package.json`, `eslint.config.mjs`, `components/layout/entity-detail-placeholder.tsx`, `suivi.md`
+
+### Description
+
+Mise en place de la CI selon les règles projet : lint + types sur `dev` ; lint + types + build sur `main`. Correction ESLint (ignore `.next`) pour rendre la CI utilisable.
+
+### Détails techniques
+
+- Script `npm run typecheck` (`tsc --noEmit`)
+- Workflows : `CI (dev)` et `CI (main)` (Node 22, `npm ci`)
+- Build `main` : variables Supabase factices (secrets réels côté Vercel)
+- À configurer sur GitHub : Branch protection `main` → status check requis « Lint + types + build » pour bloquer le merge / déploiement si CI rouge
+
+---
+
 ## **[2026-07-29] — ThemeToggle withLabel (sidebar mobile)**
 
 **Type :** `fix`

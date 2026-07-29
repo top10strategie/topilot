@@ -1,0 +1,49 @@
+# CI complète — branche `main` (pré-déploiement Vercel)
+# Règles : lint + types + build ; un échec doit bloquer le merge / déploiement
+# (activer le status check requis sur `main` dans GitHub Branch protection)
+
+name: CI (main)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-main-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-types-build:
+    name: Lint + types + build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      # Valeurs factices pour le build CI uniquement (secrets réels côté Vercel)
+      NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ci-placeholder
+      SUPABASE_SERVICE_ROLE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ci-placeholder-service
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build

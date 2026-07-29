@@ -1,10 +1,6 @@
 import { PageHero } from "@/components/layout/page-hero";
 import { Suspense } from "react";
 
-type Props = {
-  params: Promise<{ id: string }>;
-};
-
 async function DetailBody({
   title,
   params,
