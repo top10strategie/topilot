@@ -1,5 +1,25 @@
 # Suivi des actions — TOPilot
 
+## **[2026-07-29] — Point 3 itération A : consultation Collaborateurs & Pôles**
+
+**Type :** `feature`
+**Fichiers concernés :** `app/(app)/top10/page.tsx`, `app/(app)/administration/page.tsx`, `components/collaborators/*`, `components/ui/tabs.tsx`, `lib/auth/roles.ts`, `lib/auth/require-action.ts`, `lib/auth/collaborator-display.ts`, `lib/auth/get-current-collaborator.ts`, `lib/collaborators/*`, `suivi.md`
+
+### Description
+
+Première livrable du point roadmap 3 (Gestion Collaborateurs & Équipes) : page `/top10` en consultation (pôles + collaborateurs, recherche contextuelle, tiroirs lecture), structure `/administration` avec placeholders Catégories/Types et onglet Collaborateurs & Pôles réservé Manager/Direction (lecture seule, CRUD à venir).
+
+### Détails techniques
+
+- Branche : `feature/collaborators-teams`
+- Helpers : `canManageCollaboratorsAndTeams`, `requireManagerOrDirectionAction`
+- Queries : `loadPeopleDirectory` / `listCollaborators` (avatar public bucket `visuels` si présent)
+- Décisions actées : invite email (itération suivante), placeholders catégories/types, suppression pôle avec déplacement forcé des collabs
+- Sections missions/opportunités/clients des tiroirs masquées (dépendances CRM / pipe non livrées)
+- Checks : `npm run lint` + `npm run typecheck` OK
+
+---
+
 ## **[2026-07-29] — Workflow push : GitHub Desktop (humain)**
 
 **Type :** `docs`
