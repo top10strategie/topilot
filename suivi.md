@@ -1,5 +1,16 @@
 # Suivi des actions — TOPilot
 
+## **[2026-07-29] — Boutons icon-only /administration**
+
+**Type :** `fix`
+**Fichiers concernés :** `components/collaborators/administration-page-client.tsx`, `suivi.md`
+
+### Description
+
+Alignement sur la spec §11 : boutons d'action sans texte visible (`size="icon"`), icône `user-plus` pour l'ajout pôle/collaborateur, `aria-label` / `title` pour l'accessibilité.
+
+---
+
 ## **[2026-07-29] — Point 3 itération C : invitation + CRUD collaborateurs**
 
 **Type :** `feature`
