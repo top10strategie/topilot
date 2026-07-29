@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
-import { useTransition } from "react";
+import { useId, useState, useTransition, type FormEvent } from "react";
 import { FolderSimplePlus } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { createCategory, updateCategory } from "@/actions/categories";
@@ -10,7 +9,18 @@ import { LabelEntityFormDrawer } from "@/components/categories/label-entity-form
 import type { DrawerHelpers } from "@/components/drawers/drawer-stack-context";
 import { useDrawerStack } from "@/components/drawers/drawer-stack-context";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Combobox,
+  ComboboxChip,
+  ComboboxChips,
+  ComboboxChipsInput,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxItem,
+  ComboboxList,
+  ComboboxValue,
+  useComboboxAnchor,
+} from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -38,6 +48,8 @@ export function TeamFormDrawer({
   availableCategories = [],
 }: TeamFormDrawerProps) {
   const { pushDrawer } = useDrawerStack();
+  const categoriesFieldId = useId();
+  const chipsAnchor = useComboboxAnchor();
   const [teamName, setTeamName] = useState(team?.team_name ?? "");
   const [notes, setNotes] = useState(team?.notes ?? "");
   const [categories, setCategories] = useState<TeamCategoryItem[]>(() => {
@@ -52,8 +64,8 @@ export function TeamFormDrawer({
       a.label.localeCompare(b.label, "fr"),
     );
   });
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(
-    () => new Set((team?.categories ?? []).map((c) => c.id)),
+  const [selected, setSelected] = useState<TeamCategoryItem[]>(
+    () => [...(team?.categories ?? [])],
   );
   const [fieldErrors, setFieldErrors] = useState<{
     team_name?: string;
@@ -64,15 +76,20 @@ export function TeamFormDrawer({
 
   const submitLabel = mode === "create" ? "Créer" : "Enregistrer";
 
-  const toggleCategory = (id: string, checked: boolean) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (checked) {
-        next.add(id);
-      } else {
-        next.delete(id);
+  const injectCategory = (item: TeamCategoryItem) => {
+    setCategories((prev) => {
+      if (prev.some((c) => c.id === item.id)) {
+        return prev;
       }
-      return next;
+      return [...prev, item].sort((a, b) =>
+        a.label.localeCompare(b.label, "fr"),
+      );
+    });
+    setSelected((prev) => {
+      if (prev.some((c) => c.id === item.id)) {
+        return prev;
+      }
+      return [...prev, item];
     });
   };
 
@@ -83,26 +100,22 @@ export function TeamFormDrawer({
         <LabelEntityFormDrawer
           mode="create"
           entityKind="category"
-          helpers={nestedHelpers}
+          helpers={{
+            dismiss: nestedHelpers.dismiss,
+            resolve: (value) => {
+              injectCategory(value);
+              nestedHelpers.resolve(value);
+            },
+          }}
           onCreate={createCategory}
           onUpdate={updateCategory}
         />
       ),
     });
 
-    if (!created) {
-      return;
+    if (created) {
+      injectCategory(created);
     }
-
-    setCategories((prev) => {
-      if (prev.some((c) => c.id === created.id)) {
-        return prev;
-      }
-      return [...prev, created].sort((a, b) =>
-        a.label.localeCompare(b.label, "fr"),
-      );
-    });
-    setSelectedIds((prev) => new Set(prev).add(created.id));
   };
 
   const handleSubmit = (event: FormEvent) => {
@@ -113,7 +126,7 @@ export function TeamFormDrawer({
       const input = {
         team_name: teamName,
         notes,
-        category_ids: [...selectedIds],
+        category_ids: selected.map((category) => category.id),
       };
 
       const result =
@@ -157,7 +170,7 @@ export function TeamFormDrawer({
 
         <div className="grid gap-2">
           <div className="flex items-center justify-between gap-2">
-            <Label>Catégories</Label>
+            <Label htmlFor={categoriesFieldId}>Catégories</Label>
             <Button
               type="button"
               variant="outline"
@@ -170,35 +183,57 @@ export function TeamFormDrawer({
               <FolderSimplePlus className="size-4" />
             </Button>
           </div>
+
           {categories.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               Aucune catégorie. Créez-en une avec le bouton ci-dessus.
             </p>
           ) : (
-            <ul className="max-h-48 space-y-2 overflow-y-auto rounded-md border p-3">
-              {categories.map((category) => {
-                const checked = selectedIds.has(category.id);
-                const checkboxId = `team-category-${category.id}`;
-                return (
-                  <li key={category.id} className="flex items-center gap-2">
-                    <Checkbox
-                      id={checkboxId}
-                      checked={checked}
-                      disabled={isPending}
-                      onCheckedChange={(value) =>
-                        toggleCategory(category.id, value === true)
-                      }
-                    />
-                    <Label
-                      htmlFor={checkboxId}
-                      className="cursor-pointer font-normal"
-                    >
-                      {category.label}
-                    </Label>
-                  </li>
-                );
-              })}
-            </ul>
+            <Combobox
+              items={categories}
+              multiple
+              value={selected}
+              onValueChange={(next) => setSelected(next ?? [])}
+              itemToStringLabel={(item) => item.label}
+              itemToStringValue={(item) => item.id}
+              isItemEqualToValue={(a, b) => a.id === b.id}
+              disabled={isPending}
+            >
+              <ComboboxChips
+                ref={chipsAnchor}
+                aria-invalid={Boolean(fieldErrors.category_ids) || undefined}
+                className="w-full"
+              >
+                <ComboboxValue>
+                  {(value: TeamCategoryItem[]) => (
+                    <>
+                      {value.map((item) => (
+                        <ComboboxChip key={item.id}>{item.label}</ComboboxChip>
+                      ))}
+                      <ComboboxChipsInput
+                        id={categoriesFieldId}
+                        placeholder={
+                          value.length > 0
+                            ? "Ajouter…"
+                            : "Sélectionner des catégories…"
+                        }
+                        disabled={isPending}
+                      />
+                    </>
+                  )}
+                </ComboboxValue>
+              </ComboboxChips>
+              <ComboboxContent anchor={chipsAnchor}>
+                <ComboboxEmpty>Aucune catégorie trouvée.</ComboboxEmpty>
+                <ComboboxList>
+                  {(item) => (
+                    <ComboboxItem key={item.id} value={item}>
+                      {item.label}
+                    </ComboboxItem>
+                  )}
+                </ComboboxList>
+              </ComboboxContent>
+            </Combobox>
           )}
           {fieldErrors.category_ids ? (
             <p className="text-sm text-destructive">

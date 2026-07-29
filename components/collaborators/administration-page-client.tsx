@@ -346,8 +346,8 @@ export function AdministrationPageClient({
       <PageHero
         title="Gestion Admin"
         actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative w-full max-w-sm min-w-[12rem]">
+          <div className="flex w-full max-w-md items-center gap-2 md:w-auto md:max-w-none">
+            <div className="relative min-w-0 flex-1 md:w-72 md:flex-none lg:w-80">
               <MagnifyingGlass
                 className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
                 aria-hidden
