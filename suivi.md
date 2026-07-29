@@ -1,5 +1,107 @@
 # Suivi des actions — TOPilot
 
+## **[2026-07-29] — Boutons icon-only /administration**
+
+**Type :** `fix`
+**Fichiers concernés :** `components/collaborators/administration-page-client.tsx`, `suivi.md`
+
+### Description
+
+Alignement sur la spec §11 : boutons d'action sans texte visible (`size="icon"`), icône `user-plus` pour l'ajout pôle/collaborateur, `aria-label` / `title` pour l'accessibilité.
+
+---
+
+## **[2026-07-29] — Point 3 itération C : invitation + CRUD collaborateurs**
+
+**Type :** `feature`
+**Fichiers concernés :** `actions/collaborators.ts`, `components/collaborators/collaborator-form-drawer.tsx`, `components/collaborators/anonymize-collaborator-dialog.tsx`, `components/collaborators/administration-page-client.tsx`, `lib/collaborators/profile-picture.ts`, `lib/app-url.ts`, `components/ui/select.tsx`, `supabase/migrations/20260729140000_profile_picture_type_and_visuels_bucket.sql`, `.env.example`, `suivi.md`
+
+### Description
+
+CRUD collaborateurs sur `/administration` : création via `inviteUserByEmail` + INSERT immédiat (`auth_user_id`), édition, offboarding par anonymisation. Avatar optionnel (bucket `visuels`). Empilement tiroir « Nouveau Pôle » depuis le formulaire collaborateur.
+
+### Détails techniques
+
+- Rollback Auth (`deleteUser`) si l'INSERT `collaborator` échoue après l'invitation
+- `redirectTo` invitation → `/auth/confirm?next=/auth/update-password` (`NEXT_PUBLIC_SITE_URL` ou localhost)
+- Seed `document_type` « Photo de profil » + bucket `visuels` (migration appliquée)
+- Impossible de s'anonymiser soi-même ; statut `sorti` exclu de la grille admin
+- Checks : lint + typecheck OK
+
+---
+
+## **[2026-07-29] — UX cartes Top10 + fix recherche globale**
+
+**Type :** `fix`
+**Fichiers concernés :** `components/collaborators/collaborator-card.tsx`, `components/collaborators/team-card.tsx`, `components/search/global-search-dialog.tsx`, `supabase/migrations/20260729124000_search_global_prefix_tsquery.sql`, `suivi.md`
+
+### Description
+
+- Badge Manager → icône Phosphor `star` ancrée en haut à droite de la carte
+- Padding des cartes pôle `/top10` réduit de moitié (`p-6` → `p-3`)
+- Recherche globale : debounce + état « Recherche… » pendant l’attente (corrige le faux « Aucun résultat » dû à `useDeferredValue`) ; FTS en préfixe (`token:*`) pour la saisie progressive
+
+### Détails techniques
+
+- Migration `search_global_prefix_tsquery` appliquée sur le projet Supabase distant
+- Checks : lint + typecheck OK
+
+---
+
+## **[2026-07-29] — Fix Suspense Cache Components (/top10, /administration)**
+
+**Type :** `fix`
+**Fichiers concernés :** `app/(app)/top10/page.tsx`, `app/(app)/administration/page.tsx`, `suivi.md`
+
+### Description
+
+Correction de l'erreur Next.js `blocking-route` (`cacheComponents`) : les `await` de données session/DB étaient hors `<Suspense>`, ce qui bloquait la navigation.
+
+### Détails techniques
+
+- Contenu async extrait dans un composant serveur enfant wrappé par `<Suspense>` + fallback skeleton (même pattern que `entity-detail-placeholder`)
+
+---
+
+## **[2026-07-29] — Point 3 itération B : CRUD Pôles**
+
+**Type :** `feature`
+**Fichiers concernés :** `actions/teams.ts`, `components/collaborators/team-form-drawer.tsx`, `components/collaborators/delete-team-dialog.tsx`, `components/collaborators/administration-page-client.tsx`, `components/ui/textarea.tsx`, `suivi.md`
+
+### Description
+
+CRUD des pôles sur `/administration` : création / édition via tiroirs, suppression avec confirmation. Suppression refusée tant que des collaborateurs (tous statuts) restent rattachés — déplacement obligatoire avant. Catégories de pôle reportées (placeholder).
+
+### Détails techniques
+
+- Server actions `createTeam` / `updateTeam` / `deleteTeam` gardées par `requireManagerOrDirectionAction`
+- Unicité `team_name` gérée (erreur 23505 → message inline)
+- `notes_updated_at` mis à jour uniquement si les notes changent
+- Modale suppression : bouton désactivé + message si `memberCount > 0`
+- Checks : `npm run lint` + `npm run typecheck` OK
+
+---
+
+## **[2026-07-29] — Point 3 itération A : consultation Collaborateurs & Pôles**
+
+**Type :** `feature`
+**Fichiers concernés :** `app/(app)/top10/page.tsx`, `app/(app)/administration/page.tsx`, `components/collaborators/*`, `components/ui/tabs.tsx`, `lib/auth/roles.ts`, `lib/auth/require-action.ts`, `lib/auth/collaborator-display.ts`, `lib/auth/get-current-collaborator.ts`, `lib/collaborators/*`, `suivi.md`
+
+### Description
+
+Première livrable du point roadmap 3 (Gestion Collaborateurs & Équipes) : page `/top10` en consultation (pôles + collaborateurs, recherche contextuelle, tiroirs lecture), structure `/administration` avec placeholders Catégories/Types et onglet Collaborateurs & Pôles réservé Manager/Direction (lecture seule, CRUD à venir).
+
+### Détails techniques
+
+- Branche : `feature/collaborators-teams`
+- Helpers : `canManageCollaboratorsAndTeams`, `requireManagerOrDirectionAction`
+- Queries : `loadPeopleDirectory` / `listCollaborators` (avatar public bucket `visuels` si présent)
+- Décisions actées : invite email (itération suivante), placeholders catégories/types, suppression pôle avec déplacement forcé des collabs
+- Sections missions/opportunités/clients des tiroirs masquées (dépendances CRM / pipe non livrées)
+- Checks : `npm run lint` + `npm run typecheck` OK
+
+---
+
 ## **[2026-07-29] — Workflow push : GitHub Desktop (humain)**
 
 **Type :** `docs`

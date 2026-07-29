@@ -17,7 +17,10 @@ import {
   type SearchEntityType,
 } from "@/lib/search/types";
 import { useRouter } from "next/navigation";
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
+
+const MIN_QUERY_LENGTH = 2;
+const DEBOUNCE_MS = 250;
 
 function groupResults(
   results: GlobalSearchResult[],
@@ -35,48 +38,71 @@ export function GlobalSearchDialog() {
   const { open, setOpen } = useGlobalSearch();
   const router = useRouter();
   const [query, setQuery] = useState("");
-  const deferredQuery = useDeferredValue(query);
+  const [debouncedQuery, setDebouncedQuery] = useState("");
   const [results, setResults] = useState<GlobalSearchResult[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
     if (!open) {
       setQuery("");
+      setDebouncedQuery("");
       setResults([]);
       setError(null);
     }
   }, [open]);
 
   useEffect(() => {
+    const trimmed = query.trim();
+    const timer = window.setTimeout(() => {
+      setDebouncedQuery(trimmed);
+    }, DEBOUNCE_MS);
+    return () => window.clearTimeout(timer);
+  }, [query]);
+
+  useEffect(() => {
     let cancelled = false;
 
-    const run = async () => {
-      const trimmed = deferredQuery.trim();
-      if (trimmed.length < 2) {
+    if (debouncedQuery.length < MIN_QUERY_LENGTH) {
+      setResults([]);
+      setError(null);
+      return;
+    }
+
+    startTransition(async () => {
+      try {
+        const response = await searchGlobalAction(debouncedQuery);
+        if (cancelled) {
+          return;
+        }
+        setResults(response.results);
+        setError(response.error ?? null);
+      } catch (err) {
+        if (cancelled) {
+          return;
+        }
+        console.error("GlobalSearchDialog:", err);
         setResults([]);
-        setError(null);
-        setIsLoading(false);
-        return;
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Impossible d'effectuer la recherche.",
+        );
       }
+    });
 
-      setIsLoading(true);
-      const response = await searchGlobalAction(trimmed);
-      if (cancelled) {
-        return;
-      }
-      setResults(response.results);
-      setError(response.error ?? null);
-      setIsLoading(false);
-    };
-
-    void run();
     return () => {
       cancelled = true;
     };
-  }, [deferredQuery]);
+  }, [debouncedQuery]);
 
   const grouped = useMemo(() => groupResults(results), [results]);
+
+  const trimmedQuery = query.trim();
+  const isWaitingDebounce =
+    trimmedQuery.length >= MIN_QUERY_LENGTH &&
+    trimmedQuery !== debouncedQuery;
+  const isSearching = isPending || isWaitingDebounce;
 
   const handleSelect = (result: GlobalSearchResult) => {
     setOpen(false);
@@ -102,11 +128,11 @@ export function GlobalSearchDialog() {
           />
         </div>
         <div className="max-h-80 overflow-y-auto px-2 py-2">
-          {query.trim().length < 2 ? (
+          {trimmedQuery.length < MIN_QUERY_LENGTH ? (
             <p className="px-2 py-6 text-center text-sm text-muted-foreground">
               Saisissez au moins 2 caractères.
             </p>
-          ) : isLoading ? (
+          ) : isSearching ? (
             <p className="px-2 py-6 text-center text-sm text-muted-foreground">
               Recherche…
             </p>
