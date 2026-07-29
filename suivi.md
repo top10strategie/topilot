@@ -1,5 +1,16 @@
 # Suivi des actions — TOPilot
 
+## **[2026-07-29] — SidebarHeader plus haut (h-17)**
+
+**Type :** `chore`
+**Fichiers concernés :** `components/layout/app-sidebar.tsx`, `components/layout/app-sidebar-fallback.tsx`, `suivi.md`
+
+### Description
+
+Hauteur du `SidebarHeader` portée de `h-14` à `h-17` (sidebar + fallback).
+
+---
+
 ## **[2026-07-29] — Favicon TOPilot**
 
 **Type :** `chore`

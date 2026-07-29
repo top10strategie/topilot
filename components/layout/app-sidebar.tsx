@@ -46,7 +46,7 @@ export function AppSidebar({ collaborator }: AppSidebarProps) {
 
   return (
     <Sidebar collapsible="icon" variant="floating">
-      <SidebarHeader className="h-14 justify-center">
+      <SidebarHeader className="h-17 justify-center">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton

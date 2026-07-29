@@ -10,7 +10,7 @@ import {
 export function AppSidebarFallback() {
   return (
     <Sidebar collapsible="icon" variant="floating">
-      <SidebarHeader className="h-14 justify-center px-3">
+      <SidebarHeader className="h-17 justify-center px-3">
         <div className="flex items-center gap-2">
           <img
             src="/logo_topilot.svg"
