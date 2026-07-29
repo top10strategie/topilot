@@ -1,5 +1,49 @@
 # Suivi des actions — TOPilot
 
+## **[2026-07-29] — Logo NavBar simplifié + text-2xl fallback**
+
+**Type :** `chore`
+**Fichiers concernés :** `public/logo_topilot.svg`, `public/topilot-mark-mono-dark.svg`, `public/topilot-mark-mono-white.svg`, `components/layout/app-sidebar-fallback.tsx`, `suivi.md`
+
+### Description
+
+Remplacement du logo NavBar par une version SVG simplifiée (marque T), ajout des variantes mono dark/white, alignement du titre fallback sur `text-2xl`.
+
+---
+
+## **[2026-07-29] — Titre NavBar TOPilot en text-2xl**
+
+**Type :** `fix`
+**Fichiers concernés :** `components/layout/app-sidebar.tsx`, `suivi.md`
+
+### Description
+
+Le `SidebarMenuButton` (size `lg`) imposait `text-sm` et écrasait le titre. Ajout de `className="h-auto text-2xl"` + `text-2xl` sur le span « TOPilot ».
+
+---
+
+## **[2026-07-29] — SidebarHeader plus haut (h-17)**
+
+**Type :** `chore`
+**Fichiers concernés :** `components/layout/app-sidebar.tsx`, `components/layout/app-sidebar-fallback.tsx`, `suivi.md`
+
+### Description
+
+Hauteur du `SidebarHeader` portée de `h-14` à `h-17` (sidebar + fallback).
+
+---
+
+## **[2026-07-29] — Favicon TOPilot**
+
+**Type :** `chore`
+**Fichiers concernés :** `app/icon.svg`, `app/layout.tsx`, `suivi.md`
+
+### Description
+
+Favicon projet basé sur `public/topilot-favicon.svg` : copie en `app/icon.svg` (convention App Router) + déclaration `metadata.icons`.
+
+---
+
 ## **[2026-07-29] — Boutons icon-only /administration**
 
 **Type :** `fix`

@@ -11,6 +11,10 @@ export const metadata: Metadata = {
   metadataBase: new URL(defaultUrl),
   title: "TOPilot",
   description: "Outil interne de gestion d'agence — Top10 Stratégie",
+  icons: {
+    icon: [{ url: "/topilot-favicon.svg", type: "image/svg+xml" }],
+    shortcut: "/topilot-favicon.svg",
+  },
 };
 
 const geistSans = Geist({
