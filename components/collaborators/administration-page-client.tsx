@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   MagnifyingGlass,
@@ -31,8 +31,8 @@ import {
 import { DeleteTeamDialog } from "@/components/collaborators/delete-team-dialog";
 import { TeamFormDrawer } from "@/components/collaborators/team-form-drawer";
 import { useDrawerStack } from "@/components/drawers/drawer-stack-context";
+import { IconActionButton } from "@/components/layout/icon-action-button";
 import { PageHero } from "@/components/layout/page-hero";
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -50,35 +50,6 @@ import type {
   TeamListItem,
 } from "@/lib/collaborators/types";
 import type { CategoryItem, DocumentTypeItem } from "@/lib/categories/types";
-
-/** Bouton d'action icon-only (spec §11 — pas de texte visible). */
-function IconActionButton({
-  label,
-  variant = "outline",
-  disabled,
-  onClick,
-  children,
-}: {
-  label: string;
-  variant?: "outline" | "destructive" | "default" | "ghost";
-  disabled?: boolean;
-  onClick: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <Button
-      type="button"
-      variant={variant}
-      size="icon"
-      aria-label={label}
-      title={label}
-      disabled={disabled}
-      onClick={onClick}
-    >
-      {children}
-    </Button>
-  );
-}
 
 type AdministrationPageClientProps = {
   canManagePeople: boolean;

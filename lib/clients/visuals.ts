@@ -2,11 +2,13 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { assertAllowedImageFile } from "@/lib/visuels/allowed-image-types";
 
-const PROFILE_PICTURE_TYPE_LABEL = "Photo de profil";
 const VISUELS_BUCKET = "visuels";
 
+export const CLIENT_LOGO_TYPE_LABEL = "Logo client";
+export const PROFILE_PICTURE_TYPE_LABEL = "Photo de profil";
+
 function sanitizeFileName(name: string): string {
-  const base = name.split(/[/\\]/).pop() ?? "avatar";
+  const base = name.split(/[/\\]/).pop() ?? "image";
   return base
     .normalize("NFKD")
     .replace(/[^\w.\-]+/g, "_")
@@ -14,41 +16,41 @@ function sanitizeFileName(name: string): string {
     .slice(0, 120);
 }
 
-async function getProfilePictureTypeId(): Promise<string> {
+async function getDocumentTypeId(label: string): Promise<string> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("document_type")
     .select("id")
-    .eq("label", PROFILE_PICTURE_TYPE_LABEL)
+    .eq("label", label)
     .maybeSingle();
 
   if (error) {
     throw new Error(`Type documentaire introuvable : ${error.message}`);
   }
   if (!data) {
-    throw new Error(
-      `Le type documentaire « ${PROFILE_PICTURE_TYPE_LABEL} » est manquant.`,
-    );
+    throw new Error(`Le type documentaire « ${label} » est manquant.`);
   }
   return data.id;
 }
 
 /**
- * Upload une photo de profil dans le bucket `visuels` + ligne `document`.
- * Retourne l'id document à lier sur `collaborator.profile_picture_id`.
+ * Upload un visuel (logo / avatar) dans `visuels` + ligne `document` (`is_visual`).
  */
-export async function uploadCollaboratorProfilePicture(
+export async function uploadClientVisual(
   file: File,
+  typeLabel: string,
+  fallbackName: string,
 ): Promise<{ documentId: string }> {
   const contentType = assertAllowedImageFile(file);
 
-  const documentTypeId = await getProfilePictureTypeId();
+  const documentTypeId = await getDocumentTypeId(typeLabel);
   const admin = createAdminClient();
+  const documentName = sanitizeFileName(file.name) || fallbackName;
 
   const { data: document, error: insertError } = await admin
     .from("document")
     .insert({
-      document_name: sanitizeFileName(file.name) || "avatar",
+      document_name: documentName,
       document_type_id: documentTypeId,
       storage_type: "supabase",
       file_path: "pending",
@@ -63,7 +65,7 @@ export async function uploadCollaboratorProfilePicture(
     );
   }
 
-  const filePath = `${document.id}/${sanitizeFileName(file.name) || "avatar"}`;
+  const filePath = `${document.id}/${documentName}`;
   const buffer = Buffer.from(await file.arrayBuffer());
 
   const { error: uploadError } = await admin.storage
@@ -90,4 +92,12 @@ export async function uploadCollaboratorProfilePicture(
   }
 
   return { documentId: document.id };
+}
+
+export async function uploadClientLogo(file: File) {
+  return uploadClientVisual(file, CLIENT_LOGO_TYPE_LABEL, "logo");
+}
+
+export async function uploadContactProfilePicture(file: File) {
+  return uploadClientVisual(file, PROFILE_PICTURE_TYPE_LABEL, "avatar");
 }

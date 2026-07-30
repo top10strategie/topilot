@@ -1,5 +1,16 @@
 # Suivi des actions — TOPilot
 
+## **[2026-07-29] — Point 4 : CRM Clients (liste, fiche, contacts, responsable)**
+
+**Type :** `feature`
+**Fichiers concernés :** `actions/clients.ts`, `actions/contact-clients.ts`, `lib/clients/*`, `components/clients/*`, `app/(app)/clients/**`, `lib/search/types.ts`, `supabase/migrations/20260729180000_client_logo_type_and_contact_fts.sql`, `suivi.md`
+
+### Description
+
+CRM Clients sur `/clients` et `/clients/[id]` : liste (cartes/tableau, filtres), création 2 temps / édition, contacts (`is_main`, Hover Card, mode gestion), responsable collaborateur obligatoire, catégories multi, logo, stubs Missions/Outils/Wiki. FTS contact → fiche client ; seed type « Logo client ».
+
+---
+
 ## **[2026-07-29] — CRUD Catégories & Types + team_category**
 
 **Type :** `feature`

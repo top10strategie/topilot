@@ -30,11 +30,13 @@ function SheetPortal({
 
 function SheetOverlay({
   className,
+  style,
   ...props
 }: React.ComponentProps<typeof SheetPrimitive.Overlay>) {
   return (
     <SheetPrimitive.Overlay
       data-slot="sheet-overlay"
+      style={style}
       className={cn(
         "fixed inset-0 z-50 bg-black/50 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0",
         className
@@ -50,17 +52,41 @@ function SheetContent({
   side = "right",
   showCloseButton = true,
   showOverlay = true,
+  overlayClassName,
+  style,
   ...props
 }: React.ComponentProps<typeof SheetPrimitive.Content> & {
   side?: "top" | "right" | "bottom" | "left"
   showCloseButton?: boolean
   showOverlay?: boolean
+  /** Classes additionnelles pour l'overlay (ex. le masquer sans le démonter). */
+  overlayClassName?: string
 }) {
+  const overlayZIndex = style && "zIndex" in style ? style.zIndex : undefined
+  const contentStyle =
+    overlayZIndex !== undefined && overlayZIndex !== null
+      ? {
+          ...style,
+          zIndex:
+            typeof overlayZIndex === "number" ? overlayZIndex + 1 : overlayZIndex,
+        }
+      : style
+
   return (
     <SheetPortal>
-      {showOverlay ? <SheetOverlay /> : null}
+      {showOverlay ? (
+        <SheetOverlay
+          style={
+            overlayZIndex !== undefined
+              ? { zIndex: overlayZIndex }
+              : undefined
+          }
+          className={overlayClassName}
+        />
+      ) : null}
       <SheetPrimitive.Content
         data-slot="sheet-content"
+        style={contentStyle}
         className={cn(
           "fixed z-50 flex flex-col gap-4 bg-background shadow-lg transition ease-in-out data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:animate-in data-[state=open]:duration-500",
           side === "right" &&

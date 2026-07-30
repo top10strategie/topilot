@@ -5,22 +5,11 @@ import { FolderSimplePlus } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { createCategory, updateCategory } from "@/actions/categories";
 import { createTeam, updateTeam } from "@/actions/teams";
+import { CategoryMultiCombobox } from "@/components/categories/category-multi-combobox";
 import { LabelEntityFormDrawer } from "@/components/categories/label-entity-form-drawer";
 import type { DrawerHelpers } from "@/components/drawers/drawer-stack-context";
 import { useDrawerStack } from "@/components/drawers/drawer-stack-context";
 import { Button } from "@/components/ui/button";
-import {
-  Combobox,
-  ComboboxChip,
-  ComboboxChips,
-  ComboboxChipsInput,
-  ComboboxContent,
-  ComboboxEmpty,
-  ComboboxItem,
-  ComboboxList,
-  ComboboxValue,
-  useComboboxAnchor,
-} from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -49,7 +38,6 @@ export function TeamFormDrawer({
 }: TeamFormDrawerProps) {
   const { pushDrawer } = useDrawerStack();
   const categoriesFieldId = useId();
-  const chipsAnchor = useComboboxAnchor();
   const [teamName, setTeamName] = useState(team?.team_name ?? "");
   const [notes, setNotes] = useState(team?.notes ?? "");
   const [categories, setCategories] = useState<TeamCategoryItem[]>(() => {
@@ -184,57 +172,15 @@ export function TeamFormDrawer({
             </Button>
           </div>
 
-          {categories.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              Aucune catégorie. Créez-en une avec le bouton ci-dessus.
-            </p>
-          ) : (
-            <Combobox
-              items={categories}
-              multiple
-              value={selected}
-              onValueChange={(next) => setSelected(next ?? [])}
-              itemToStringLabel={(item) => item.label}
-              itemToStringValue={(item) => item.id}
-              isItemEqualToValue={(a, b) => a.id === b.id}
-              disabled={isPending}
-            >
-              <ComboboxChips
-                ref={chipsAnchor}
-                aria-invalid={Boolean(fieldErrors.category_ids) || undefined}
-                className="w-full"
-              >
-                <ComboboxValue>
-                  {(value: TeamCategoryItem[]) => (
-                    <>
-                      {value.map((item) => (
-                        <ComboboxChip key={item.id}>{item.label}</ComboboxChip>
-                      ))}
-                      <ComboboxChipsInput
-                        id={categoriesFieldId}
-                        placeholder={
-                          value.length > 0
-                            ? "Ajouter…"
-                            : "Sélectionner des catégories…"
-                        }
-                        disabled={isPending}
-                      />
-                    </>
-                  )}
-                </ComboboxValue>
-              </ComboboxChips>
-              <ComboboxContent anchor={chipsAnchor}>
-                <ComboboxEmpty>Aucune catégorie trouvée.</ComboboxEmpty>
-                <ComboboxList>
-                  {(item) => (
-                    <ComboboxItem key={item.id} value={item}>
-                      {item.label}
-                    </ComboboxItem>
-                  )}
-                </ComboboxList>
-              </ComboboxContent>
-            </Combobox>
-          )}
+          <CategoryMultiCombobox
+            id={categoriesFieldId}
+            items={categories}
+            value={selected}
+            onValueChange={setSelected}
+            disabled={isPending}
+            aria-invalid={Boolean(fieldErrors.category_ids)}
+            emptyListMessage="Aucune catégorie. Créez-en une avec le bouton ci-dessus."
+          />
           {fieldErrors.category_ids ? (
             <p className="text-sm text-destructive">
               {fieldErrors.category_ids}

@@ -164,23 +164,3 @@ export async function loadPeopleDirectory(): Promise<{
 
   return { teams, collaborators };
 }
-
-/**
- * Liste les pôles avec catégories et membres rattachés.
- */
-export async function listTeamsWithMembers(): Promise<TeamListItem[]> {
-  const { teams } = await loadPeopleDirectory();
-  return teams;
-}
-
-export async function getTeamById(id: string): Promise<TeamListItem | null> {
-  const teams = await listTeamsWithMembers();
-  return teams.find((team) => team.id === id) ?? null;
-}
-
-export async function getCollaboratorById(
-  id: string,
-): Promise<CollaboratorListItem | null> {
-  const collaborators = await listCollaborators();
-  return collaborators.find((person) => person.id === id) ?? null;
-}
