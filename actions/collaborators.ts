@@ -107,9 +107,9 @@ function validateCollaboratorFields(input: {
   };
 }
 
+/** Destination post-invitation (`{{ .RedirectTo }}` dans le template e-mail). */
 function inviteRedirectTo(): string {
-  const next = encodeURIComponent(FORCE_PASSWORD_CHANGE_PATH);
-  return `${getAppOrigin()}/auth/confirm?next=${next}`;
+  return `${getAppOrigin()}${FORCE_PASSWORD_CHANGE_PATH}`;
 }
 
 /**

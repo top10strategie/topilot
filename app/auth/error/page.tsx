@@ -1,10 +1,11 @@
+import { AuthErrorRecovery } from "@/components/auth/auth-error-recovery";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Suspense } from "react";
 
 async function ErrorContent({
   searchParams,
 }: {
-  searchParams: Promise<{ error: string }>;
+  searchParams: Promise<{ error?: string }>;
 }) {
   const params = await searchParams;
 
@@ -26,7 +27,7 @@ async function ErrorContent({
 export default function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ error: string }>;
+  searchParams: Promise<{ error?: string }>;
 }) {
   return (
     <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
@@ -37,8 +38,14 @@ export default function Page({
               <CardTitle className="text-2xl">Une erreur est survenue</CardTitle>
             </CardHeader>
             <CardContent>
-              <Suspense>
-                <ErrorContent searchParams={searchParams} />
+              <Suspense
+                fallback={
+                  <p className="text-sm text-muted-foreground">Chargement…</p>
+                }
+              >
+                <AuthErrorRecovery>
+                  <ErrorContent searchParams={searchParams} />
+                </AuthErrorRecovery>
               </Suspense>
             </CardContent>
           </Card>
