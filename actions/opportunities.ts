@@ -358,3 +358,67 @@ export async function updateOpportunityRecord(
   revalidateOpportunities(id);
   return { success: true, id };
 }
+
+export type OpportunityKanbanUpdate = {
+  id: string;
+  kanban_status: OpportunityKanbanStatus;
+  kanban_order: number;
+};
+
+/**
+ * Mise à jour batch des positions Kanban (statut + ordre).
+ * Le trigger DB gère proba / is_active au changement de statut.
+ */
+export async function updateOpportunitiesKanban(
+  updates: OpportunityKanbanUpdate[],
+): Promise<{ success: true } | { success: false; error: string }> {
+  const auth = await requireActiveCollaboratorAction();
+  if (!auth.success) {
+    return { success: false, error: auth.error };
+  }
+  if (updates.length === 0) {
+    return { success: true };
+  }
+
+  for (const update of updates) {
+    if (!update.id || !KANBAN_STATUSES.has(update.kanban_status)) {
+      return { success: false, error: "Mise à jour Kanban invalide." };
+    }
+    if (!Number.isInteger(update.kanban_order) || update.kanban_order < 0) {
+      return { success: false, error: "Ordre Kanban invalide." };
+    }
+  }
+
+  const supabase = await createClient();
+  const results = await Promise.all(
+    updates.map((update) =>
+      supabase
+        .from("opportunity")
+        .update({
+          kanban_status: update.kanban_status,
+          kanban_order: update.kanban_order,
+        })
+        .eq("id", update.id)
+        .select("id")
+        .maybeSingle(),
+    ),
+  );
+
+  for (const result of results) {
+    if (result.error || !result.data) {
+      console.error("updateOpportunitiesKanban:", result.error);
+      return {
+        success: false,
+        error: result.error
+          ? `Impossible de mettre à jour le Kanban : ${result.error.message}`
+          : "Opportunité introuvable.",
+      };
+    }
+  }
+
+  revalidateOpportunities();
+  for (const update of updates) {
+    revalidatePath(`/opportunities/${update.id}`);
+  }
+  return { success: true };
+}

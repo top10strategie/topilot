@@ -1,5 +1,21 @@
 # Suivi des actions — TOPilot
 
+## **[2026-07-30] — Point 5 itération B : Kanban opportunités (DnD)**
+
+**Type :** `feature`
+**Fichiers concernés :** `actions/opportunities.ts`, `components/opportunities/opportunities-kanban.tsx`, `components/opportunities/opportunities-page-client.tsx`, `suivi.md`
+
+### Description
+
+Vue Kanban par défaut sur `/opportunities` : 6 colonnes (ordre enum), drag-and-drop `@dnd-kit` avec mise à jour optimiste de `kanban_status` / `kanban_order`, agrégat moyenne `average_price` par colonne, rollback + toast en cas d’échec.
+
+### Détails techniques
+
+- Action batch `updateOpportunitiesKanban`
+- Archivées visibles dans le Kanban (colonnes Gagné / Perdue) ; masquage par défaut conservé en vues Cartes / Tableau
+
+---
+
 ## **[2026-07-30] — Fix flux invitation Auth (token_hash / hash / PKCE)**
 
 **Type :** `fix`

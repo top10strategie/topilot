@@ -31,7 +31,8 @@ export function ForgotPasswordForm({
     setError(null);
 
     try {
-      // redirectTo doit être autorisé dans Supabase Auth > URL Configuration
+      // redirectTo = destination finale (`{{ .RedirectTo }}` / template TokenHash).
+      // Doit être autorisé dans Supabase Auth > URL Configuration.
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(
         email,
         {

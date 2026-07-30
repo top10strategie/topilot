@@ -3,6 +3,7 @@ export const AUTH_PUBLIC_PREFIXES = [
   "/auth/login",
   "/auth/forgot-password",
   "/auth/confirm",
+  "/auth/callback",
   "/auth/error",
 ] as const;
 

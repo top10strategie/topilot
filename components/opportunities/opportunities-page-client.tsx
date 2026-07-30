@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   FunnelSimple,
+  Kanban,
   MagnifyingGlass,
   PencilSimple,
   SquaresFour,
@@ -20,6 +21,7 @@ import {
   type ListViewTab,
 } from "@/components/layout/list-view-tabs";
 import { PageHero } from "@/components/layout/page-hero";
+import { OpportunitiesKanban } from "@/components/opportunities/opportunities-kanban";
 import { OpportunityFormDrawer } from "@/components/opportunities/opportunity-form-drawer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -65,10 +67,16 @@ import type {
   OpportunityListItem,
   OpportunityPriority,
 } from "@/lib/opportunities/types";
+import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 25;
 
 const OPPORTUNITY_VIEW_TABS: ListViewTab[] = [
+  {
+    value: "kanban",
+    label: "Kanban",
+    icon: <Kanban className="size-3.5" aria-hidden />,
+  },
   {
     value: "cards",
     label: "Cartes",
@@ -121,7 +129,7 @@ export function OpportunitiesPageClient({
   const router = useRouter();
   const { pushDrawer } = useDrawerStack();
   const [query, setQuery] = useState("");
-  const [view, setView] = useState<"cards" | "table">("cards");
+  const [view, setView] = useState<"kanban" | "cards" | "table">("kanban");
   const [page, setPage] = useState(1);
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [draftFilters, setDraftFilters] = useState<Filters>(DEFAULT_FILTERS);
@@ -160,7 +168,8 @@ export function OpportunitiesPageClient({
   const filtered = useMemo(() => {
     const q = query.trim().toLocaleLowerCase("fr");
     return opportunities.filter((item) => {
-      if (!item.is_active) {
+      // Kanban affiche les colonnes Gagné/Perdue : ne pas masquer les archivées.
+      if (view !== "kanban" && !item.is_active) {
         const statusSelected = filters.statuses.includes(item.kanban_status);
         if (!filters.includeArchived && !statusSelected) return false;
       }
@@ -222,7 +231,7 @@ export function OpportunitiesPageClient({
         .toLocaleLowerCase("fr");
       return blob.includes(q);
     });
-  }, [opportunities, filters, query]);
+  }, [opportunities, filters, query, view]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -271,7 +280,7 @@ export function OpportunitiesPageClient({
     <ListViewTabs
       value={view}
       onValueChange={(value) => {
-        setView(value as "cards" | "table");
+        setView(value as "kanban" | "cards" | "table");
         setPage(1);
       }}
     >
@@ -319,8 +328,13 @@ export function OpportunitiesPageClient({
         }
       />
 
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4 md:px-6">
-        {pageItems.length === 0 ? (
+      <div
+        className={cn(
+          "flex min-h-0 flex-1 flex-col px-4 py-4 md:px-6",
+          view === "kanban" ? "overflow-hidden" : "overflow-y-auto",
+        )}
+      >
+        {filtered.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             {query.trim() || hasActiveFilters
               ? "Aucune opportunité ne correspond aux critères."
@@ -328,6 +342,10 @@ export function OpportunitiesPageClient({
           </p>
         ) : (
           <>
+            <ListViewTabsContent value="kanban" className="min-h-0 flex-1">
+              <OpportunitiesKanban items={filtered} />
+            </ListViewTabsContent>
+
             <ListViewTabsContent value="cards">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 {pageItems.map((item) => (
@@ -450,34 +468,36 @@ export function OpportunitiesPageClient({
           </>
         )}
 
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
-          <p>Nombre d&apos;opportunités : {filtered.length}</p>
-          {filtered.length > PAGE_SIZE ? (
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-              >
-                Précédent
-              </Button>
-              <span>
-                Page : {page}/{totalPages}
-              </span>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              >
-                Suivant
-              </Button>
-            </div>
-          ) : null}
-        </div>
+        {view !== "kanban" ? (
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
+            <p>Nombre d&apos;opportunités : {filtered.length}</p>
+            {filtered.length > PAGE_SIZE ? (
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={page <= 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                >
+                  Précédent
+                </Button>
+                <span>
+                  Page : {page}/{totalPages}
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={page >= totalPages}
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                >
+                  Suivant
+                </Button>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
       <Dialog open={filterOpen} onOpenChange={setFilterOpen}>
