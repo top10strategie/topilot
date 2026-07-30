@@ -22,6 +22,8 @@ import {
 } from "@/components/layout/entity-documentation-columns";
 import { IconActionButton } from "@/components/layout/icon-action-button";
 import { PageHero } from "@/components/layout/page-hero";
+import { MissionConsultationDrawer } from "@/components/missions/mission-consultation-drawer";
+import { MissionFormDrawer } from "@/components/missions/mission-form-drawer";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -46,19 +48,37 @@ import {
   getClientStatusLabel,
   getContactFullName,
 } from "@/lib/clients/labels";
-import type { ClientDetail, ContactClientItem } from "@/lib/clients/types";
+import type { ClientDetail, ClientListItem, ContactClientItem } from "@/lib/clients/types";
 import type { CollaboratorListItem } from "@/lib/collaborators/types";
+import {
+  formatMissionCharge,
+  formatMissionDate,
+  getMissionKanbanStatusLabel,
+  getMissionResponsibleName,
+} from "@/lib/missions/labels";
+import type {
+  MissionListItem,
+  MissionOpportunityOption,
+} from "@/lib/missions/types";
 
 type ClientDetailPageClientProps = {
   client: ClientDetail;
   collaborators: CollaboratorListItem[];
   categories: CategoryItem[];
+  clients: ClientListItem[];
+  missions: MissionListItem[];
+  opportunityOptions: MissionOpportunityOption[];
+  currentCollaboratorId: string;
 };
 
 export function ClientDetailPageClient({
   client,
   collaborators,
   categories,
+  clients,
+  missions,
+  opportunityOptions,
+  currentCollaboratorId,
 }: ClientDetailPageClientProps) {
   const router = useRouter();
   const { pushDrawer } = useDrawerStack();
@@ -134,6 +154,41 @@ export function ClientDetailPageClient({
       ),
     }).then((updated) => {
       if (updated) router.refresh();
+    });
+  };
+
+  const openCreateMission = () => {
+    void pushDrawer({
+      title: "Nouvelle mission",
+      content: (helpers) => (
+        <MissionFormDrawer
+          mode="create"
+          collaborators={collaborators}
+          clients={clients}
+          availableCategories={categories}
+          opportunityOptions={opportunityOptions}
+          currentCollaboratorId={currentCollaboratorId}
+          lockedFields={{
+            client_id: client.id,
+            mission_scope: "client",
+          }}
+          helpers={helpers}
+        />
+      ),
+    }).then((created) => {
+      if (created) router.refresh();
+    });
+  };
+
+  const openMissionConsultation = (mission: MissionListItem) => {
+    void pushDrawer({
+      title: mission.mission_name,
+      content: (helpers) => (
+        <MissionConsultationDrawer
+          mission={{ ...mission, notes: null }}
+          helpers={helpers}
+        />
+      ),
     });
   };
 
@@ -397,10 +452,73 @@ export function ClientDetailPageClient({
             />
           </TabsContent>
 
-          <TabsContent value="missions" className="mt-4 space-y-2">
-            <p className="text-sm text-muted-foreground">
-              Les missions client seront disponibles au point Pipe production.
-            </p>
+          <TabsContent value="missions" className="mt-4 space-y-4">
+            <div className="flex justify-end">
+              <IconActionButton
+                label="Nouvelle mission"
+                onClick={openCreateMission}
+              >
+                <PencilSimple className="size-4" />
+              </IconActionButton>
+            </div>
+            <div className="overflow-x-auto rounded-md border">
+              <table className="w-full min-w-[720px] text-left text-sm">
+                <thead className="border-b bg-muted/40 text-xs text-muted-foreground">
+                  <tr>
+                    <th className="px-3 py-2 font-medium">Nom</th>
+                    <th className="px-3 py-2 font-medium">Responsable</th>
+                    <th className="px-3 py-2 font-medium">Statut</th>
+                    <th className="px-3 py-2 font-medium">Opportunité</th>
+                    <th className="px-3 py-2 font-medium">Début</th>
+                    <th className="px-3 py-2 font-medium">Fin</th>
+                    <th className="px-3 py-2 font-medium">Temps vendu</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {missions.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={7}
+                        className="px-3 py-6 text-sm text-muted-foreground"
+                      >
+                        Aucune mission pour ce client. Créez-en une pour
+                        commencer.
+                      </td>
+                    </tr>
+                  ) : (
+                    missions.map((mission) => (
+                      <tr
+                        key={mission.id}
+                        className="cursor-pointer border-b last:border-0 hover:bg-muted/30"
+                        onClick={() => openMissionConsultation(mission)}
+                      >
+                        <td className="px-3 py-2 font-medium">
+                          {mission.mission_name}
+                        </td>
+                        <td className="px-3 py-2">
+                          {getMissionResponsibleName(mission.responsible)}
+                        </td>
+                        <td className="px-3 py-2">
+                          {getMissionKanbanStatusLabel(mission.kanban_status)}
+                        </td>
+                        <td className="px-3 py-2 text-muted-foreground">
+                          {mission.opportunity?.opportunity_name ?? "—"}
+                        </td>
+                        <td className="px-3 py-2 text-muted-foreground">
+                          {formatMissionDate(mission.start_at)}
+                        </td>
+                        <td className="px-3 py-2 text-primary-foreground">
+                          {formatMissionDate(mission.end_at)}
+                        </td>
+                        <td className="px-3 py-2">
+                          {formatMissionCharge(mission.estimated_charge)}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </TabsContent>
 
           <TabsContent value="documentations" className="mt-4">

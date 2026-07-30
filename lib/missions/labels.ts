@@ -1,0 +1,58 @@
+import type {
+  MissionKanbanStatus,
+  MissionResponsibleItem,
+  MissionScope,
+} from "./types";
+
+export const MISSION_KANBAN_STATUSES: MissionKanbanStatus[] = [
+  "a_faire",
+  "en_cours",
+  "terminee",
+  "archivee",
+];
+
+export const MISSION_SCOPES: MissionScope[] = ["client", "interne"];
+
+const KANBAN_STATUS_LABELS: Record<MissionKanbanStatus, string> = {
+  a_faire: "À faire",
+  en_cours: "En cours",
+  terminee: "Terminée",
+  archivee: "Archivée",
+};
+
+const SCOPE_LABELS: Record<MissionScope, string> = {
+  client: "Client",
+  interne: "Interne",
+};
+
+export function getMissionKanbanStatusLabel(
+  status: MissionKanbanStatus,
+): string {
+  return KANBAN_STATUS_LABELS[status];
+}
+
+export function getMissionScopeLabel(scope: MissionScope): string {
+  return SCOPE_LABELS[scope];
+}
+
+export function getMissionResponsibleName(
+  person: Pick<MissionResponsibleItem, "first_name" | "last_name">,
+): string {
+  return `${person.first_name} ${person.last_name.toLocaleUpperCase("fr")}`.trim();
+}
+
+export function formatMissionDate(value: string | null | undefined): string {
+  if (!value) return "—";
+  const date = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return "—";
+  return new Intl.DateTimeFormat("fr-FR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(date);
+}
+
+export function formatMissionCharge(value: number | null | undefined): string {
+  if (value == null || Number.isNaN(Number(value))) return "—";
+  return `${Number(value)} j`;
+}

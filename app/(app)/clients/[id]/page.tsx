@@ -3,9 +3,14 @@ import { notFound } from "next/navigation";
 import { ClientDetailPageClient } from "@/components/clients/client-detail-page-client";
 import { PageHero } from "@/components/layout/page-hero";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getCurrentCollaborator } from "@/lib/auth/get-current-collaborator";
 import { listCategories } from "@/lib/categories/queries";
-import { getClientById } from "@/lib/clients/queries";
+import { getClientById, listClients } from "@/lib/clients/queries";
 import { listCollaborators } from "@/lib/collaborators/queries";
+import {
+  listMissionOpportunityOptions,
+  listMissionsByClientId,
+} from "@/lib/missions/queries";
 
 type ClientDetailPageProps = {
   params: Promise<{ id: string }>;
@@ -17,10 +22,22 @@ async function ClientDetailContent({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [client, collaborators, categories] = await Promise.all([
+  const [
+    client,
+    collaborators,
+    categories,
+    clients,
+    missions,
+    opportunityOptions,
+    currentCollaborator,
+  ] = await Promise.all([
     getClientById(id),
     listCollaborators(),
     listCategories(),
+    listClients(),
+    listMissionsByClientId(id),
+    listMissionOpportunityOptions(),
+    getCurrentCollaborator(),
   ]);
 
   if (!client) {
@@ -32,6 +49,10 @@ async function ClientDetailContent({
       client={client}
       collaborators={collaborators}
       categories={categories}
+      clients={clients}
+      missions={missions}
+      opportunityOptions={opportunityOptions}
+      currentCollaboratorId={currentCollaborator?.id ?? ""}
     />
   );
 }
