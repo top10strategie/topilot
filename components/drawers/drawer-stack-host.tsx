@@ -18,14 +18,37 @@ const DRAWER_WIDTH_CLASS =
 /** Sous les contenus de tiroirs (z ≥ 50), au-dessus de la page. */
 const STACK_OVERLAY_Z = 49;
 
-/** Popovers encore portailés hors du Sheet (Select Radix, etc.). */
-const PORTALED_UI_SELECTOR = [
-  '[data-slot="combobox-content"]',
-  '[data-slot="select-content"]',
-].join(", ");
+/** Marge (px) : un clic trop près du bord du Sheet est traité comme un miss, pas un dismiss. */
+const OVERLAY_EDGE_SLACK_PX = 24;
 
-function isPortaledUiEvent(target: EventTarget | null): boolean {
-  return target instanceof Element && Boolean(target.closest(PORTALED_UI_SELECTOR));
+function hasOpenPortaledPicker(): boolean {
+  return Boolean(
+    document.querySelector(
+      [
+        '[data-slot="select-content"][data-state="open"]',
+        '[data-slot="combobox-content"]',
+        '[data-slot="combobox-content"][data-open]',
+      ].join(", "),
+    ),
+  );
+}
+
+function isPointerNearOpenSheet(clientX: number, clientY: number): boolean {
+  const sheets = document.querySelectorAll<HTMLElement>(
+    '[data-slot="sheet-content"][data-state="open"]',
+  );
+  for (const sheet of sheets) {
+    const rect = sheet.getBoundingClientRect();
+    if (
+      clientX >= rect.left - OVERLAY_EDGE_SLACK_PX &&
+      clientX <= rect.right + OVERLAY_EDGE_SLACK_PX &&
+      clientY >= rect.top - OVERLAY_EDGE_SLACK_PX &&
+      clientY <= rect.bottom + OVERLAY_EDGE_SLACK_PX
+    ) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /**
@@ -38,6 +61,11 @@ function isPortaledUiEvent(target: EventTarget | null): boolean {
  * Un seul overlay est géré par la pile (pas l'overlay Radix du Sheet) : ainsi
  * il ne peut pas se remonter au-dessus du contenu du tiroir parent après
  * fermeture d'un empilé.
+ *
+ * Les interactions « outside » du Sheet sont toujours ignorées : sinon un clic
+ * pour fermer un Select/Combobox ferme aussi le tiroir. Seuls l'overlay de
+ * pile (hors picker ouvert / miss près du bord), le bouton fermer et Escape
+ * ferment le tiroir.
  */
 export function DrawerStackHost() {
   const { stack, dismissTop, dismissEntry } = useDrawerStack();
@@ -52,7 +80,17 @@ export function DrawerStackHost() {
           className="fixed inset-0 bg-black/50 pointer-events-auto"
           style={{ zIndex: STACK_OVERLAY_Z }}
           onPointerDown={(event) => {
+            // Select/Combobox ouverts : ne pas preventDefault ni dismiss —
+            // laisser Radix fermer uniquement le picker (souvent au-dessus
+            // de l'overlay).
+            if (hasOpenPortaledPicker()) {
+              return;
+            }
             event.preventDefault();
+            // Miss près du bord du Sheet (ex. sélecteur Client à gauche).
+            if (isPointerNearOpenSheet(event.clientX, event.clientY)) {
+              return;
+            }
             dismissTop();
           }}
         />
@@ -62,21 +100,10 @@ export function DrawerStackHost() {
         const isTop = index === stack.length - 1;
         const zIndex = 50 + index;
 
-        const preventOutsideIfNeeded = (event: {
-          target: EventTarget | null;
+        const ignoreSheetOutside = (event: {
           preventDefault: () => void;
         }) => {
-          // L'overlay de pile gère déjà le dismiss ; on ignore le reste
-          // (page / popovers) pour éviter les doubles fermetures.
-          if (
-            !isTop ||
-            !entry.open ||
-            isPortaledUiEvent(event.target) ||
-            (event.target instanceof Element &&
-              event.target.closest('[data-slot="drawer-stack-overlay"]'))
-          ) {
-            event.preventDefault();
-          }
+          event.preventDefault();
         };
 
         return (
@@ -102,9 +129,9 @@ export function DrawerStackHost() {
                   ? "pointer-events-auto"
                   : "pointer-events-none invisible",
               )}
-              onInteractOutside={preventOutsideIfNeeded}
-              onPointerDownOutside={preventOutsideIfNeeded}
-              onFocusOutside={preventOutsideIfNeeded}
+              onInteractOutside={ignoreSheetOutside}
+              onPointerDownOutside={ignoreSheetOutside}
+              onFocusOutside={ignoreSheetOutside}
               onEscapeKeyDown={(event) => {
                 if (!isTop || !entry.open) {
                   event.preventDefault();
