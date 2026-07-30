@@ -9,6 +9,8 @@ import { EntityDetailsColumns } from "@/components/layout/entity-details-columns
 import { EntityDocumentationSection } from "@/components/layout/entity-documentation-columns";
 import { IconActionButton } from "@/components/layout/icon-action-button";
 import { PageHero } from "@/components/layout/page-hero";
+import { MissionConsultationDrawer } from "@/components/missions/mission-consultation-drawer";
+import { MissionFormDrawer } from "@/components/missions/mission-form-drawer";
 import { OpportunityFormDrawer } from "@/components/opportunities/opportunity-form-drawer";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -25,6 +27,16 @@ import {
   getOpportunityPriorityLabel,
   getOpportunityResponsibleName,
 } from "@/lib/opportunities/labels";
+import {
+  formatMissionCharge,
+  formatMissionDate,
+  getMissionKanbanStatusLabel,
+  getMissionResponsibleName,
+} from "@/lib/missions/labels";
+import type {
+  MissionListItem,
+  MissionOpportunityOption,
+} from "@/lib/missions/types";
 import type {
   OpportunityContactOption,
   OpportunityDetail,
@@ -37,6 +49,9 @@ type OpportunityDetailPageClientProps = {
   linkedClient: ClientDetail | null;
   contacts: OpportunityContactOption[];
   categories: CategoryItem[];
+  missions: MissionListItem[];
+  opportunityOptions: MissionOpportunityOption[];
+  currentCollaboratorId: string;
 };
 
 export function OpportunityDetailPageClient({
@@ -46,6 +61,9 @@ export function OpportunityDetailPageClient({
   linkedClient,
   contacts,
   categories,
+  missions,
+  opportunityOptions,
+  currentCollaboratorId,
 }: OpportunityDetailPageClientProps) {
   const router = useRouter();
   const { pushDrawer } = useDrawerStack();
@@ -99,6 +117,42 @@ export function OpportunityDetailPageClient({
       title: linkedClient.client_name,
       content: (helpers) => (
         <ClientConsultationDrawer client={linkedClient} helpers={helpers} />
+      ),
+    });
+  };
+
+  const openCreateMission = () => {
+    void pushDrawer({
+      title: "Nouvelle mission",
+      content: (helpers) => (
+        <MissionFormDrawer
+          mode="create"
+          collaborators={collaborators}
+          clients={clients}
+          availableCategories={categories}
+          opportunityOptions={opportunityOptions}
+          currentCollaboratorId={currentCollaboratorId}
+          lockedFields={{
+            opportunity_id: opportunity.id,
+            client_id: opportunity.client_id,
+            mission_scope: "client",
+          }}
+          helpers={helpers}
+        />
+      ),
+    }).then((created) => {
+      if (created) router.refresh();
+    });
+  };
+
+  const openMissionConsultation = (mission: MissionListItem) => {
+    void pushDrawer({
+      title: mission.mission_name,
+      content: (helpers) => (
+        <MissionConsultationDrawer
+          mission={{ ...mission, notes: null }}
+          helpers={helpers}
+        />
       ),
     });
   };
@@ -316,10 +370,69 @@ export function OpportunityDetailPageClient({
             )}
           </TabsContent>
 
-          <TabsContent value="missions" className="mt-4 space-y-2">
-            <p className="text-sm text-muted-foreground">
-              Les missions liées seront disponibles au point Pipe production.
-            </p>
+          <TabsContent value="missions" className="mt-4 space-y-4">
+            <div className="flex justify-end">
+              <IconActionButton
+                label="Nouvelle mission"
+                onClick={openCreateMission}
+              >
+                <PencilSimple className="size-4" />
+              </IconActionButton>
+            </div>
+            <div className="overflow-x-auto rounded-md border">
+              <table className="w-full min-w-[720px] text-left text-sm">
+                <thead className="border-b bg-muted/40 text-xs text-muted-foreground">
+                  <tr>
+                    <th className="px-3 py-2 font-medium">Nom</th>
+                    <th className="px-3 py-2 font-medium">Responsable</th>
+                    <th className="px-3 py-2 font-medium">Statut</th>
+                    <th className="px-3 py-2 font-medium">Début</th>
+                    <th className="px-3 py-2 font-medium">Fin</th>
+                    <th className="px-3 py-2 font-medium">Temps vendu</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {missions.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={6}
+                        className="px-3 py-6 text-sm text-muted-foreground"
+                      >
+                        Aucune mission liée à cette opportunité. Créez-en une
+                        pour commencer.
+                      </td>
+                    </tr>
+                  ) : (
+                    missions.map((mission) => (
+                      <tr
+                        key={mission.id}
+                        className="cursor-pointer border-b last:border-0 hover:bg-muted/30"
+                        onClick={() => openMissionConsultation(mission)}
+                      >
+                        <td className="px-3 py-2 font-medium">
+                          {mission.mission_name}
+                        </td>
+                        <td className="px-3 py-2">
+                          {getMissionResponsibleName(mission.responsible)}
+                        </td>
+                        <td className="px-3 py-2">
+                          {getMissionKanbanStatusLabel(mission.kanban_status)}
+                        </td>
+                        <td className="px-3 py-2 text-muted-foreground">
+                          {formatMissionDate(mission.start_at)}
+                        </td>
+                        <td className="px-3 py-2 text-primary-foreground">
+                          {formatMissionDate(mission.end_at)}
+                        </td>
+                        <td className="px-3 py-2">
+                          {formatMissionCharge(mission.estimated_charge)}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </TabsContent>
 
           <TabsContent value="documentations" className="mt-4">

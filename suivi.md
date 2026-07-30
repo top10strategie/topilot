@@ -1,5 +1,53 @@
 # Suivi des actions — TOPilot
 
+## **[2026-07-30] — Point 6 phase C : Missions liées (opp / client)**
+
+**Type :** `feature`
+**Fichiers concernés :** `components/missions/mission-consultation-drawer.tsx`, `components/opportunities/opportunity-detail-page-client.tsx`, `components/clients/client-detail-page-client.tsx`, `app/(app)/opportunities/[id]/page.tsx`, `app/(app)/clients/[id]/page.tsx`, `suivi.md`
+
+### Description
+
+Onglets Missions sur fiches opportunité et client : tableau des missions liées, consultation en tiroir, création avec champs FK verrouillés (`opportunity_id` / `client_id`, périmètre client). Bouton « Aller à la mission ».
+
+### Détails techniques
+
+- `listMissionsByOpportunityId` / `listMissionsByClientId` + props form (collaborators, categories, opportunityOptions, currentCollaboratorId)
+- `MissionFormDrawer` : prop `lockedFields` pour masquer/désactiver scope, client et opportunité
+
+---
+
+## **[2026-07-30] — Point 6 phase B : Kanban missions (DnD)**
+
+**Type :** `feature`
+**Fichiers concernés :** `components/missions/missions-kanban.tsx`, `components/missions/missions-page-client.tsx`, `suivi.md`
+
+### Description
+
+Vue Kanban par défaut sur `/missions` : 4 colonnes (`a_faire`, `en_cours`, `terminee`, `archivee`), drag-and-drop `@dnd-kit` avec `updateMissionsKanban`, montage post-hydratation. Colonne Archivée limitée aux missions avec `archived_at` ≤ 3 mois.
+
+### Détails techniques
+
+- Pas d’agrégat montants (contrairement opportunités)
+- Carte : titre, catégories | scope, client/Interne | responsable, opportunité | dates début/fin
+
+---
+
+## **[2026-07-30] — Point 6 phase A : Pipe production missions (liste + fiche)**
+
+**Type :** `feature`
+**Fichiers concernés :** `components/missions/mission-form-drawer.tsx`, `components/missions/missions-page-client.tsx`, `components/missions/mission-detail-page-client.tsx`, `app/(app)/missions/**`, `suivi.md`
+
+### Description
+
+Pipe production itération A : `/missions` (vues Cartes/Tableau, filtres, pagination, recherche) et `/missions/[id]` (onglet Informations + stubs Documentations). Tiroir création 2 temps / édition (checkbox Mission interne). Kanban livré en phase B.
+
+### Détails techniques
+
+- Pages serveur : `listMissions`, `getMissionById`, `listMissionOpportunityOptions`, `getCurrentCollaborator`
+- Filtres : client, responsable, catégories, périmètre, statut, plages dates début/fin
+
+---
+
 ## **[2026-07-30] — Redirect post update-password → /auth/login**
 
 **Type :** `fix`
