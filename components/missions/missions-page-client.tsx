@@ -21,8 +21,8 @@ import {
   type ListViewTab,
 } from "@/components/layout/list-view-tabs";
 import { PageHero } from "@/components/layout/page-hero";
-import { OpportunitiesKanban } from "@/components/opportunities/opportunities-kanban";
-import { OpportunityFormDrawer } from "@/components/opportunities/opportunity-form-drawer";
+import { MissionFormDrawer } from "@/components/missions/mission-form-drawer";
+import { MissionsKanban } from "@/components/missions/missions-kanban";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -52,26 +52,25 @@ import type { ClientListItem } from "@/lib/clients/types";
 import { getCollaboratorFullName } from "@/lib/collaborators/labels";
 import type { CollaboratorListItem } from "@/lib/collaborators/types";
 import {
-  formatOpportunityDate,
-  formatOpportunityPrice,
-  formatOpportunityProbability,
-  getOpportunityKanbanStatusLabel,
-  getOpportunityPriorityLabel,
-  getOpportunityResponsibleName,
-  OPPORTUNITY_KANBAN_STATUSES,
-  OPPORTUNITY_PRIORITIES,
-} from "@/lib/opportunities/labels";
+  formatMissionCharge,
+  formatMissionDate,
+  getMissionKanbanStatusLabel,
+  getMissionResponsibleName,
+  getMissionScopeLabel,
+  MISSION_KANBAN_STATUSES,
+  MISSION_SCOPES,
+} from "@/lib/missions/labels";
 import type {
-  OpportunityContactOption,
-  OpportunityKanbanStatus,
-  OpportunityListItem,
-  OpportunityPriority,
-} from "@/lib/opportunities/types";
+  MissionKanbanStatus,
+  MissionListItem,
+  MissionOpportunityOption,
+  MissionScope,
+} from "@/lib/missions/types";
 import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 25;
 
-const OPPORTUNITY_VIEW_TABS: ListViewTab[] = [
+const MISSION_VIEW_TABS: ListViewTab[] = [
   {
     value: "kanban",
     label: "Kanban",
@@ -89,43 +88,71 @@ const OPPORTUNITY_VIEW_TABS: ListViewTab[] = [
   },
 ];
 
-type OpportunitiesPageClientProps = {
-  opportunities: OpportunityListItem[];
+type MissionsPageClientProps = {
+  missions: MissionListItem[];
   collaborators: CollaboratorListItem[];
   clients: ClientListItem[];
-  contacts: OpportunityContactOption[];
   categories: CategoryItem[];
+  opportunityOptions: MissionOpportunityOption[];
+  currentCollaboratorId: string;
 };
 
 type Filters = {
   clientId: string;
   responsibleId: string;
   categoryIds: string[];
-  amountBucket: "all" | "lt5k" | "5to20k" | "gt20k";
-  statuses: OpportunityKanbanStatus[];
-  probabilityBucket: "all" | "lt30" | "30to50" | "gt50";
-  priority: OpportunityPriority | "";
-  includeArchived: boolean;
+  scope: MissionScope | "";
+  statuses: MissionKanbanStatus[];
+  startFrom: string;
+  startTo: string;
+  endFrom: string;
+  endTo: string;
 };
 
 const DEFAULT_FILTERS: Filters = {
   clientId: "",
   responsibleId: "",
   categoryIds: [],
-  amountBucket: "all",
+  scope: "",
   statuses: [],
-  probabilityBucket: "all",
-  priority: "",
-  includeArchived: false,
+  startFrom: "",
+  startTo: "",
+  endFrom: "",
+  endTo: "",
 };
 
-export function OpportunitiesPageClient({
-  opportunities,
+function parseDate(value: string | null | undefined): Date | null {
+  if (!value) return null;
+  const date = new Date(`${value}T00:00:00`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function matchesDateRange(
+  value: string | null | undefined,
+  from: string,
+  to: string,
+): boolean {
+  const date = parseDate(value);
+  if (!date) return !from && !to;
+  if (from) {
+    const fromDate = parseDate(from);
+    if (fromDate && date < fromDate) return false;
+  }
+  if (to) {
+    const toDate = parseDate(to);
+    if (toDate && date > toDate) return false;
+  }
+  return true;
+}
+
+export function MissionsPageClient({
+  missions,
   collaborators,
   clients,
-  contacts,
   categories,
-}: OpportunitiesPageClientProps) {
+  opportunityOptions,
+  currentCollaboratorId,
+}: MissionsPageClientProps) {
   const router = useRouter();
   const { pushDrawer } = useDrawerStack();
   const [query, setQuery] = useState("");
@@ -167,13 +194,7 @@ export function OpportunitiesPageClient({
 
   const filtered = useMemo(() => {
     const q = query.trim().toLocaleLowerCase("fr");
-    return opportunities.filter((item) => {
-      // Kanban affiche les colonnes Gagné/Perdue : ne pas masquer les archivées.
-      if (view !== "kanban" && !item.is_active) {
-        const statusSelected = filters.statuses.includes(item.kanban_status);
-        if (!filters.includeArchived && !statusSelected) return false;
-      }
-
+    return missions.filter((item) => {
       if (filters.clientId && item.client_id !== filters.clientId) {
         return false;
       }
@@ -190,72 +211,63 @@ export function OpportunitiesPageClient({
         if (!filters.categoryIds.every((id) => ids.has(id))) return false;
       }
 
+      if (filters.scope && item.mission_scope !== filters.scope) {
+        return false;
+      }
+
       if (filters.statuses.length > 0) {
         if (!filters.statuses.includes(item.kanban_status)) return false;
       }
 
-      if (filters.priority && item.priority !== filters.priority) {
+      if (!matchesDateRange(item.start_at, filters.startFrom, filters.startTo)) {
         return false;
       }
 
-      const amount = item.price ?? 0;
-      if (filters.amountBucket === "lt5k" && amount >= 5000) return false;
-      if (
-        filters.amountBucket === "5to20k" &&
-        (amount < 5000 || amount > 20000)
-      ) {
+      if (!matchesDateRange(item.end_at, filters.endFrom, filters.endTo)) {
         return false;
       }
-      if (filters.amountBucket === "gt20k" && amount <= 20000) return false;
-
-      const prob = item.probability_confirmation;
-      if (filters.probabilityBucket === "lt30" && prob >= 30) return false;
-      if (
-        filters.probabilityBucket === "30to50" &&
-        (prob < 30 || prob > 50)
-      ) {
-        return false;
-      }
-      if (filters.probabilityBucket === "gt50" && prob <= 50) return false;
 
       if (!q) return true;
       const blob = [
-        item.opportunity_name,
-        item.client.client_name,
-        getOpportunityResponsibleName(item.responsible),
-        getOpportunityKanbanStatusLabel(item.kanban_status),
-        getOpportunityPriorityLabel(item.priority),
+        item.mission_name,
+        item.client?.client_name,
+        item.opportunity?.opportunity_name,
+        getMissionResponsibleName(item.responsible),
+        getMissionKanbanStatusLabel(item.kanban_status),
+        getMissionScopeLabel(item.mission_scope),
         ...item.categories.map((c) => c.label),
       ]
         .join(" ")
         .toLocaleLowerCase("fr");
       return blob.includes(q);
     });
-  }, [opportunities, filters, query, view]);
+  }, [missions, filters, query]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const hasActiveFilters =
-    filters.includeArchived ||
     Boolean(filters.clientId) ||
     Boolean(filters.responsibleId) ||
     filters.categoryIds.length > 0 ||
+    Boolean(filters.scope) ||
     filters.statuses.length > 0 ||
-    Boolean(filters.priority) ||
-    filters.amountBucket !== "all" ||
-    filters.probabilityBucket !== "all";
+    Boolean(filters.startFrom) ||
+    Boolean(filters.startTo) ||
+    Boolean(filters.endFrom) ||
+    Boolean(filters.endTo);
 
   const openCreate = () => {
     void pushDrawer({
-      title: "Nouvelle opportunité",
+      title: "Nouvelle mission",
       content: (helpers) => (
-        <OpportunityFormDrawer
+        <MissionFormDrawer
           mode="create"
           collaborators={collaborators}
           clients={clients}
-          contacts={contacts}
           availableCategories={categories}
+          opportunityOptions={opportunityOptions}
+          currentCollaboratorId={currentCollaboratorId}
           helpers={helpers}
         />
       ),
@@ -264,7 +276,7 @@ export function OpportunitiesPageClient({
     });
   };
 
-  const toggleDraftStatus = (status: OpportunityKanbanStatus) => {
+  const toggleDraftStatus = (status: MissionKanbanStatus) => {
     setDraftFilters((prev) => {
       const has = prev.statuses.includes(status);
       return {
@@ -285,7 +297,7 @@ export function OpportunitiesPageClient({
       }}
     >
       <PageHero
-        title="Opportunités"
+        title="Missions"
         actions={
           <div className="flex w-full max-w-xl flex-wrap items-center gap-2 md:w-auto md:max-w-none md:flex-nowrap">
             <div className="relative min-w-0 flex-1 basis-full sm:basis-auto md:w-72 md:flex-none lg:w-80">
@@ -302,13 +314,10 @@ export function OpportunitiesPageClient({
                   setPage(1);
                 }}
                 className="pl-8"
-                aria-label="Recherche contextuelle opportunités"
+                aria-label="Recherche contextuelle missions"
               />
             </div>
-            <ListViewTabsSwitcher
-              tabs={OPPORTUNITY_VIEW_TABS}
-              showLabels={false}
-            />
+            <ListViewTabsSwitcher tabs={MISSION_VIEW_TABS} showLabels={false} />
             <IconActionButton
               label="Filtres"
               onClick={() => {
@@ -318,10 +327,7 @@ export function OpportunitiesPageClient({
             >
               <FunnelSimple className="size-4" />
             </IconActionButton>
-            <IconActionButton
-              label="Nouvelle opportunité"
-              onClick={openCreate}
-            >
+            <IconActionButton label="Nouvelle mission" onClick={openCreate}>
               <PencilSimple className="size-4" />
             </IconActionButton>
           </div>
@@ -335,24 +341,24 @@ export function OpportunitiesPageClient({
         )}
       >
         <ListViewTabsContent value="kanban" className="min-h-0 flex-1">
-          <OpportunitiesKanban items={filtered} />
+          <MissionsKanban items={filtered} />
         </ListViewTabsContent>
 
         <ListViewTabsContent value="cards">
           {filtered.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               {query.trim() || hasActiveFilters
-                ? "Aucune opportunité ne correspond aux critères."
-                : "Aucune opportunité pour le moment. Créez-en une pour commencer."}
+                ? "Aucune mission ne correspond aux critères."
+                : "Aucune mission pour le moment. Créez-en une pour commencer."}
             </p>
           ) : (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {pageItems.map((item) => (
-                <Link key={item.id} href={`/opportunities/${item.id}`}>
+                <Link key={item.id} href={`/missions/${item.id}`}>
                   <Card className="h-full transition-colors hover:bg-muted/40">
                     <CardHeader className="space-y-2 p-4 pb-2">
                       <CardTitle className="text-base leading-snug">
-                        {item.opportunity_name}
+                        {item.mission_name}
                       </CardTitle>
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex min-w-0 flex-wrap items-center gap-1.5">
@@ -368,36 +374,33 @@ export function OpportunitiesPageClient({
                             ))
                           )}
                         </div>
-                        <span className="shrink-0 text-xs text-muted-foreground">
-                          {getOpportunityPriorityLabel(item.priority)}
-                        </span>
+                        {item.mission_scope === "interne" ? (
+                          <Badge variant="secondary" className="shrink-0">
+                            Interne
+                          </Badge>
+                        ) : null}
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-1 p-4 pt-2 text-xs text-muted-foreground">
                       <div className="flex items-baseline justify-between gap-2">
                         <span className="min-w-0 truncate">
-                          {item.client.client_name}
+                          {item.mission_scope === "interne"
+                            ? "Interne"
+                            : (item.client?.client_name ?? "—")}
                         </span>
                         <span className="shrink-0 text-right">
-                          {getOpportunityResponsibleName(item.responsible)}
+                          {getMissionResponsibleName(item.responsible)}
                         </span>
                       </div>
                       <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
                         <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
                           <Badge variant="outline" className="font-normal">
-                            {getOpportunityKanbanStatusLabel(
-                              item.kanban_status,
-                            )}
+                            {getMissionKanbanStatusLabel(item.kanban_status)}
                           </Badge>
-                          <span>{formatOpportunityPrice(item.price)}</span>
-                          <span>
-                            {formatOpportunityProbability(
-                              item.probability_confirmation,
-                            )}
-                          </span>
+                          <span>{formatMissionCharge(item.estimated_charge)}</span>
                         </div>
                         <span className="shrink-0 text-primary-foreground">
-                          {formatOpportunityDate(item.end_at)}
+                          {formatMissionDate(item.end_at)}
                         </span>
                       </div>
                     </CardContent>
@@ -417,11 +420,11 @@ export function OpportunitiesPageClient({
                   <th className="px-3 py-2 font-medium">Client</th>
                   <th className="px-3 py-2 font-medium">Responsable</th>
                   <th className="px-3 py-2 font-medium">Statut</th>
-                  <th className="px-3 py-2 font-medium">Urgence</th>
+                  <th className="px-3 py-2 font-medium">Périmètre</th>
                   <th className="px-3 py-2 font-medium">Catégories</th>
-                  <th className="px-3 py-2 font-medium">Échéance</th>
-                  <th className="px-3 py-2 font-medium">Clôture</th>
-                  <th className="px-3 py-2 font-medium">Montant</th>
+                  <th className="px-3 py-2 font-medium">Début</th>
+                  <th className="px-3 py-2 font-medium">Fin</th>
+                  <th className="px-3 py-2 font-medium">Temps vendu</th>
                 </tr>
               </thead>
               <tbody>
@@ -432,8 +435,8 @@ export function OpportunitiesPageClient({
                       className="px-3 py-6 text-sm text-muted-foreground"
                     >
                       {query.trim() || hasActiveFilters
-                        ? "Aucune opportunité ne correspond aux critères."
-                        : "Aucune opportunité pour le moment. Créez-en une pour commencer."}
+                        ? "Aucune mission ne correspond aux critères."
+                        : "Aucune mission pour le moment. Créez-en une pour commencer."}
                     </td>
                   </tr>
                 ) : (
@@ -441,35 +444,37 @@ export function OpportunitiesPageClient({
                     <tr
                       key={item.id}
                       className="cursor-pointer border-b last:border-0 hover:bg-muted/30"
-                      onClick={() =>
-                        router.push(`/opportunities/${item.id}`)
-                      }
+                      onClick={() => router.push(`/missions/${item.id}`)}
                     >
                       <td className="px-3 py-2 font-medium">
-                        {item.opportunity_name}
-                      </td>
-                      <td className="px-3 py-2">{item.client.client_name}</td>
-                      <td className="px-3 py-2">
-                        {getOpportunityResponsibleName(item.responsible)}
+                        {item.mission_name}
                       </td>
                       <td className="px-3 py-2">
-                        {getOpportunityKanbanStatusLabel(item.kanban_status)}
+                        {item.mission_scope === "interne"
+                          ? "Interne"
+                          : (item.client?.client_name ?? "—")}
                       </td>
                       <td className="px-3 py-2">
-                        {getOpportunityPriorityLabel(item.priority)}
+                        {getMissionResponsibleName(item.responsible)}
+                      </td>
+                      <td className="px-3 py-2">
+                        {getMissionKanbanStatusLabel(item.kanban_status)}
+                      </td>
+                      <td className="px-3 py-2">
+                        {getMissionScopeLabel(item.mission_scope)}
                       </td>
                       <td className="px-3 py-2 text-muted-foreground">
                         {item.categories.map((c) => c.label).join(", ") ||
                           "—"}
                       </td>
                       <td className="px-3 py-2 text-muted-foreground">
-                        {formatOpportunityDate(item.due_date_at)}
+                        {formatMissionDate(item.start_at)}
                       </td>
                       <td className="px-3 py-2 text-primary-foreground">
-                        {formatOpportunityDate(item.end_at)}
+                        {formatMissionDate(item.end_at)}
                       </td>
                       <td className="px-3 py-2">
-                        {formatOpportunityPrice(item.price)}
+                        {formatMissionCharge(item.estimated_charge)}
                       </td>
                     </tr>
                   ))
@@ -481,7 +486,7 @@ export function OpportunitiesPageClient({
 
         {view !== "kanban" ? (
           <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
-            <p>Nombre d&apos;opportunités : {filtered.length}</p>
+            <p>Nombre de missions : {filtered.length}</p>
             {filtered.length > PAGE_SIZE ? (
               <div className="flex items-center gap-2">
                 <Button
@@ -514,7 +519,7 @@ export function OpportunitiesPageClient({
       <Dialog open={filterOpen} onOpenChange={setFilterOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto overflow-x-visible sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Filtres opportunités</DialogTitle>
+            <DialogTitle>Filtres missions</DialogTitle>
           </DialogHeader>
           <div className="relative py-2">
             <div
@@ -589,31 +594,33 @@ export function OpportunitiesPageClient({
                 />
               </div>
               <div className="grid min-w-0 gap-2">
-                <Label>Montant</Label>
+                <Label>Périmètre</Label>
                 <Select
-                  value={draftFilters.amountBucket}
+                  value={draftFilters.scope || "all"}
                   onValueChange={(value) =>
                     setDraftFilters((prev) => ({
                       ...prev,
-                      amountBucket: value as Filters["amountBucket"],
+                      scope: value === "all" ? "" : (value as MissionScope),
                     }))
                   }
                 >
                   <SelectTrigger className="w-full">
-                    <SelectValue />
+                    <SelectValue placeholder="Tous" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Tous</SelectItem>
-                    <SelectItem value="lt5k">&lt; 5 000 €</SelectItem>
-                    <SelectItem value="5to20k">5 000 – 20 000 €</SelectItem>
-                    <SelectItem value="gt20k">&gt; 20 000 €</SelectItem>
+                    {MISSION_SCOPES.map((scope) => (
+                      <SelectItem key={scope} value={scope}>
+                        {getMissionScopeLabel(scope)}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="grid gap-2 sm:col-span-2">
                 <Label>Statut</Label>
                 <div className="flex flex-wrap gap-1.5">
-                  {OPPORTUNITY_KANBAN_STATUSES.map((status) => {
+                  {MISSION_KANBAN_STATUSES.map((status) => {
                     const selected = draftFilters.statuses.includes(status);
                     return (
                       <Button
@@ -623,79 +630,61 @@ export function OpportunitiesPageClient({
                         variant={selected ? "default" : "outline"}
                         onClick={() => toggleDraftStatus(status)}
                       >
-                        {getOpportunityKanbanStatusLabel(status)}
+                        {getMissionKanbanStatusLabel(status)}
                       </Button>
                     );
                   })}
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Sans sélection : tous les statuts (hors archivées sauf option
-                  ci-dessous).
-                </p>
               </div>
-              <div className="grid min-w-0 gap-2">
-                <Label>Probabilité</Label>
-                <Select
-                  value={draftFilters.probabilityBucket}
-                  onValueChange={(value) =>
-                    setDraftFilters((prev) => ({
-                      ...prev,
-                      probabilityBucket: value as Filters["probabilityBucket"],
-                    }))
-                  }
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Toutes</SelectItem>
-                    <SelectItem value="lt30">&lt; 30 %</SelectItem>
-                    <SelectItem value="30to50">30 – 50 %</SelectItem>
-                    <SelectItem value="gt50">&gt; 50 %</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="grid gap-2">
+                <Label>Plage de filtre pour les date de début</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <Input
+                    type="date"
+                    value={draftFilters.startFrom}
+                    onChange={(event) =>
+                      setDraftFilters((prev) => ({
+                        ...prev,
+                        startFrom: event.target.value,
+                      }))
+                    }
+                  />
+                  <Input
+                    type="date"
+                    value={draftFilters.startTo}
+                    onChange={(event) =>
+                      setDraftFilters((prev) => ({
+                        ...prev,
+                        startTo: event.target.value,
+                      }))
+                    }
+                  />
+                </div>
               </div>
-              <div className="grid min-w-0 gap-2">
-                <Label>Urgence</Label>
-                <Select
-                  value={draftFilters.priority || "all"}
-                  onValueChange={(value) =>
-                    setDraftFilters((prev) => ({
-                      ...prev,
-                      priority:
-                        value === "all" ? "" : (value as OpportunityPriority),
-                    }))
-                  }
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Toutes" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Toutes</SelectItem>
-                    {OPPORTUNITY_PRIORITIES.map((value) => (
-                      <SelectItem key={value} value={value}>
-                        {getOpportunityPriorityLabel(value)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex items-center gap-2 sm:col-span-2">
-                <input
-                  id="include_archived"
-                  type="checkbox"
-                  className="size-4 rounded border"
-                  checked={draftFilters.includeArchived}
-                  onChange={(event) =>
-                    setDraftFilters((prev) => ({
-                      ...prev,
-                      includeArchived: event.target.checked,
-                    }))
-                  }
-                />
-                <Label htmlFor="include_archived" className="font-normal">
-                  Inclure les opportunités archivées (gagné / perdue)
-                </Label>
+              <div className="grid gap-2">
+                <Label>Plage de filtre pour les date de fin</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <Input
+                    type="date"
+                    value={draftFilters.endFrom}
+                    onChange={(event) =>
+                      setDraftFilters((prev) => ({
+                        ...prev,
+                        endFrom: event.target.value,
+                      }))
+                    }
+                  />
+                  <Input
+                    type="date"
+                    value={draftFilters.endTo}
+                    onChange={(event) =>
+                      setDraftFilters((prev) => ({
+                        ...prev,
+                        endTo: event.target.value,
+                      }))
+                    }
+                  />
+                </div>
               </div>
             </div>
           </div>
