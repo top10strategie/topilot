@@ -1,5 +1,16 @@
 # Suivi des actions — TOPilot
 
+## **[2026-07-30] — Redirect post update-password → /auth/login**
+
+**Type :** `fix`
+**Fichiers concernés :** `components/update-password-form.tsx`, `suivi.md`
+
+### Description
+
+Après enregistrement du nouveau mot de passe : `signOut` puis `window.location.assign(/auth/login)` (navigation hard — le soft `router.push` laissait l’utilisateur sur la page).
+
+---
+
 ## **[2026-07-30] — Point 5 itération B : Kanban opportunités (DnD)**
 
 **Type :** `feature`
