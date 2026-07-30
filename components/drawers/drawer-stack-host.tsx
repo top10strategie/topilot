@@ -15,6 +15,9 @@ import { cn } from "@/lib/utils";
 const DRAWER_WIDTH_CLASS =
   "w-full sm:w-[75vw] sm:max-w-none lg:w-[60vw] lg:max-w-none";
 
+/** Sous les contenus de tiroirs (z ≥ 50), au-dessus de la page. */
+const STACK_OVERLAY_Z = 49;
+
 /** Popovers encore portailés hors du Sheet (Select Radix, etc.). */
 const PORTALED_UI_SELECTOR = [
   '[data-slot="combobox-content"]',
@@ -31,12 +34,30 @@ function isPortaledUiEvent(target: EventTarget | null): boolean {
  *
  * `modal` reste toujours `true` pour éviter un remount Radix (perte du state
  * local) quand un tiroir repasse au sommet après fermeture d'un empilé.
+ *
+ * Un seul overlay est géré par la pile (pas l'overlay Radix du Sheet) : ainsi
+ * il ne peut pas se remonter au-dessus du contenu du tiroir parent après
+ * fermeture d'un empilé.
  */
 export function DrawerStackHost() {
-  const { stack, dismissEntry } = useDrawerStack();
+  const { stack, dismissTop, dismissEntry } = useDrawerStack();
+  const hasDrawer = stack.length > 0;
 
   return (
     <>
+      {hasDrawer ? (
+        <div
+          data-slot="drawer-stack-overlay"
+          aria-hidden
+          className="fixed inset-0 bg-black/50 pointer-events-auto"
+          style={{ zIndex: STACK_OVERLAY_Z }}
+          onPointerDown={(event) => {
+            event.preventDefault();
+            dismissTop();
+          }}
+        />
+      ) : null}
+
       {stack.map((entry, index) => {
         const isTop = index === stack.length - 1;
         const zIndex = 50 + index;
@@ -45,7 +66,15 @@ export function DrawerStackHost() {
           target: EventTarget | null;
           preventDefault: () => void;
         }) => {
-          if (!isTop || isPortaledUiEvent(event.target)) {
+          // L'overlay de pile gère déjà le dismiss ; on ignore le reste
+          // (page / popovers) pour éviter les doubles fermetures.
+          if (
+            !isTop ||
+            !entry.open ||
+            isPortaledUiEvent(event.target) ||
+            (event.target instanceof Element &&
+              event.target.closest('[data-slot="drawer-stack-overlay"]'))
+          ) {
             event.preventDefault();
           }
         };
@@ -53,7 +82,7 @@ export function DrawerStackHost() {
         return (
           <Sheet
             key={entry.id}
-            open
+            open={entry.open}
             onOpenChange={(open) => {
               if (!open) {
                 dismissEntry(entry.id);
@@ -63,19 +92,21 @@ export function DrawerStackHost() {
           >
             <SheetContent
               side="right"
-              showCloseButton={isTop}
-              showOverlay={isTop}
+              showCloseButton={isTop && entry.open}
+              showOverlay={false}
               style={{ zIndex }}
               className={cn(
                 DRAWER_WIDTH_CLASS,
                 "gap-0 overflow-visible p-0",
-                !isTop && "pointer-events-none invisible",
+                isTop
+                  ? "pointer-events-auto"
+                  : "pointer-events-none invisible",
               )}
               onInteractOutside={preventOutsideIfNeeded}
               onPointerDownOutside={preventOutsideIfNeeded}
               onFocusOutside={preventOutsideIfNeeded}
               onEscapeKeyDown={(event) => {
-                if (!isTop) {
+                if (!isTop || !entry.open) {
                   event.preventDefault();
                 }
               }}

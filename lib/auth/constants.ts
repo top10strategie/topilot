@@ -12,5 +12,3 @@ export const FORCE_PASSWORD_CHANGE_PATH = "/auth/update-password";
 export const LOGIN_PATH = "/auth/login";
 
 export const ACCESS_DENIED_PATH = "/auth/access-denied";
-
-export const DEFAULT_AUTHENTICATED_PATH = "/";

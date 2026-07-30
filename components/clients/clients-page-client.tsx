@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -10,8 +10,16 @@ import {
   SquaresFour,
   Table,
 } from "@phosphor-icons/react";
+import { CategoryMultiCombobox } from "@/components/categories/category-multi-combobox";
 import { ClientFormDrawer } from "@/components/clients/client-form-drawer";
 import { useDrawerStack } from "@/components/drawers/drawer-stack-context";
+import { IconActionButton } from "@/components/layout/icon-action-button";
+import {
+  ListViewTabs,
+  ListViewTabsContent,
+  ListViewTabsSwitcher,
+  type ListViewTab,
+} from "@/components/layout/list-view-tabs";
 import { PageHero } from "@/components/layout/page-hero";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -49,31 +57,18 @@ import type { CollaboratorListItem } from "@/lib/collaborators/types";
 
 const PAGE_SIZE = 25;
 
-function IconActionButton({
-  label,
-  disabled,
-  onClick,
-  children,
-}: {
-  label: string;
-  disabled?: boolean;
-  onClick: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <Button
-      type="button"
-      variant="outline"
-      size="icon"
-      aria-label={label}
-      title={label}
-      disabled={disabled}
-      onClick={onClick}
-    >
-      {children}
-    </Button>
-  );
-}
+const CLIENT_VIEW_TABS: ListViewTab[] = [
+  {
+    value: "cards",
+    label: "Cartes",
+    icon: <SquaresFour className="size-3.5" aria-hidden />,
+  },
+  {
+    value: "table",
+    label: "Tableau",
+    icon: <Table className="size-3.5" aria-hidden />,
+  },
+];
 
 type ClientsPageClientProps = {
   clients: ClientListItem[];
@@ -110,6 +105,15 @@ export function ClientsPageClient({
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [draftFilters, setDraftFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [filterOpen, setFilterOpen] = useState(false);
+  const filterPortalRef = useRef<HTMLDivElement>(null);
+
+  const draftSelectedCategories = useMemo(
+    () =>
+      categories.filter((category) =>
+        draftFilters.categoryIds.includes(category.id),
+      ),
+    [categories, draftFilters.categoryIds],
+  );
 
   const cities = useMemo(() => {
     const set = new Set<string>();
@@ -204,12 +208,18 @@ export function ClientsPageClient({
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <ListViewTabs
+      value={view}
+      onValueChange={(value) => {
+        setView(value as "cards" | "table");
+        setPage(1);
+      }}
+    >
       <PageHero
         title="Clients"
         actions={
-          <div className="flex w-full max-w-md items-center gap-2 md:w-auto md:max-w-none">
-            <div className="relative min-w-0 flex-1 md:w-72 md:flex-none lg:w-80">
+          <div className="flex w-full max-w-xl flex-wrap items-center gap-2 md:w-auto md:max-w-none md:flex-nowrap">
+            <div className="relative min-w-0 flex-1 basis-full sm:basis-auto md:w-72 md:flex-none lg:w-80">
               <MagnifyingGlass
                 className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
                 aria-hidden
@@ -226,18 +236,7 @@ export function ClientsPageClient({
                 aria-label="Recherche contextuelle clients"
               />
             </div>
-            <IconActionButton
-              label={view === "cards" ? "Vue tableau" : "Vue cartes"}
-              onClick={() =>
-                setView((current) => (current === "cards" ? "table" : "cards"))
-              }
-            >
-              {view === "cards" ? (
-                <Table className="size-4" />
-              ) : (
-                <SquaresFour className="size-4" />
-              )}
-            </IconActionButton>
+            <ListViewTabsSwitcher tabs={CLIENT_VIEW_TABS} showLabels={false} />
             <IconActionButton
               label="Filtres"
               onClick={() => {
@@ -266,112 +265,121 @@ export function ClientsPageClient({
               ? "Aucun client ne correspond aux critères."
               : "Aucun client pour le moment."}
           </p>
-        ) : view === "cards" ? (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {pageItems.map((client) => (
-              <Link key={client.id} href={`/clients/${client.id}`}>
-                <Card className="h-full transition-colors hover:bg-muted/40">
-                  <CardHeader className="space-y-3 p-4 pb-2">
-                    <div className="flex items-start gap-3">
-                      <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted text-sm font-semibold">
-                        {client.logo_url ? (
-                          <img
-                            src={client.logo_url}
-                            alt=""
-                            className="size-full object-cover"
-                          />
-                        ) : (
-                          client.client_name.slice(0, 2).toUpperCase()
-                        )}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <CardTitle className="text-base leading-snug">
-                          {client.client_name}
-                        </CardTitle>
-                        <Badge
-                          variant={client.is_active ? "default" : "secondary"}
-                          className="mt-1"
-                        >
-                          {getClientStatusLabel(client.is_active)}
-                        </Badge>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-1 p-4 pt-2 text-xs text-muted-foreground">
-                    <p>
-                      {client.mission_count} mission
-                      {client.mission_count > 1 ? "s" : ""} ·{" "}
-                      {client.opportunity_count} opportunité
-                      {client.opportunity_count > 1 ? "s" : ""}
-                    </p>
-                    <p>
-                      Resp. {getClientResponsibleName(client.responsible)}
-                    </p>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
-          </div>
         ) : (
-          <div className="overflow-x-auto rounded-md border">
-            <table className="w-full min-w-[720px] text-left text-sm">
-              <thead className="border-b bg-muted/40 text-xs text-muted-foreground">
-                <tr>
-                  <th className="px-3 py-2 font-medium">Client</th>
-                  <th className="px-3 py-2 font-medium">Statut</th>
-                  <th className="px-3 py-2 font-medium">Catégories</th>
-                  <th className="px-3 py-2 font-medium">Site</th>
-                  <th className="px-3 py-2 font-medium">Téléphone</th>
-                  <th className="px-3 py-2 font-medium">Email</th>
-                  <th className="px-3 py-2 font-medium">Responsable</th>
-                </tr>
-              </thead>
-              <tbody>
+          <>
+            <ListViewTabsContent value="cards">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 {pageItems.map((client) => (
-                  <tr
-                    key={client.id}
-                    className="cursor-pointer border-b last:border-0 hover:bg-muted/30"
-                    onClick={() => router.push(`/clients/${client.id}`)}
-                  >
-                    <td className="px-3 py-2 font-medium">
-                      <span className="inline-flex items-center gap-2">
-                        <span className="flex size-8 items-center justify-center overflow-hidden rounded bg-muted text-[10px] font-semibold">
-                          {client.logo_url ? (
-                            <img
-                              src={client.logo_url}
-                              alt=""
-                              className="size-full object-cover"
-                            />
-                          ) : (
-                            client.client_name.slice(0, 2).toUpperCase()
-                          )}
-                        </span>
-                        {client.client_name}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2">
-                      {getClientStatusLabel(client.is_active)}
-                    </td>
-                    <td className="px-3 py-2 text-muted-foreground">
-                      {client.categories.map((c) => c.label).join(", ") || "—"}
-                    </td>
-                    <td className="px-3 py-2 text-muted-foreground">
-                      {client.website || "—"}
-                    </td>
-                    <td className="px-3 py-2 text-muted-foreground">
-                      {client.main_contact?.phone_number || "—"}
-                    </td>
-                    <td className="px-3 py-2 text-muted-foreground">
-                      {client.main_contact?.email_address || "—"}
-                    </td>
-                    <td className="px-3 py-2">
-                      {getClientResponsibleName(client.responsible)}
-                    </td>
-                  </tr>
+                  <Link key={client.id} href={`/clients/${client.id}`}>
+                    <Card className="h-full transition-colors hover:bg-muted/40">
+                      <CardHeader className="space-y-3 p-4 pb-2">
+                        <div className="flex items-start gap-3">
+                          <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted text-sm font-semibold">
+                            {client.logo_url ? (
+                              <img
+                                src={client.logo_url}
+                                alt=""
+                                className="size-full object-cover"
+                              />
+                            ) : (
+                              client.client_name.slice(0, 2).toUpperCase()
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <CardTitle className="text-base leading-snug">
+                              {client.client_name}
+                            </CardTitle>
+                            <Badge
+                              variant={
+                                client.is_active ? "default" : "secondary"
+                              }
+                              className="mt-1"
+                            >
+                              {getClientStatusLabel(client.is_active)}
+                            </Badge>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-1 p-4 pt-2 text-xs text-muted-foreground">
+                        <p>
+                          {client.mission_count} mission
+                          {client.mission_count > 1 ? "s" : ""} ·{" "}
+                          {client.opportunity_count} opportunité
+                          {client.opportunity_count > 1 ? "s" : ""}
+                        </p>
+                        <p>
+                          Resp. {getClientResponsibleName(client.responsible)}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </Link>
                 ))}
-              </tbody>
-            </table>
-          </div>
+              </div>
+            </ListViewTabsContent>
+
+            <ListViewTabsContent value="table">
+              <div className="overflow-x-auto rounded-md border">
+                <table className="w-full min-w-[720px] text-left text-sm">
+                  <thead className="border-b bg-muted/40 text-xs text-muted-foreground">
+                    <tr>
+                      <th className="px-3 py-2 font-medium">Client</th>
+                      <th className="px-3 py-2 font-medium">Statut</th>
+                      <th className="px-3 py-2 font-medium">Catégories</th>
+                      <th className="px-3 py-2 font-medium">Site</th>
+                      <th className="px-3 py-2 font-medium">Téléphone</th>
+                      <th className="px-3 py-2 font-medium">Email</th>
+                      <th className="px-3 py-2 font-medium">Responsable</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pageItems.map((client) => (
+                      <tr
+                        key={client.id}
+                        className="cursor-pointer border-b last:border-0 hover:bg-muted/30"
+                        onClick={() => router.push(`/clients/${client.id}`)}
+                      >
+                        <td className="px-3 py-2 font-medium">
+                          <span className="inline-flex items-center gap-2">
+                            <span className="flex size-8 items-center justify-center overflow-hidden rounded bg-muted text-[10px] font-semibold">
+                              {client.logo_url ? (
+                                <img
+                                  src={client.logo_url}
+                                  alt=""
+                                  className="size-full object-cover"
+                                />
+                              ) : (
+                                client.client_name.slice(0, 2).toUpperCase()
+                              )}
+                            </span>
+                            {client.client_name}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2">
+                          {getClientStatusLabel(client.is_active)}
+                        </td>
+                        <td className="px-3 py-2 text-muted-foreground">
+                          {client.categories.map((c) => c.label).join(", ") ||
+                            "—"}
+                        </td>
+                        <td className="px-3 py-2 text-muted-foreground">
+                          {client.website || "—"}
+                        </td>
+                        <td className="px-3 py-2 text-muted-foreground">
+                          {client.main_contact?.phone_number || "—"}
+                        </td>
+                        <td className="px-3 py-2 text-muted-foreground">
+                          {client.main_contact?.email_address || "—"}
+                        </td>
+                        <td className="px-3 py-2">
+                          {getClientResponsibleName(client.responsible)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </ListViewTabsContent>
+          </>
         )}
 
         <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
@@ -405,11 +413,16 @@ export function ClientsPageClient({
       </div>
 
       <Dialog open={filterOpen} onOpenChange={setFilterOpen}>
-        <DialogContent>
+        <DialogContent className="overflow-visible">
           <DialogHeader>
             <DialogTitle>Filtres clients</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-2">
+          <div className="relative space-y-4 py-2">
+            <div
+              ref={filterPortalRef}
+              data-slot="dialog-portal-container"
+              className="pointer-events-none absolute inset-0 z-[100] overflow-visible"
+            />
             <div className="grid gap-2">
               <Label>Statut</Label>
               <Select
@@ -503,44 +516,22 @@ export function ClientsPageClient({
             </div>
             <div className="grid gap-2">
               <Label>Catégories</Label>
-              <div className="max-h-40 space-y-2 overflow-y-auto rounded-md border p-3">
-                {categories.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    Aucune catégorie
-                  </p>
-                ) : (
-                  categories.map((category) => {
-                    const checked = draftFilters.categoryIds.includes(
-                      category.id,
-                    );
-                    return (
-                      <label
-                        key={category.id}
-                        className="flex items-center gap-2 text-sm"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={(event) => {
-                            setDraftFilters((prev) => ({
-                              ...prev,
-                              categoryIds: event.target.checked
-                                ? [...prev.categoryIds, category.id]
-                                : prev.categoryIds.filter(
-                                    (id) => id !== category.id,
-                                  ),
-                            }));
-                          }}
-                        />
-                        {category.label}
-                      </label>
-                    );
-                  })
-                )}
-              </div>
+              <CategoryMultiCombobox
+                items={categories}
+                value={draftSelectedCategories}
+                onValueChange={(next) =>
+                  setDraftFilters((prev) => ({
+                    ...prev,
+                    categoryIds: next.map((item) => item.id),
+                  }))
+                }
+                placeholder="Filtrer par catégories…"
+                emptyListMessage="Aucune catégorie"
+                container={filterPortalRef}
+              />
             </div>
           </div>
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter className="gap-2 sm:gap-2">
             <Button
               type="button"
               variant="outline"
@@ -566,6 +557,6 @@ export function ClientsPageClient({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </ListViewTabs>
   );
 }

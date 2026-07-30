@@ -12,7 +12,7 @@ VALUES (
   'visuels',
   true,
   5242880,
-  ARRAY['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+  ARRAY['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml', 'image/avif']
 )
 ON CONFLICT (id) DO UPDATE SET
   public = EXCLUDED.public,

@@ -37,7 +37,7 @@ export type ClientDocumentItem = {
   file_path: string | null;
   storage_type: string;
   is_visual: boolean;
-  external_url: string | null;
+  url: string | null;
 };
 
 export type ClientListItem = {

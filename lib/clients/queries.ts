@@ -16,7 +16,7 @@ type DocumentVisualRow = {
   is_visual: boolean;
   document_name?: string;
   storage_type?: string;
-  external_url?: string | null;
+  url?: string | null;
 };
 
 function resolveVisualPublicUrl(
@@ -284,7 +284,7 @@ export async function getClientById(id: string): Promise<ClientDetail | null> {
           file_path,
           storage_type,
           is_visual,
-          external_url
+          url
         )
       )
     `,
@@ -324,7 +324,7 @@ export async function getClientById(id: string): Promise<ClientDetail | null> {
       document: DocumentVisualRow & {
         document_name: string;
         storage_type: string;
-        external_url: string | null;
+        url: string | null;
       } | null;
     }> | null;
   };
@@ -354,7 +354,7 @@ export async function getClientById(id: string): Promise<ClientDetail | null> {
       ): doc is DocumentVisualRow & {
         document_name: string;
         storage_type: string;
-        external_url: string | null;
+        url: string | null;
       } => Boolean(doc),
     )
     .map((doc) => ({
@@ -363,7 +363,7 @@ export async function getClientById(id: string): Promise<ClientDetail | null> {
       file_path: doc.file_path,
       storage_type: doc.storage_type,
       is_visual: doc.is_visual,
-      external_url: doc.external_url,
+      url: doc.url,
     }))
     .sort((a, b) => a.document_name.localeCompare(b.document_name, "fr"));
 

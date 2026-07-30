@@ -1,5 +1,8 @@
 "use client";
 
+import { SignOut } from "@phosphor-icons/react";
+import { useRouter } from "next/navigation";
+import { useState, type ComponentProps } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -11,16 +14,27 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { createClient } from "@/lib/supabase/client";
-import { SignOut } from "@phosphor-icons/react";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { cn } from "@/lib/utils";
 
 type LogoutDialogProps = {
-  /** Affiche un bouton pleine largeur avec libellé (sidebar mobile). */
+  /** Affiche le libellé « Déconnexion » à côté de l'icône. */
   withLabel?: boolean;
+  triggerVariant?: ComponentProps<typeof Button>["variant"];
+  triggerClassName?: string;
+  /** Libellé du trigger (défaut : Déconnexion). */
+  triggerLabel?: string;
 };
 
-export function LogoutDialog({ withLabel = false }: LogoutDialogProps) {
+/**
+ * Bouton trigger + modale de confirmation de déconnexion.
+ * Le trigger ouvre toujours la dialog ; la session n'est coupée qu'après confirmation.
+ */
+export function LogoutDialog({
+  withLabel = false,
+  triggerVariant = "ghost",
+  triggerClassName,
+  triggerLabel = "Déconnexion",
+}: LogoutDialogProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -42,16 +56,22 @@ export function LogoutDialog({ withLabel = false }: LogoutDialogProps) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {withLabel ? (
-          <Button type="button" variant="ghost" className="w-full justify-start gap-2">
+          <Button
+            type="button"
+            variant={triggerVariant}
+            className={cn("w-full justify-start gap-2", triggerClassName)}
+          >
             <SignOut className="size-5" />
-            Déconnexion
+            {triggerLabel}
           </Button>
         ) : (
           <Button
             type="button"
-            variant="ghost"
+            variant={triggerVariant}
             size="icon"
-            aria-label="Déconnexion"
+            aria-label={triggerLabel}
+            title={triggerLabel}
+            className={triggerClassName}
           >
             <SignOut className="size-5" />
           </Button>
@@ -65,7 +85,7 @@ export function LogoutDialog({ withLabel = false }: LogoutDialogProps) {
             ?
           </DialogDescription>
         </DialogHeader>
-        <DialogFooter className="gap-2 sm:gap-0">
+        <DialogFooter className="gap-2 sm:gap-2">
           <Button
             type="button"
             variant="outline"

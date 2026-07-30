@@ -1,14 +1,8 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { assertAllowedImageFile } from "@/lib/visuels/allowed-image-types";
 
 const VISUELS_BUCKET = "visuels";
-const MAX_BYTES = 5 * 1024 * 1024;
-const ALLOWED_MIME = new Set([
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "image/gif",
-]);
 
 export const CLIENT_LOGO_TYPE_LABEL = "Logo client";
 export const PROFILE_PICTURE_TYPE_LABEL = "Photo de profil";
@@ -47,14 +41,7 @@ export async function uploadClientVisual(
   typeLabel: string,
   fallbackName: string,
 ): Promise<{ documentId: string }> {
-  if (!ALLOWED_MIME.has(file.type)) {
-    throw new Error(
-      "Format d'image non supporté (JPEG, PNG, WebP ou GIF uniquement).",
-    );
-  }
-  if (file.size > MAX_BYTES) {
-    throw new Error("L'image ne doit pas dépasser 5 Mo.");
-  }
+  const contentType = assertAllowedImageFile(file);
 
   const documentTypeId = await getDocumentTypeId(typeLabel);
   const admin = createAdminClient();
@@ -84,7 +71,7 @@ export async function uploadClientVisual(
   const { error: uploadError } = await admin.storage
     .from(VISUELS_BUCKET)
     .upload(filePath, buffer, {
-      contentType: file.type,
+      contentType,
       upsert: true,
     });
 

@@ -17,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { VisualFileField } from "@/components/visuels/visual-file-field";
 import type { ContactClientItem } from "@/lib/clients/types";
 
 export type ContactFormResult = {
@@ -102,18 +103,15 @@ export function ContactFormDrawer({
   return (
     <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
       <div className="flex-1 space-y-4">
-        <div className="grid gap-2">
-          <Label htmlFor="contact_avatar">Photo</Label>
-          <Input
-            id="contact_avatar"
-            type="file"
-            accept="image/jpeg,image/png,image/webp,image/gif"
-            disabled={isPending}
-            onChange={(event) =>
-              setAvatarFile(event.target.files?.[0] ?? null)
-            }
-          />
-        </div>
+        <VisualFileField
+          id="contact_avatar"
+          label="Photo"
+          value={avatarFile}
+          existingUrl={contact?.profile_picture_url}
+          onChange={setAvatarFile}
+          disabled={isPending}
+          error={fieldErrors.avatar}
+        />
 
         <div className="grid gap-2 sm:grid-cols-2">
           <div className="grid gap-2">

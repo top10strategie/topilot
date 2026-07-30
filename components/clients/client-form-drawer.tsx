@@ -8,6 +8,7 @@ import {
   createClientRecord,
   updateClientRecord,
 } from "@/actions/clients";
+import { CategoryMultiCombobox } from "@/components/categories/category-multi-combobox";
 import { LabelEntityFormDrawer } from "@/components/categories/label-entity-form-drawer";
 import {
   ContactFormDrawer,
@@ -16,18 +17,6 @@ import {
 import type { DrawerHelpers } from "@/components/drawers/drawer-stack-context";
 import { useDrawerStack } from "@/components/drawers/drawer-stack-context";
 import { Button } from "@/components/ui/button";
-import {
-  Combobox,
-  ComboboxChip,
-  ComboboxChips,
-  ComboboxChipsInput,
-  ComboboxContent,
-  ComboboxEmpty,
-  ComboboxItem,
-  ComboboxList,
-  ComboboxValue,
-  useComboboxAnchor,
-} from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -38,6 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { VisualFileField } from "@/components/visuels/visual-file-field";
 import type { CategoryItem } from "@/lib/categories/types";
 import { getCollaboratorFullName } from "@/lib/collaborators/labels";
 import type { CollaboratorListItem } from "@/lib/collaborators/types";
@@ -72,7 +62,6 @@ export function ClientFormDrawer({
   helpers,
 }: ClientFormDrawerProps) {
   const { pushDrawer } = useDrawerStack();
-  const chipsAnchor = useComboboxAnchor();
   const activeCollaborators = useMemo(
     () =>
       collaborators
@@ -278,16 +267,15 @@ export function ClientFormDrawer({
         <section className="space-y-4">
           <h3 className="text-sm font-semibold">Identification</h3>
 
-          <div className="grid gap-2">
-            <Label htmlFor="client_logo">Logo</Label>
-            <Input
-              id="client_logo"
-              type="file"
-              accept="image/jpeg,image/png,image/webp,image/gif"
-              disabled={isPending}
-              onChange={(event) => setLogoFile(event.target.files?.[0] ?? null)}
-            />
-          </div>
+          <VisualFileField
+            id="client_logo"
+            label="Logo"
+            value={logoFile}
+            existingUrl={client?.logo_url}
+            onChange={setLogoFile}
+            disabled={isPending}
+            error={fieldErrors.logo}
+          />
 
           <div className="grid gap-2">
             <Label htmlFor="client_name">
@@ -481,54 +469,13 @@ export function ClientFormDrawer({
                   <FolderSimplePlus className="size-4" />
                 </Button>
               </div>
-              {categories.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  Aucune catégorie. Créez-en une avec le bouton ci-dessus.
-                </p>
-              ) : (
-                <Combobox
-                  items={categories}
-                  multiple
-                  value={selectedCategories}
-                  onValueChange={(next) => setSelectedCategories(next ?? [])}
-                  itemToStringLabel={(item) => item.label}
-                  itemToStringValue={(item) => item.id}
-                  isItemEqualToValue={(a, b) => a.id === b.id}
-                  disabled={isPending}
-                >
-                  <ComboboxChips ref={chipsAnchor} className="w-full">
-                    <ComboboxValue>
-                      {(value: ClientCategoryItem[]) => (
-                        <>
-                          {value.map((item) => (
-                            <ComboboxChip key={item.id}>
-                              {item.label}
-                            </ComboboxChip>
-                          ))}
-                          <ComboboxChipsInput
-                            placeholder={
-                              value.length > 0
-                                ? "Ajouter…"
-                                : "Sélectionner des catégories…"
-                            }
-                            disabled={isPending}
-                          />
-                        </>
-                      )}
-                    </ComboboxValue>
-                  </ComboboxChips>
-                  <ComboboxContent anchor={chipsAnchor}>
-                    <ComboboxEmpty>Aucune catégorie trouvée.</ComboboxEmpty>
-                    <ComboboxList>
-                      {(item) => (
-                        <ComboboxItem key={item.id} value={item}>
-                          {item.label}
-                        </ComboboxItem>
-                      )}
-                    </ComboboxList>
-                  </ComboboxContent>
-                </Combobox>
-              )}
+              <CategoryMultiCombobox
+                items={categories}
+                value={selectedCategories}
+                onValueChange={setSelectedCategories}
+                disabled={isPending}
+                emptyListMessage="Aucune catégorie. Créez-en une avec le bouton ci-dessus."
+              />
             </div>
 
             <div className="grid gap-2">

@@ -11,7 +11,7 @@ export type CurrentCollaborator = {
 export function getCollaboratorDisplayName(
   collaborator: CurrentCollaborator,
 ): string {
-  return `${collaborator.first_name} ${collaborator.last_name}`.trim();
+  return `${collaborator.first_name} ${collaborator.last_name.toLocaleUpperCase("fr")}`.trim();
 }
 
 export function getCollaboratorInitials(

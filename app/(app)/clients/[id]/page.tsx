@@ -11,7 +11,12 @@ type ClientDetailPageProps = {
   params: Promise<{ id: string }>;
 };
 
-async function ClientDetailContent({ id }: { id: string }) {
+async function ClientDetailContent({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
   const [client, collaborators, categories] = await Promise.all([
     getClientById(id),
     listCollaborators(),
@@ -43,13 +48,10 @@ function ClientDetailFallback() {
   );
 }
 
-export default async function ClientDetailPage({
-  params,
-}: ClientDetailPageProps) {
-  const { id } = await params;
+export default function ClientDetailPage({ params }: ClientDetailPageProps) {
   return (
     <Suspense fallback={<ClientDetailFallback />}>
-      <ClientDetailContent id={id} />
+      <ClientDetailContent params={params} />
     </Suspense>
   );
 }

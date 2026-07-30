@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PencilSimple, Trash } from "@phosphor-icons/react";
+import { IconActionButton } from "@/components/layout/icon-action-button";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -24,31 +25,6 @@ type LabelEntityGridProps = {
   onDelete: (item: LabelEntity) => void;
   emptyMessage: string;
 };
-
-function IconActionButton({
-  label,
-  variant = "outline",
-  onClick,
-  children,
-}: {
-  label: string;
-  variant?: "outline" | "destructive";
-  onClick: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <Button
-      type="button"
-      variant={variant}
-      size="icon"
-      aria-label={label}
-      title={label}
-      onClick={onClick}
-    >
-      {children}
-    </Button>
-  );
-}
 
 /**
  * Grille de cartes label + crayon/poubelle, pagination 25/page.
