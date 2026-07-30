@@ -1,6 +1,7 @@
 "use client";
 
 import { clearMustChangePassword } from "@/actions/auth";
+import { LOGIN_PATH } from "@/lib/auth/constants";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { establishSessionFromUrl } from "@/lib/auth/session-from-url";
@@ -14,7 +15,6 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 export function UpdatePasswordForm({
@@ -25,7 +25,6 @@ export function UpdatePasswordForm({
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [sessionReady, setSessionReady] = useState(false);
-  const router = useRouter();
 
   useEffect(() => {
     let cancelled = false;
@@ -68,15 +67,16 @@ export function UpdatePasswordForm({
         );
       }
 
-      router.push("/");
-      router.refresh();
+      // Déconnexion + navigation hard : le soft router échoue souvent après
+      // mutation des cookies Auth (l'utilisateur restait sur cette page).
+      await supabase.auth.signOut();
+      window.location.assign(LOGIN_PATH);
     } catch (err: unknown) {
       setError(
         err instanceof Error
           ? err.message
           : "Une erreur est survenue lors du changement de mot de passe.",
       );
-    } finally {
       setIsLoading(false);
     }
   };
