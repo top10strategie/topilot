@@ -3,6 +3,7 @@
 import { clearMustChangePassword } from "@/actions/auth";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
+import { establishSessionFromUrl } from "@/lib/auth/session-from-url";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -14,7 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export function UpdatePasswordForm({
   className,
@@ -23,7 +24,29 @@ export function UpdatePasswordForm({
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [sessionReady, setSessionReady] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function bootstrap() {
+      const result = await establishSessionFromUrl();
+      if (cancelled) return;
+      if (!result.ok) {
+        setError(
+          "Lien invalide ou expiré. Demandez une nouvelle invitation ou réinitialisation.",
+        );
+      }
+      setSessionReady(true);
+    }
+
+    void bootstrap();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,8 +105,16 @@ export function UpdatePasswordForm({
                 />
               </div>
               {error && <p className="text-sm text-destructive">{error}</p>}
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Enregistrement…" : "Enregistrer"}
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={isLoading || !sessionReady}
+              >
+                {isLoading
+                  ? "Enregistrement…"
+                  : !sessionReady
+                    ? "Préparation…"
+                    : "Enregistrer"}
               </Button>
             </div>
           </form>

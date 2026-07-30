@@ -1,5 +1,54 @@
 # Suivi des actions — TOPilot
 
+## **[2026-07-30] — Point 5 itération B : Kanban opportunités (DnD)**
+
+**Type :** `feature`
+**Fichiers concernés :** `actions/opportunities.ts`, `components/opportunities/opportunities-kanban.tsx`, `components/opportunities/opportunities-page-client.tsx`, `suivi.md`
+
+### Description
+
+Vue Kanban par défaut sur `/opportunities` : 6 colonnes (ordre enum), drag-and-drop `@dnd-kit` avec mise à jour optimiste de `kanban_status` / `kanban_order`, agrégat moyenne `average_price` par colonne, rollback + toast en cas d’échec.
+
+### Détails techniques
+
+- Action batch `updateOpportunitiesKanban`
+- Archivées visibles dans le Kanban (colonnes Gagné / Perdue) ; masquage par défaut conservé en vues Cartes / Tableau
+
+---
+
+## **[2026-07-30] — Fix flux invitation Auth (token_hash / hash / PKCE)**
+
+**Type :** `fix`
+**Fichiers concernés :** `app/auth/confirm/route.ts`, `app/auth/callback/page.tsx`, `app/auth/error/page.tsx`, `components/auth/*`, `components/update-password-form.tsx`, `lib/auth/*`, `actions/collaborators.ts`, `suivi.md`
+
+### Description
+
+Correction de l’erreur « No token hash or type » sur le lien d’invitation collaborateur : `/auth/confirm` gère `token_hash` + `code` PKCE ; fallback client `/auth/callback` (et récupération sur `/auth/error`) pour le flux implicite `#access_token`.
+
+### Détails techniques
+
+- `inviteRedirectTo` → destination finale `/auth/update-password` (`{{ .RedirectTo }}` du template TokenHash)
+- Template Supabase attendu : `/auth/confirm?token_hash={{ .TokenHash }}&type=invite&next={{ .RedirectTo }}`
+
+---
+
+## **[2026-07-30] — Point 5 itération A : Pipe commercial (liste + fiche opportunité)**
+
+**Type :** `feature`
+**Fichiers concernés :** `actions/opportunities.ts`, `lib/opportunities/*`, `components/opportunities/*`, `app/(app)/opportunities/**`, `suivi.md`
+
+### Description
+
+Pipe commercial itération A : `/opportunities` (vues Cartes/Tableau, filtres, pagination) et `/opportunities/[id]` (onglet Informations). Tiroir création 2 temps / édition, liaison client/contact/responsable/catégories. Stubs Missions et Documentations. Kanban DnD reporté à l’itération B.
+
+### Détails techniques
+
+- Trigger DB `set_opportunity_kanban_defaults` pour statut initial + proba / archivage `is_active`
+- Archivées (`gagne`/`perdue`) masquées par défaut, réaffichables via filtre
+- Empilement drawers Client / Contact / Catégorie depuis le tiroir opportunité
+
+---
+
 ## **[2026-07-29] — Point 4 : CRM Clients (liste, fiche, contacts, responsable)**
 
 **Type :** `feature`
