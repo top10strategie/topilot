@@ -1,5 +1,33 @@
 # Suivi des actions — TOPilot
 
+## **[2026-07-29] — Point 4 : CRM Clients (liste, fiche, contacts, responsable)**
+
+**Type :** `feature`
+**Fichiers concernés :** `actions/clients.ts`, `actions/contact-clients.ts`, `lib/clients/*`, `components/clients/*`, `app/(app)/clients/**`, `lib/search/types.ts`, `supabase/migrations/20260729180000_client_logo_type_and_contact_fts.sql`, `suivi.md`
+
+### Description
+
+CRM Clients sur `/clients` et `/clients/[id]` : liste (cartes/tableau, filtres), création 2 temps / édition, contacts (`is_main`, Hover Card, mode gestion), responsable collaborateur obligatoire, catégories multi, logo, stubs Missions/Outils/Wiki. FTS contact → fiche client ; seed type « Logo client ».
+
+---
+
+## **[2026-07-29] — CRUD Catégories & Types + team_category**
+
+**Type :** `feature`
+**Fichiers concernés :** `actions/categories.ts`, `actions/document-types.ts`, `actions/teams.ts`, `lib/categories/*`, `components/categories/*`, `components/collaborators/administration-page-client.tsx`, `components/collaborators/team-form-drawer.tsx`, `components/collaborators/collaborator-form-drawer.tsx`, `app/(app)/administration/page.tsx`, `suivi.md`
+
+### Description
+
+Onglets Catégories et Types sur `/administration` (CRUD complet, Hero recherche + crayon contextuel). Association multi-sélection des catégories sur Nouveau/Édition Pôle avec tiroir empilé « Nouvelle catégorie » et sync `team_category`.
+
+### Détails techniques
+
+- Auth CRUD catégories/types : tout collaborateur actif (`requireActiveCollaboratorAction`)
+- Pagination 25/page, unicité `label`, toast FK si type encore référencé
+- `createTeam` / `updateTeam` acceptent `category_ids[]` et synchronisent la jonction
+
+---
+
 ## **[2026-07-29] — Logo NavBar simplifié + text-2xl fallback**
 
 **Type :** `chore`

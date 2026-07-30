@@ -2,10 +2,7 @@ import {
   getCurrentCollaborator,
   type CurrentCollaborator,
 } from "@/lib/auth/get-current-collaborator";
-import {
-  canManageCollaboratorsAndTeams,
-  isManagerOrDirection,
-} from "@/lib/auth/roles";
+import { canManageCollaboratorsAndTeams } from "@/lib/auth/roles";
 
 export type AuthActionError = {
   success: false;
@@ -49,5 +46,3 @@ export async function requireManagerOrDirectionAction(): Promise<
   }
   return result;
 }
-
-export { isManagerOrDirection, canManageCollaboratorsAndTeams };

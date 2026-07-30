@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition, type FormEvent } from "react";
+import { useState, useTransition, type FormEvent } from "react";
 import { UserPlus } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import {
@@ -9,7 +9,6 @@ import {
 } from "@/actions/collaborators";
 import type { DrawerHelpers } from "@/components/drawers/drawer-stack-context";
 import { useDrawerStack } from "@/components/drawers/drawer-stack-context";
-import { CollaboratorAvatar } from "@/components/collaborators/collaborator-card";
 import { TeamFormDrawer } from "@/components/collaborators/team-form-drawer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,10 +20,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { VisualFileField } from "@/components/visuels/visual-file-field";
 import {
   getCollaboratorRoleLabel,
   getCollaboratorStatusLabel,
 } from "@/lib/collaborators/labels";
+import type { CategoryItem } from "@/lib/categories/types";
 import type {
   CollaboratorListItem,
   CollaboratorRole,
@@ -38,6 +39,7 @@ type CollaboratorFormDrawerProps = {
   mode: "create" | "edit";
   collaborator?: CollaboratorListItem;
   teams: TeamOption[];
+  availableCategories?: CategoryItem[];
   helpers: DrawerHelpers<{ id: string }>;
 };
 
@@ -48,6 +50,7 @@ export function CollaboratorFormDrawer({
   mode,
   collaborator,
   teams: initialTeams,
+  availableCategories = [],
   helpers,
 }: CollaboratorFormDrawerProps) {
   const { pushDrawer } = useDrawerStack();
@@ -64,21 +67,10 @@ export function CollaboratorFormDrawer({
   const [teamId, setTeamId] = useState(collaborator?.team_id ?? "");
   const [jobTitle, setJobTitle] = useState(collaborator?.job_title ?? "");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<
     Partial<Record<string, string>>
   >({});
   const [isPending, startTransition] = useTransition();
-
-  const previewCollaborator = useMemo(
-    () => ({
-      first_name: firstName || "?",
-      last_name: lastName || "?",
-      profile_picture_url:
-        avatarPreview ?? collaborator?.profile_picture_url ?? null,
-    }),
-    [firstName, lastName, avatarPreview, collaborator?.profile_picture_url],
-  );
 
   const submitLabel = mode === "create" ? "Créer" : "Enregistrer";
 
@@ -86,7 +78,11 @@ export function CollaboratorFormDrawer({
     const created = await pushDrawer<{ id: string; team_name: string }>({
       title: "Nouveau Pôle",
       content: (nestedHelpers) => (
-        <TeamFormDrawer mode="create" helpers={nestedHelpers} />
+        <TeamFormDrawer
+          mode="create"
+          helpers={nestedHelpers}
+          availableCategories={availableCategories}
+        />
       ),
     });
     if (created) {
@@ -101,20 +97,6 @@ export function CollaboratorFormDrawer({
       setTeamId(created.id);
       toast.success("Pôle créé et sélectionné.");
     }
-  };
-
-  const handleAvatarChange = (fileList: FileList | null) => {
-    const file = fileList?.[0] ?? null;
-    if (avatarPreview) {
-      URL.revokeObjectURL(avatarPreview);
-    }
-    if (!file) {
-      setAvatarFile(null);
-      setAvatarPreview(null);
-      return;
-    }
-    setAvatarFile(file);
-    setAvatarPreview(URL.createObjectURL(file));
   };
 
   const handleSubmit = (event: FormEvent) => {
@@ -156,27 +138,16 @@ export function CollaboratorFormDrawer({
 
   return (
     <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
-      <div className="flex-1 space-y-4">
-        <div className="flex items-center gap-4">
-          <CollaboratorAvatar collaborator={previewCollaborator} size="xl" />
-          <div className="grid flex-1 gap-2">
-            <Label htmlFor="collaborator_avatar">Avatar</Label>
-            <Input
-              id="collaborator_avatar"
-              type="file"
-              accept="image/jpeg,image/png,image/webp,image/gif"
-              disabled={isPending}
-              onChange={(event) => handleAvatarChange(event.target.files)}
-            />
-            {fieldErrors.avatar ? (
-              <p className="text-sm text-destructive">{fieldErrors.avatar}</p>
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                JPEG, PNG, WebP ou GIF — 5 Mo max.
-              </p>
-            )}
-          </div>
-        </div>
+        <div className="flex-1 space-y-4">
+        <VisualFileField
+          id="collaborator_avatar"
+          label="Avatar"
+          value={avatarFile}
+          existingUrl={collaborator?.profile_picture_url}
+          onChange={setAvatarFile}
+          disabled={isPending}
+          error={fieldErrors.avatar}
+        />
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="grid gap-2">

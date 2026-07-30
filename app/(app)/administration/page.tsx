@@ -4,6 +4,10 @@ import { PageHero } from "@/components/layout/page-hero";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrentCollaborator } from "@/lib/auth/get-current-collaborator";
 import { canManageCollaboratorsAndTeams } from "@/lib/auth/roles";
+import {
+  listCategories,
+  listDocumentTypes,
+} from "@/lib/categories/queries";
 import { loadPeopleDirectory } from "@/lib/collaborators/queries";
 
 async function AdministrationContent() {
@@ -12,15 +16,21 @@ async function AdministrationContent() {
     ? canManageCollaboratorsAndTeams(current.role)
     : false;
 
-  const { teams, collaborators } = canManagePeople
-    ? await loadPeopleDirectory()
-    : { teams: [], collaborators: [] };
+  const [categories, documentTypes, people] = await Promise.all([
+    listCategories(),
+    listDocumentTypes(),
+    canManagePeople
+      ? loadPeopleDirectory()
+      : Promise.resolve({ teams: [], collaborators: [] }),
+  ]);
 
   return (
     <AdministrationPageClient
       canManagePeople={canManagePeople}
-      teams={teams}
-      collaborators={collaborators}
+      teams={people.teams}
+      collaborators={people.collaborators}
+      categories={categories}
+      documentTypes={documentTypes}
     />
   );
 }

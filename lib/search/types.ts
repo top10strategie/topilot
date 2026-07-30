@@ -41,7 +41,7 @@ export function getSearchResultHref(result: GlobalSearchResult): string {
     case "client":
       return `/clients/${result.entity_id}`;
     case "contact_client":
-      return "/clients";
+      return `/clients/${result.entity_id}`;
     case "collaborator":
     case "team":
       return "/top10";
