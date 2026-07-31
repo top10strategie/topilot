@@ -16,8 +16,8 @@ export const MISSION_SCOPES: MissionScope[] = ["client", "interne"];
 const KANBAN_STATUS_LABELS: Record<MissionKanbanStatus, string> = {
   a_faire: "À faire",
   en_cours: "En cours",
-  terminee: "Terminée",
-  archivee: "Archivée",
+  terminee: "Terminé",
+  archivee: "Archivé",
 };
 
 const SCOPE_LABELS: Record<MissionScope, string> = {

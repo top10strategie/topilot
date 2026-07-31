@@ -462,7 +462,7 @@ export function AdministrationPageClient({
                                   </IconActionButton>
                                   <IconActionButton
                                     label={`Supprimer ${team.team_name}`}
-                                    variant="destructive"
+                                    attention
                                     onClick={() =>
                                       setPendingDeleteTeam({
                                         id: team.id,
@@ -554,7 +554,7 @@ export function AdministrationPageClient({
                             </IconActionButton>
                             <IconActionButton
                               label={`Supprimer ${getCollaboratorFullName(collaborator)}`}
-                              variant="destructive"
+                              attention
                               onClick={() =>
                                 setPendingAnonymize({
                                   id: collaborator.id,

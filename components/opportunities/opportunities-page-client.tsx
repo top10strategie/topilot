@@ -69,7 +69,7 @@ import type {
 } from "@/lib/opportunities/types";
 import { cn } from "@/lib/utils";
 
-const PAGE_SIZE = 25;
+const PAGE_SIZE = 24;
 
 const OPPORTUNITY_VIEW_TABS: ListViewTab[] = [
   {
@@ -100,6 +100,7 @@ type OpportunitiesPageClientProps = {
 type Filters = {
   clientId: string;
   responsibleId: string;
+  teamId: string;
   categoryIds: string[];
   amountBucket: "all" | "lt5k" | "5to20k" | "gt20k";
   statuses: OpportunityKanbanStatus[];
@@ -111,6 +112,7 @@ type Filters = {
 const DEFAULT_FILTERS: Filters = {
   clientId: "",
   responsibleId: "",
+  teamId: "",
   categoryIds: [],
   amountBucket: "all",
   statuses: [],
@@ -157,6 +159,26 @@ export function OpportunitiesPageClient({
     [collaborators],
   );
 
+  const teamOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const person of collaborators) {
+      if (person.team_id && person.team_name) {
+        map.set(person.team_id, person.team_name);
+      }
+    }
+    return [...map.entries()]
+      .map(([id, label]) => ({ id, label }))
+      .sort((a, b) => a.label.localeCompare(b.label, "fr"));
+  }, [collaborators]);
+
+  const teamIdByCollaboratorId = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const person of collaborators) {
+      map.set(person.id, person.team_id);
+    }
+    return map;
+  }, [collaborators]);
+
   const clientOptions = useMemo(
     () =>
       [...clients].sort((a, b) =>
@@ -183,6 +205,11 @@ export function OpportunitiesPageClient({
         item.responsible.id !== filters.responsibleId
       ) {
         return false;
+      }
+
+      if (filters.teamId) {
+        const teamId = teamIdByCollaboratorId.get(item.responsible.id);
+        if (teamId !== filters.teamId) return false;
       }
 
       if (filters.categoryIds.length > 0) {
@@ -231,7 +258,7 @@ export function OpportunitiesPageClient({
         .toLocaleLowerCase("fr");
       return blob.includes(q);
     });
-  }, [opportunities, filters, query, view]);
+  }, [opportunities, filters, query, view, teamIdByCollaboratorId]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -240,6 +267,7 @@ export function OpportunitiesPageClient({
     filters.includeArchived ||
     Boolean(filters.clientId) ||
     Boolean(filters.responsibleId) ||
+    Boolean(filters.teamId) ||
     filters.categoryIds.length > 0 ||
     filters.statuses.length > 0 ||
     Boolean(filters.priority) ||
@@ -338,7 +366,7 @@ export function OpportunitiesPageClient({
           <OpportunitiesKanban items={filtered} />
         </ListViewTabsContent>
 
-        <ListViewTabsContent value="cards">
+        <ListViewTabsContent value="cards" className="flex-none">
           {filtered.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               {query.trim() || hasActiveFilters
@@ -408,7 +436,7 @@ export function OpportunitiesPageClient({
           )}
         </ListViewTabsContent>
 
-        <ListViewTabsContent value="table">
+        <ListViewTabsContent value="table" className="flex-none">
           <div className="overflow-x-auto rounded-md border">
             <table className="w-full min-w-[960px] text-left text-sm">
               <thead className="border-b bg-muted/40 text-xs text-muted-foreground">
@@ -480,7 +508,7 @@ export function OpportunitiesPageClient({
         </ListViewTabsContent>
 
         {view !== "kanban" ? (
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
+          <div className="mt-6 flex shrink-0 flex-wrap items-center justify-between gap-2 border-t pt-4 text-sm text-muted-foreground">
             <p>Nombre d&apos;opportunités : {filtered.length}</p>
             {filtered.length > PAGE_SIZE ? (
               <div className="flex items-center gap-2">
@@ -566,6 +594,30 @@ export function OpportunitiesPageClient({
                     {responsibleOptions.map((person) => (
                       <SelectItem key={person.id} value={person.id}>
                         {getCollaboratorFullName(person)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid min-w-0 gap-2">
+                <Label>Pôle</Label>
+                <Select
+                  value={draftFilters.teamId || "all"}
+                  onValueChange={(value) =>
+                    setDraftFilters((prev) => ({
+                      ...prev,
+                      teamId: value === "all" ? "" : value,
+                    }))
+                  }
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Tous" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tous</SelectItem>
+                    {teamOptions.map((team) => (
+                      <SelectItem key={team.id} value={team.id}>
+                        {team.label}
                       </SelectItem>
                     ))}
                   </SelectContent>

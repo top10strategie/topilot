@@ -1,5 +1,106 @@
 # Suivi des actions — TOPilot
 
+## **[2026-07-31] — Libellés kanban, filtres pôle/propriétaire, création client**
+
+**Type :** `ux`
+**Fichiers concernés :** `lib/{opportunities,missions}/labels.ts`, `components/{clients,missions,opportunities}/*-page-client.tsx`, `components/tools/{tools-page-client,tool-access-form-drawer,tool-form-drawer,tool-detail-page-client,entity-linked-tools-section}.tsx`, `components/missions/mission-form-drawer.tsx`, `app/(app)/tools/**`, `suivi.md`
+
+### Description
+
+Kanban : Perdu / Terminé / Archivé. Filtres pôle (via responsable) sur clients, missions, opportunités. Filtre outils : « Propriétaire » + choix Interne. Bouton Nouveau client dans tiroirs mission et accès outil.
+
+---
+
+## **[2026-07-31] — Point 7 polish UI Toolbox (suite)**
+
+
+**Type :** `ux` / `fix`
+**Fichiers concernés :** `components/{clients,missions,opportunities}/*-page-client.tsx`, `components/tools/{tools-page-client,tool-form-drawer,tool-access-form-drawer,tool-subscription-inline-form,delete-tool-dialog}.tsx`, `actions/tools.ts`, `suivi.md`
+
+### Description
+
+Pagination 24 + footer sous liste sur clients / missions / opportunités. Suppression outil en cascade (accès Vault + abonnements) avec retrait optimiste de la liste. Tiroir création : libellé de l’accès créé affiché ; correction formulaire HTML imbriqué (abonnement inline) qui fermait les tiroirs.
+
+---
+
+## **[2026-07-31] — Point 7 polish UI Toolbox**
+
+
+**Type :** `ux`
+**Fichiers concernés :** `components/tools/tools-page-client.tsx`, `components/tools/tool-detail-page-client.tsx`, `components/tools/tool-form-drawer.tsx`, `components/tools/tool-access-form-drawer.tsx`, `components/layout/icon-action-button.tsx`, `components/{categories,clients,collaborators,tools}/*` (boutons suppression), `.cursor/rules/07_ux_composants_reutilisable.mdc.md`, `suivi.md`
+
+### Description
+
+Liste `/tools` : 24/page, compteur + pagination sous la grille (sans superposition), URL tronquée + delete sur la même ligne. Fiche outil : accès (titre / contexte / actions) en colonne gauche sous la description ; droite = abonnements. Tiroir édition outil limité à l’identification ; tiroir nouvel accès : Client + Privé sur une ligne. Suppressions : `IconActionButton` `attention` (outline → destructive au hover).
+
+---
+
+## **[2026-07-31] — Point 7 phase D : Liens outils (client / mission / opp)**
+
+
+**Type :** `feature`
+**Fichiers concernés :** `actions/tool-links.ts`, `lib/tools/queries.ts`, `lib/tools/types.ts`, `components/tools/entity-linked-tools-section.tsx`, `components/tools/tool-consultation-drawer.tsx`, `components/{clients,missions,opportunities}/*-detail-page-client.tsx`, `app/(app)/{clients,missions,opportunities}/[id]/page.tsx`, `suivi.md`
+
+### Description
+
+Onglets Documentations : section Outils opérationnelle sur fiches client, mission et opportunité. Liaison via `client_tool` / `mission_tool` / `opportunity_tool` (client : aussi outils avec `tool_access.client_id`), consultation en tiroir, création+lien ou lien d’un outil existant, retrait sans supprimer le catalogue.
+
+### Détails techniques
+
+- `fetchToolForConsultation` / `linkToolToEntity` / `unlinkToolFromEntity`
+- Composant réutilisable `EntityLinkedToolsSection`
+
+---
+
+## **[2026-07-31] — Point 7 phase C : Abonnements + taux Frankfurter**
+
+**Type :** `feature`
+**Fichiers concernés :** `actions/tool-subscriptions.ts`, `lib/tools/pricing.ts`, `lib/exchange-rate/**`, `app/api/cron/exchange-rates/route.ts`, `vercel.json`, `components/tools/tool-subscription-inline-form.tsx`, `components/tools/delete-tool-subscription-dialog.tsx`, `components/tools/tool-detail-page-client.tsx`, `components/tools/tool-form-drawer.tsx`, `.env.example`, `suivi.md`
+
+### Description
+
+CRUD abonnements/tarifs sur fiche outil et tiroir création (mini-formulaire inline). Backfill async Frankfurter à l’ajout d’une nouvelle devise ; cron mensuel `/api/cron/exchange-rates` (Bearer `CRON_SECRET`).
+
+### Détails techniques
+
+- Montants en centimes ; plan mensuel/annuel ; une ligne de prix active (`valid_to IS NULL`) par devise
+- `scheduleExchangeRateSyncIfNewCurrency` via `after()` ; écriture `exchange_rate` en service role uniquement
+
+---
+
+## **[2026-07-31] — Point 7 phase 0 : Migration Toolbox Top10CRM → TOPilot**
+
+**Type :** `chore`
+**Fichiers concernés :** `supabase/migrations/20260731120000_vault_secret_rpcs.sql`, `scripts/migrate-vault-secrets.ts`, `scripts/migrate-toolbox-data.ts`, `suivi.md`
+
+### Description
+
+Migration one-shot des données toolbox depuis Top10CRM : 72 outils, 73 accès, 7 abonnements, 8 prix, 30 taux, 78 jonctions catégories. Secrets Vault recréés côté TOPilot (73/73) via `migrate-vault-secrets.ts` (lecture V1 depuis `../top10crm/.env`, écriture V2 via `.env.local`).
+
+### Détails techniques
+
+- RPC Vault déjà présentes sur TOPilot (`insert_secret` / `read_secret` / `delete_secret` / `update_secret`)
+- `client_id` des accès migrés à `NULL` (absent en V1)
+- Pas de clé supplémentaire à ajouter dans `.env.local` pour l’app runtime
+
+---
+
+## **[2026-07-31] — Point 7 phase B : Accès outils + Vault**
+
+**Type :** `feature`
+**Fichiers concernés :** `actions/vault.ts`, `actions/tool-access.ts`, `lib/tools/types.ts`, `lib/tools/queries.ts`, `lib/uuid.ts`, `components/tools/password-reveal-dialog.tsx`, `components/tools/tool-access-form-drawer.tsx`, `components/tools/delete-tool-access-dialog.tsx`, `components/tools/tool-detail-page-client.tsx`, `components/tools/tool-form-drawer.tsx`, `components/tools/tools-page-client.tsx`, `app/(app)/tools/**`, `suivi.md`
+
+### Description
+
+Phase B Toolbox : création / édition / suppression d’accès (`tool_access`), secrets via Vault (révélation après preuve RLS), toggle Privé (Manager/Direction), client nullable, dialog révélation mot de passe, premier accès optionnel dans le tiroir nouvel outil.
+
+### Détails techniques
+
+- `readVaultSecret` / `createVaultSecret` / `updateVaultSecret` / `deleteVaultSecret` via `createAdminClient` + RPC ; révélation uniquement si ligne `tool_access` lisible en session
+- Carte Accès : Interne/client, identifiant, `••••••••`, actions Œil / Crayon / Corbeille, indicateur `lock-simple` si privé
+
+---
+
 ## **[2026-07-30] — Point 6 phase C : Missions liées (opp / client)**
 
 **Type :** `feature`

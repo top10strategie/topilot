@@ -4,6 +4,7 @@ import { OpportunityDetailPageClient } from "@/components/opportunities/opportun
 import { PageHero } from "@/components/layout/page-hero";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrentCollaborator } from "@/lib/auth/get-current-collaborator";
+import { isManagerOrDirection } from "@/lib/auth/roles";
 import { listCategories } from "@/lib/categories/queries";
 import { getClientById, listClients } from "@/lib/clients/queries";
 import { listCollaborators } from "@/lib/collaborators/queries";
@@ -12,6 +13,10 @@ import {
   getOpportunityById,
   listOpportunityContactOptions,
 } from "@/lib/opportunities/queries";
+import {
+  listToolLinkOptions,
+  listToolsByOpportunityId,
+} from "@/lib/tools/queries";
 
 type OpportunityDetailPageProps = {
   params: Promise<{ id: string }>;
@@ -31,6 +36,8 @@ async function OpportunityDetailContent({
     categories,
     missions,
     currentCollaborator,
+    linkedTools,
+    toolLinkOptions,
   ] = await Promise.all([
     getOpportunityById(id),
     listCollaborators(),
@@ -39,6 +46,8 @@ async function OpportunityDetailContent({
     listCategories(),
     listMissionsByOpportunityId(id),
     getCurrentCollaborator(),
+    listToolsByOpportunityId(id),
+    listToolLinkOptions(),
   ]);
 
   if (!opportunity) {
@@ -66,6 +75,13 @@ async function OpportunityDetailContent({
       missions={missions}
       opportunityOptions={opportunityOptions}
       currentCollaboratorId={currentCollaborator?.id ?? ""}
+      linkedTools={linkedTools}
+      toolLinkOptions={toolLinkOptions}
+      canManagePrivacy={
+        currentCollaborator
+          ? isManagerOrDirection(currentCollaborator.role)
+          : false
+      }
     />
   );
 }

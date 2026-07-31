@@ -55,7 +55,7 @@ import type { ClientListItem } from "@/lib/clients/types";
 import { getCollaboratorFullName } from "@/lib/collaborators/labels";
 import type { CollaboratorListItem } from "@/lib/collaborators/types";
 
-const PAGE_SIZE = 25;
+const PAGE_SIZE = 24;
 
 const CLIENT_VIEW_TABS: ListViewTab[] = [
   {
@@ -79,6 +79,7 @@ type ClientsPageClientProps = {
 type Filters = {
   categoryIds: string[];
   responsibleId: string;
+  teamId: string;
   city: string;
   missionBucket: "all" | "lt5" | "5to20" | "gt20";
   status: "active" | "inactive" | "all";
@@ -87,6 +88,7 @@ type Filters = {
 const DEFAULT_FILTERS: Filters = {
   categoryIds: [],
   responsibleId: "",
+  teamId: "",
   city: "",
   missionBucket: "all",
   status: "active",
@@ -136,6 +138,26 @@ export function ClientsPageClient({
     [collaborators],
   );
 
+  const teamOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const person of collaborators) {
+      if (person.team_id && person.team_name) {
+        map.set(person.team_id, person.team_name);
+      }
+    }
+    return [...map.entries()]
+      .map(([id, label]) => ({ id, label }))
+      .sort((a, b) => a.label.localeCompare(b.label, "fr"));
+  }, [collaborators]);
+
+  const teamIdByCollaboratorId = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const person of collaborators) {
+      map.set(person.id, person.team_id);
+    }
+    return map;
+  }, [collaborators]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLocaleLowerCase("fr");
     return clients.filter((client) => {
@@ -147,6 +169,11 @@ export function ClientsPageClient({
         client.responsible.id !== filters.responsibleId
       ) {
         return false;
+      }
+
+      if (filters.teamId) {
+        const teamId = teamIdByCollaboratorId.get(client.responsible.id);
+        if (teamId !== filters.teamId) return false;
       }
 
       if (filters.city && client.address_city !== filters.city) {
@@ -186,7 +213,7 @@ export function ClientsPageClient({
         .toLocaleLowerCase("fr");
       return blob.includes(q);
     });
-  }, [clients, filters, query]);
+  }, [clients, filters, query, teamIdByCollaboratorId]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -254,12 +281,13 @@ export function ClientsPageClient({
       />
 
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4 md:px-6">
-        <ListViewTabsContent value="cards">
+        <ListViewTabsContent value="cards" className="flex-none">
           {pageItems.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               {query.trim() ||
               filters.status !== "active" ||
               filters.responsibleId ||
+              filters.teamId ||
               filters.city ||
               filters.missionBucket !== "all" ||
               filters.categoryIds.length > 0
@@ -317,7 +345,7 @@ export function ClientsPageClient({
           )}
         </ListViewTabsContent>
 
-        <ListViewTabsContent value="table">
+        <ListViewTabsContent value="table" className="flex-none">
           <div className="overflow-x-auto rounded-md border">
             <table className="w-full min-w-[720px] text-left text-sm">
               <thead className="border-b bg-muted/40 text-xs text-muted-foreground">
@@ -341,6 +369,7 @@ export function ClientsPageClient({
                       {query.trim() ||
                       filters.status !== "active" ||
                       filters.responsibleId ||
+                      filters.teamId ||
                       filters.city ||
                       filters.missionBucket !== "all" ||
                       filters.categoryIds.length > 0
@@ -398,7 +427,7 @@ export function ClientsPageClient({
           </div>
         </ListViewTabsContent>
 
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
+        <div className="mt-6 flex shrink-0 flex-wrap items-center justify-between gap-2 border-t pt-4 text-sm text-muted-foreground">
           <p>Nombre de clients : {filtered.length}</p>
           {filtered.length > PAGE_SIZE ? (
             <div className="flex items-center gap-2">
@@ -480,6 +509,30 @@ export function ClientsPageClient({
                     {responsibleOptions.map((person) => (
                       <SelectItem key={person.id} value={person.id}>
                         {getCollaboratorFullName(person)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid min-w-0 gap-2">
+                <Label>Pôle</Label>
+                <Select
+                  value={draftFilters.teamId || "all"}
+                  onValueChange={(value) =>
+                    setDraftFilters((prev) => ({
+                      ...prev,
+                      teamId: value === "all" ? "" : value,
+                    }))
+                  }
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Tous" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tous</SelectItem>
+                    {teamOptions.map((team) => (
+                      <SelectItem key={team.id} value={team.id}>
+                        {team.label}
                       </SelectItem>
                     ))}
                   </SelectContent>

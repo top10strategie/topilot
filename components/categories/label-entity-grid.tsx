@@ -82,7 +82,7 @@ export function LabelEntityGrid({
                   </IconActionButton>
                   <IconActionButton
                     label={`Supprimer ${item.label}`}
-                    variant="destructive"
+                    attention
                     onClick={() => onDelete(item)}
                   >
                     <Trash className="size-4" />
