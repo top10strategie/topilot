@@ -203,6 +203,4 @@ SELECT
 
 Si les comptes correspondent de part et d'autre : `DROP SCHEMA staging CASCADE;`.
 
-> **Point d'attention particulière** : les secrets Vault eux-mêmes (mots de passe déchiffrés) ne se migrent **pas** par cette méthode — Vault est propre à chaque projet Supabase.
-
-> Script disponible pour faire la migration automatiquement : `migrate-vault-secrets.ts`
+> **Point d'attention particulière** : les secrets Vault eux-mêmes (mots de passe déchiffrés) ne se migrent **pas** par cette méthode — Vault est propre à chaque projet Supabase. La migration one-shot des secrets a été réalisée hors dépôt (script retiré après exécution réussie).

@@ -38,7 +38,7 @@ export default function AppShellLayout({
             <Suspense fallback={<div className="h-14 shrink-0 border-b" />}>
               <AppHeader />
             </Suspense>
-            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
               {children}
             </div>
           </SidebarInset>

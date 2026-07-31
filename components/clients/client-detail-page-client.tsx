@@ -24,6 +24,7 @@ import { IconActionButton } from "@/components/layout/icon-action-button";
 import { PageHero } from "@/components/layout/page-hero";
 import { MissionConsultationDrawer } from "@/components/missions/mission-consultation-drawer";
 import { MissionFormDrawer } from "@/components/missions/mission-form-drawer";
+import { EntityLinkedToolsSection } from "@/components/tools/entity-linked-tools-section";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -60,6 +61,7 @@ import type {
   MissionListItem,
   MissionOpportunityOption,
 } from "@/lib/missions/types";
+import type { LinkedToolItem } from "@/lib/tools/types";
 
 type ClientDetailPageClientProps = {
   client: ClientDetail;
@@ -69,6 +71,9 @@ type ClientDetailPageClientProps = {
   missions: MissionListItem[];
   opportunityOptions: MissionOpportunityOption[];
   currentCollaboratorId: string;
+  linkedTools: LinkedToolItem[];
+  toolLinkOptions: Array<{ id: string; tool_name: string }>;
+  canManagePrivacy: boolean;
 };
 
 export function ClientDetailPageClient({
@@ -79,6 +84,9 @@ export function ClientDetailPageClient({
   missions,
   opportunityOptions,
   currentCollaboratorId,
+  linkedTools,
+  toolLinkOptions,
+  canManagePrivacy,
 }: ClientDetailPageClientProps) {
   const router = useRouter();
   const { pushDrawer } = useDrawerStack();
@@ -413,7 +421,7 @@ export function ClientDetailPageClient({
                                   </IconActionButton>
                                   <IconActionButton
                                     label={`Supprimer ${getContactFullName(contact)}`}
-                                    variant="destructive"
+                                    attention
                                     onClick={() => setPendingDelete(contact)}
                                   >
                                     <Trash className="size-4" />
@@ -539,11 +547,15 @@ export function ClientDetailPageClient({
                 </EntityDocumentationSection>
               }
               tools={
-                <EntityDocumentationSection title="Outils">
-                  <p className="text-sm text-muted-foreground">
-                    Disponible au point Toolbox.
-                  </p>
-                </EntityDocumentationSection>
+                <EntityLinkedToolsSection
+                  entity="client"
+                  entityId={client.id}
+                  tools={linkedTools}
+                  linkOptions={toolLinkOptions}
+                  categories={categories}
+                  collaborators={collaborators}
+                  canManagePrivacy={canManagePrivacy}
+                />
               }
               wiki={
                 <EntityDocumentationSection title="Wiki">

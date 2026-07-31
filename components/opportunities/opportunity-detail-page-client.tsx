@@ -12,6 +12,7 @@ import { PageHero } from "@/components/layout/page-hero";
 import { MissionConsultationDrawer } from "@/components/missions/mission-consultation-drawer";
 import { MissionFormDrawer } from "@/components/missions/mission-form-drawer";
 import { OpportunityFormDrawer } from "@/components/opportunities/opportunity-form-drawer";
+import { EntityLinkedToolsSection } from "@/components/tools/entity-linked-tools-section";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -41,6 +42,7 @@ import type {
   OpportunityContactOption,
   OpportunityDetail,
 } from "@/lib/opportunities/types";
+import type { LinkedToolItem } from "@/lib/tools/types";
 
 type OpportunityDetailPageClientProps = {
   opportunity: OpportunityDetail;
@@ -52,6 +54,9 @@ type OpportunityDetailPageClientProps = {
   missions: MissionListItem[];
   opportunityOptions: MissionOpportunityOption[];
   currentCollaboratorId: string;
+  linkedTools: LinkedToolItem[];
+  toolLinkOptions: Array<{ id: string; tool_name: string }>;
+  canManagePrivacy: boolean;
 };
 
 export function OpportunityDetailPageClient({
@@ -64,6 +69,9 @@ export function OpportunityDetailPageClient({
   missions,
   opportunityOptions,
   currentCollaboratorId,
+  linkedTools,
+  toolLinkOptions,
+  canManagePrivacy,
 }: OpportunityDetailPageClientProps) {
   const router = useRouter();
   const { pushDrawer } = useDrawerStack();
@@ -442,11 +450,15 @@ export function OpportunityDetailPageClient({
                   Disponible au point Wiki &amp; Documents.
                 </p>
               </EntityDocumentationSection>
-              <EntityDocumentationSection title="Outils">
-                <p className="text-sm text-muted-foreground">
-                  Disponible au point Toolbox.
-                </p>
-              </EntityDocumentationSection>
+              <EntityLinkedToolsSection
+                entity="opportunity"
+                entityId={opportunity.id}
+                tools={linkedTools}
+                linkOptions={toolLinkOptions}
+                categories={categories}
+                collaborators={collaborators}
+                canManagePrivacy={canManagePrivacy}
+              />
             </div>
           </TabsContent>
         </Tabs>

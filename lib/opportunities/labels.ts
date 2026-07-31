@@ -26,7 +26,7 @@ const KANBAN_STATUS_LABELS: Record<OpportunityKanbanStatus, string> = {
   besoin_specifie: "Besoin spécifié",
   proposition_envoyee: "Proposition envoyée",
   gagne: "Gagné",
-  perdue: "Perdue",
+  perdue: "Perdu",
 };
 
 const PRIORITY_LABELS: Record<OpportunityPriority, string> = {

@@ -281,6 +281,8 @@ Composant : icônes **Phosphor Icons**, dans un `Button` ShadCN.
 |Attention|`destructive`|
 |Setting|`ghost`|
 
+**Suppression** : au repos, variant **Basique** (`outline`) ; au survol / focus / clic, variant **Attention** (`destructive`). Via `IconActionButton` avec `attention`.
+
 Toute la gestion des couleurs, tailles, états hover/disabled est déléguée aux **variables/tokens ShadCN** du thème (plus de règles ad hoc à maintenir séparément).
 
 ### 11.1 Icônes fonctionnelles

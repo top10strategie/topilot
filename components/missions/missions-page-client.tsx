@@ -14,6 +14,7 @@ import {
 import { CategoryMultiCombobox } from "@/components/categories/category-multi-combobox";
 import { useDrawerStack } from "@/components/drawers/drawer-stack-context";
 import { IconActionButton } from "@/components/layout/icon-action-button";
+import { ListPaginationFooter } from "@/components/layout/list-pagination-footer";
 import {
   ListViewTabs,
   ListViewTabsContent,
@@ -68,7 +69,7 @@ import type {
 } from "@/lib/missions/types";
 import { cn } from "@/lib/utils";
 
-const PAGE_SIZE = 25;
+const PAGE_SIZE = 24;
 
 const MISSION_VIEW_TABS: ListViewTab[] = [
   {
@@ -100,6 +101,7 @@ type MissionsPageClientProps = {
 type Filters = {
   clientId: string;
   responsibleId: string;
+  teamId: string;
   categoryIds: string[];
   scope: MissionScope | "";
   statuses: MissionKanbanStatus[];
@@ -112,6 +114,7 @@ type Filters = {
 const DEFAULT_FILTERS: Filters = {
   clientId: "",
   responsibleId: "",
+  teamId: "",
   categoryIds: [],
   scope: "",
   statuses: [],
@@ -184,6 +187,26 @@ export function MissionsPageClient({
     [collaborators],
   );
 
+  const teamOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const person of collaborators) {
+      if (person.team_id && person.team_name) {
+        map.set(person.team_id, person.team_name);
+      }
+    }
+    return [...map.entries()]
+      .map(([id, label]) => ({ id, label }))
+      .sort((a, b) => a.label.localeCompare(b.label, "fr"));
+  }, [collaborators]);
+
+  const teamIdByCollaboratorId = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const person of collaborators) {
+      map.set(person.id, person.team_id);
+    }
+    return map;
+  }, [collaborators]);
+
   const clientOptions = useMemo(
     () =>
       [...clients].sort((a, b) =>
@@ -204,6 +227,11 @@ export function MissionsPageClient({
         item.responsible.id !== filters.responsibleId
       ) {
         return false;
+      }
+
+      if (filters.teamId) {
+        const teamId = teamIdByCollaboratorId.get(item.responsible.id);
+        if (teamId !== filters.teamId) return false;
       }
 
       if (filters.categoryIds.length > 0) {
@@ -241,7 +269,7 @@ export function MissionsPageClient({
         .toLocaleLowerCase("fr");
       return blob.includes(q);
     });
-  }, [missions, filters, query]);
+  }, [missions, filters, query, teamIdByCollaboratorId]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -249,6 +277,7 @@ export function MissionsPageClient({
   const hasActiveFilters =
     Boolean(filters.clientId) ||
     Boolean(filters.responsibleId) ||
+    Boolean(filters.teamId) ||
     filters.categoryIds.length > 0 ||
     Boolean(filters.scope) ||
     filters.statuses.length > 0 ||
@@ -336,15 +365,15 @@ export function MissionsPageClient({
 
       <div
         className={cn(
-          "flex min-h-0 flex-1 flex-col px-4 py-4 md:px-6",
-          view === "kanban" ? "overflow-hidden" : "overflow-y-auto",
+          "min-h-0 flex-1 px-4 py-4 md:px-6",
+          view === "kanban" ? "flex flex-col overflow-hidden" : "overflow-y-auto",
         )}
       >
         <ListViewTabsContent value="kanban" className="min-h-0 flex-1">
           <MissionsKanban items={filtered} />
         </ListViewTabsContent>
 
-        <ListViewTabsContent value="cards">
+        <ListViewTabsContent value="cards" className="flex-none">
           {filtered.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               {query.trim() || hasActiveFilters
@@ -411,7 +440,7 @@ export function MissionsPageClient({
           )}
         </ListViewTabsContent>
 
-        <ListViewTabsContent value="table">
+        <ListViewTabsContent value="table" className="flex-none">
           <div className="overflow-x-auto rounded-md border">
             <table className="w-full min-w-[960px] text-left text-sm">
               <thead className="border-b bg-muted/40 text-xs text-muted-foreground">
@@ -483,38 +512,18 @@ export function MissionsPageClient({
             </table>
           </div>
         </ListViewTabsContent>
-
-        {view !== "kanban" ? (
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
-            <p>Nombre de missions : {filtered.length}</p>
-            {filtered.length > PAGE_SIZE ? (
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={page <= 1}
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                >
-                  Précédent
-                </Button>
-                <span>
-                  Page : {page}/{totalPages}
-                </span>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={page >= totalPages}
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                >
-                  Suivant
-                </Button>
-              </div>
-            ) : null}
-          </div>
-        ) : null}
       </div>
+
+      {view !== "kanban" ? (
+        <ListPaginationFooter
+          countLabel="Nombre de missions"
+          count={filtered.length}
+          page={page}
+          totalPages={totalPages}
+          pageSize={PAGE_SIZE}
+          onPageChange={setPage}
+        />
+      ) : null}
 
       <Dialog open={filterOpen} onOpenChange={setFilterOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto overflow-x-visible sm:max-w-2xl">
@@ -571,6 +580,30 @@ export function MissionsPageClient({
                     {responsibleOptions.map((person) => (
                       <SelectItem key={person.id} value={person.id}>
                         {getCollaboratorFullName(person)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid min-w-0 gap-2">
+                <Label>Pôle</Label>
+                <Select
+                  value={draftFilters.teamId || "all"}
+                  onValueChange={(value) =>
+                    setDraftFilters((prev) => ({
+                      ...prev,
+                      teamId: value === "all" ? "" : value,
+                    }))
+                  }
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Tous" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tous</SelectItem>
+                    {teamOptions.map((team) => (
+                      <SelectItem key={team.id} value={team.id}>
+                        {team.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
