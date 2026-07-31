@@ -4,6 +4,7 @@ import { ClientDetailPageClient } from "@/components/clients/client-detail-page-
 import { PageHero } from "@/components/layout/page-hero";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrentCollaborator } from "@/lib/auth/get-current-collaborator";
+import { isManagerOrDirection } from "@/lib/auth/roles";
 import { listCategories } from "@/lib/categories/queries";
 import { getClientById, listClients } from "@/lib/clients/queries";
 import { listCollaborators } from "@/lib/collaborators/queries";
@@ -11,6 +12,10 @@ import {
   listMissionOpportunityOptions,
   listMissionsByClientId,
 } from "@/lib/missions/queries";
+import {
+  listToolLinkOptions,
+  listToolsByClientId,
+} from "@/lib/tools/queries";
 
 type ClientDetailPageProps = {
   params: Promise<{ id: string }>;
@@ -30,6 +35,8 @@ async function ClientDetailContent({
     missions,
     opportunityOptions,
     currentCollaborator,
+    linkedTools,
+    toolLinkOptions,
   ] = await Promise.all([
     getClientById(id),
     listCollaborators(),
@@ -38,6 +45,8 @@ async function ClientDetailContent({
     listMissionsByClientId(id),
     listMissionOpportunityOptions(),
     getCurrentCollaborator(),
+    listToolsByClientId(id),
+    listToolLinkOptions(),
   ]);
 
   if (!client) {
@@ -53,6 +62,13 @@ async function ClientDetailContent({
       missions={missions}
       opportunityOptions={opportunityOptions}
       currentCollaboratorId={currentCollaborator?.id ?? ""}
+      linkedTools={linkedTools}
+      toolLinkOptions={toolLinkOptions}
+      canManagePrivacy={
+        currentCollaborator
+          ? isManagerOrDirection(currentCollaborator.role)
+          : false
+      }
     />
   );
 }

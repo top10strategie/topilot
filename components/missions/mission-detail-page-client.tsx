@@ -14,6 +14,7 @@ import {
 import { IconActionButton } from "@/components/layout/icon-action-button";
 import { PageHero } from "@/components/layout/page-hero";
 import { MissionFormDrawer } from "@/components/missions/mission-form-drawer";
+import { EntityLinkedToolsSection } from "@/components/tools/entity-linked-tools-section";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -30,6 +31,7 @@ import type {
   MissionDetail,
   MissionOpportunityOption,
 } from "@/lib/missions/types";
+import type { LinkedToolItem } from "@/lib/tools/types";
 
 type MissionDetailPageClientProps = {
   mission: MissionDetail;
@@ -39,6 +41,9 @@ type MissionDetailPageClientProps = {
   opportunityOptions: MissionOpportunityOption[];
   currentCollaboratorId: string;
   linkedClient: ClientDetail | null;
+  linkedTools: LinkedToolItem[];
+  toolLinkOptions: Array<{ id: string; tool_name: string }>;
+  canManagePrivacy: boolean;
 };
 
 export function MissionDetailPageClient({
@@ -49,6 +54,9 @@ export function MissionDetailPageClient({
   opportunityOptions,
   currentCollaboratorId,
   linkedClient,
+  linkedTools,
+  toolLinkOptions,
+  canManagePrivacy,
 }: MissionDetailPageClientProps) {
   const router = useRouter();
   const { pushDrawer } = useDrawerStack();
@@ -274,11 +282,15 @@ export function MissionDetailPageClient({
                 </EntityDocumentationSection>
               }
               tools={
-                <EntityDocumentationSection title="Outils">
-                  <p className="text-sm text-muted-foreground">
-                    Disponible au point Toolbox.
-                  </p>
-                </EntityDocumentationSection>
+                <EntityLinkedToolsSection
+                  entity="mission"
+                  entityId={mission.id}
+                  tools={linkedTools}
+                  linkOptions={toolLinkOptions}
+                  categories={categories}
+                  collaborators={collaborators}
+                  canManagePrivacy={canManagePrivacy}
+                />
               }
               wiki={
                 <EntityDocumentationSection title="Wiki">

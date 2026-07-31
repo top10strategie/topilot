@@ -5,12 +5,17 @@ import { PageHero } from "@/components/layout/page-hero";
 import { Skeleton } from "@/components/ui/skeleton";
 import { listCategories } from "@/lib/categories/queries";
 import { getCurrentCollaborator } from "@/lib/auth/get-current-collaborator";
+import { isManagerOrDirection } from "@/lib/auth/roles";
 import { getClientById, listClients } from "@/lib/clients/queries";
 import { listCollaborators } from "@/lib/collaborators/queries";
 import {
   getMissionById,
   listMissionOpportunityOptions,
 } from "@/lib/missions/queries";
+import {
+  listToolLinkOptions,
+  listToolsByMissionId,
+} from "@/lib/tools/queries";
 
 type MissionDetailPageProps = {
   params: Promise<{ id: string }>;
@@ -29,6 +34,8 @@ async function MissionDetailContent({
     categories,
     opportunityOptions,
     currentCollaborator,
+    linkedTools,
+    toolLinkOptions,
   ] = await Promise.all([
     getMissionById(id),
     listCollaborators(),
@@ -36,6 +43,8 @@ async function MissionDetailContent({
     listCategories(),
     listMissionOpportunityOptions(),
     getCurrentCollaborator(),
+    listToolsByMissionId(id),
+    listToolLinkOptions(),
   ]);
 
   if (!mission) {
@@ -55,6 +64,13 @@ async function MissionDetailContent({
       opportunityOptions={opportunityOptions}
       currentCollaboratorId={currentCollaborator?.id ?? ""}
       linkedClient={linkedClient}
+      linkedTools={linkedTools}
+      toolLinkOptions={toolLinkOptions}
+      canManagePrivacy={
+        currentCollaborator
+          ? isManagerOrDirection(currentCollaborator.role)
+          : false
+      }
     />
   );
 }

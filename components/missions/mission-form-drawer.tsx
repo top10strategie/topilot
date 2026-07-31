@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition, type FormEvent } from "react";
-import { FolderSimplePlus } from "@phosphor-icons/react";
+import { Buildings, FolderSimplePlus } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { createCategory, updateCategory } from "@/actions/categories";
 import {
@@ -10,6 +10,7 @@ import {
 } from "@/actions/missions";
 import { CategoryMultiCombobox } from "@/components/categories/category-multi-combobox";
 import { LabelEntityFormDrawer } from "@/components/categories/label-entity-form-drawer";
+import { ClientFormDrawer } from "@/components/clients/client-form-drawer";
 import type { DrawerHelpers } from "@/components/drawers/drawer-stack-context";
 import { useDrawerStack } from "@/components/drawers/drawer-stack-context";
 import { Button } from "@/components/ui/button";
@@ -119,7 +120,7 @@ export function MissionFormDrawer({
   const [endAt, setEndAt] = useState(mission?.end_at ?? "");
   const [notes, setNotes] = useState(mission?.notes ?? "");
 
-  const [clients] = useState<LocalClient[]>(() =>
+  const [clients, setClients] = useState<LocalClient[]>(() =>
     [...initialClients]
       .map((c) => ({ id: c.id, client_name: c.client_name }))
       .sort((a, b) => a.client_name.localeCompare(b.client_name, "fr")),
@@ -192,6 +193,31 @@ export function MissionFormDrawer({
       ),
     });
     if (created) injectCategory(created);
+  };
+
+  const openCreateClient = async () => {
+    if (lockedClientId) return;
+    const created = await pushDrawer<{ id: string; client_name: string }>({
+      title: "Nouveau client",
+      content: (nested) => (
+        <ClientFormDrawer
+          mode="create"
+          collaborators={collaborators}
+          availableCategories={availableCategories}
+          helpers={nested}
+        />
+      ),
+    });
+    if (created) {
+      setClients((prev) => {
+        if (prev.some((c) => c.id === created.id)) return prev;
+        return [...prev, created].sort((a, b) =>
+          a.client_name.localeCompare(b.client_name, "fr"),
+        );
+      });
+      setClientId(created.id);
+      setOpportunityId("");
+    }
   };
 
   const buildIdentificationFormData = (): FormData => {
@@ -372,9 +398,22 @@ export function MissionFormDrawer({
 
           {showClientField ? (
             <div className="grid gap-2">
-              <Label>
-                Client <span className="text-destructive">*</span>
-              </Label>
+              <div className="flex items-center justify-between gap-2">
+                <Label>
+                  Client <span className="text-destructive">*</span>
+                </Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  aria-label="Nouveau client"
+                  title="Nouveau client"
+                  disabled={isPending}
+                  onClick={() => void openCreateClient()}
+                >
+                  <Buildings className="size-4" />
+                </Button>
+              </div>
               <Select
                 value={clientId || "__unset__"}
                 onValueChange={(value) => {
