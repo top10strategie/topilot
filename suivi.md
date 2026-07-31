@@ -1,5 +1,16 @@
 # Suivi des actions — TOPilot
 
+## **[2026-07-31] — Nettoyage artefacts migration toolbox**
+
+**Type :** `chore`
+**Fichiers concernés :** `scripts/migrate-*.ts` (supprimés), `.env.example`, `.cursor/rules/08_database_rules.mdc.md`, `suivi.md`
+
+### Description
+
+Retrait des scripts one-shot Top10CRM → TOPilot (migration déjà exécutée). Conservation de la doc historique (`08_database_rules` § migration, entrée phase 0) et du runtime Vault / accès outils.
+
+---
+
 ## **[2026-07-31] — Libellés kanban, filtres pôle/propriétaire, création client**
 
 **Type :** `ux`
