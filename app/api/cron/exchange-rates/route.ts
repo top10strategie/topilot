@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { syncAllUsedCurrencies } from "@/lib/exchange-rate/sync-rates";
 
-export const dynamic = "force-dynamic";
+/** Limite Vercel pour le sync Frankfurter multi-devises. */
 export const maxDuration = 60;
 
 function verifyCronSecret(request: Request): boolean {
@@ -15,6 +15,8 @@ function verifyCronSecret(request: Request): boolean {
 /**
  * Cron Vercel — mise à jour des taux de change au 1er de chaque mois.
  * Auth : `Authorization: Bearer <CRON_SECRET>`.
+ * Dynamique par nature (lecture du header Authorization) — pas de
+ * `export const dynamic` (incompatible avec `cacheComponents`).
  */
 export async function GET(request: Request) {
   if (!verifyCronSecret(request)) {

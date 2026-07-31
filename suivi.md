@@ -1,6 +1,30 @@
 # Suivi des actions — TOPilot
 
+## **[2026-07-31] — Footer fixe pagination listes**
+
+**Type :** `ux`
+**Fichiers concernés :** `components/layout/list-pagination-footer.tsx`, `components/{tools,clients,missions,opportunities}/*-page-client.tsx`, `app/(app)/layout.tsx`, `suivi.md`
+
+### Description
+
+Compteur + pagination en pied de page fixe ; la zone de résultats défile au-dessus. Kanban missions/opportunités : pas de barre (comportement inchangé). Shell app : `overflow-hidden` pour laisser chaque page gérer son scroll.
+
+---
+
+## **[2026-07-31] — Fix build cron exchange-rates (cacheComponents)**
+
+
+**Type :** `fix`
+**Fichiers concernés :** `app/api/cron/exchange-rates/route.ts`, `suivi.md`
+
+### Description
+
+Retrait de `export const dynamic = "force-dynamic"` incompatible avec `nextConfig.cacheComponents` (Next 16 / Turbopack). Build OK.
+
+---
+
 ## **[2026-07-31] — Nettoyage artefacts migration toolbox**
+
 
 **Type :** `chore`
 **Fichiers concernés :** `scripts/migrate-*.ts` (supprimés), `.env.example`, `.cursor/rules/08_database_rules.mdc.md`, `suivi.md`

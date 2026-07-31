@@ -14,6 +14,7 @@ import {
 import { CategoryMultiCombobox } from "@/components/categories/category-multi-combobox";
 import { useDrawerStack } from "@/components/drawers/drawer-stack-context";
 import { IconActionButton } from "@/components/layout/icon-action-button";
+import { ListPaginationFooter } from "@/components/layout/list-pagination-footer";
 import {
   ListViewTabs,
   ListViewTabsContent,
@@ -364,8 +365,8 @@ export function MissionsPageClient({
 
       <div
         className={cn(
-          "flex min-h-0 flex-1 flex-col px-4 py-4 md:px-6",
-          view === "kanban" ? "overflow-hidden" : "overflow-y-auto",
+          "min-h-0 flex-1 px-4 py-4 md:px-6",
+          view === "kanban" ? "flex flex-col overflow-hidden" : "overflow-y-auto",
         )}
       >
         <ListViewTabsContent value="kanban" className="min-h-0 flex-1">
@@ -511,38 +512,18 @@ export function MissionsPageClient({
             </table>
           </div>
         </ListViewTabsContent>
-
-        {view !== "kanban" ? (
-          <div className="mt-6 flex shrink-0 flex-wrap items-center justify-between gap-2 border-t pt-4 text-sm text-muted-foreground">
-            <p>Nombre de missions : {filtered.length}</p>
-            {filtered.length > PAGE_SIZE ? (
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={page <= 1}
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                >
-                  Précédent
-                </Button>
-                <span>
-                  Page : {page}/{totalPages}
-                </span>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={page >= totalPages}
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                >
-                  Suivant
-                </Button>
-              </div>
-            ) : null}
-          </div>
-        ) : null}
       </div>
+
+      {view !== "kanban" ? (
+        <ListPaginationFooter
+          countLabel="Nombre de missions"
+          count={filtered.length}
+          page={page}
+          totalPages={totalPages}
+          pageSize={PAGE_SIZE}
+          onPageChange={setPage}
+        />
+      ) : null}
 
       <Dialog open={filterOpen} onOpenChange={setFilterOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto overflow-x-visible sm:max-w-2xl">

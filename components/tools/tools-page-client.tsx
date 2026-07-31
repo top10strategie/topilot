@@ -15,6 +15,7 @@ import { deleteToolRecord } from "@/actions/tools";
 import { CategoryMultiCombobox } from "@/components/categories/category-multi-combobox";
 import { useDrawerStack } from "@/components/drawers/drawer-stack-context";
 import { IconActionButton } from "@/components/layout/icon-action-button";
+import { ListPaginationFooter } from "@/components/layout/list-pagination-footer";
 import {
   ListViewTabs,
   ListViewTabsContent,
@@ -325,7 +326,7 @@ export function ToolsPageClient({
 
       <div
         className={cn(
-          "flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4 md:px-6",
+          "min-h-0 flex-1 overflow-y-auto px-4 py-4 md:px-6",
         )}
       >
         <ListViewTabsContent value="cards" className="flex-none">
@@ -471,36 +472,16 @@ export function ToolsPageClient({
             </table>
           </div>
         </ListViewTabsContent>
-
-        <div className="mt-6 flex shrink-0 flex-wrap items-center justify-between gap-2 border-t pt-4 text-sm text-muted-foreground">
-          <p>Nombre d&apos;outils : {filtered.length}</p>
-          {filtered.length > PAGE_SIZE ? (
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-              >
-                Précédent
-              </Button>
-              <span>
-                Page : {page}/{totalPages}
-              </span>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              >
-                Suivant
-              </Button>
-            </div>
-          ) : null}
-        </div>
       </div>
+
+      <ListPaginationFooter
+        countLabel="Nombre d'outils"
+        count={filtered.length}
+        page={page}
+        totalPages={totalPages}
+        pageSize={PAGE_SIZE}
+        onPageChange={setPage}
+      />
 
       <Dialog open={filterOpen} onOpenChange={setFilterOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto overflow-x-visible sm:max-w-2xl">
