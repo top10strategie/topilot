@@ -1,8 +1,7 @@
 import type { ToolSubscriptionItem, ToolSubscriptionPlan } from "./types";
 
 /**
- * Utilitaires de tarification des outils — adapté de
- * `old_version/lib/tool-subscription/pricing.ts`.
+ * Utilitaires de tarification des outils.
  * Les montants sont stockés et manipulés en **centimes** (colonne
  * `tool_subscription_price.amount`, cf. `04_database_schema.mdc`).
  */
