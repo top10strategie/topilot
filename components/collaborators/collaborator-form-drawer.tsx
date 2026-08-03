@@ -7,6 +7,7 @@ import {
   createCollaborator,
   updateCollaborator,
 } from "@/actions/collaborators";
+import { DrawerBody, DrawerFooterActions } from "@/components/drawers/drawer-section";
 import type { DrawerHelpers } from "@/components/drawers/drawer-stack-context";
 import { useDrawerStack } from "@/components/drawers/drawer-stack-context";
 import { TeamFormDrawer } from "@/components/collaborators/team-form-drawer";
@@ -138,7 +139,7 @@ export function CollaboratorFormDrawer({
 
   return (
     <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
-        <div className="flex-1 space-y-4">
+      <DrawerBody>
         <VisualFileField
           id="collaborator_avatar"
           label="Avatar"
@@ -319,9 +320,9 @@ export function CollaboratorFormDrawer({
             <p className="text-sm text-destructive">{fieldErrors.job_title}</p>
           ) : null}
         </div>
-      </div>
+      </DrawerBody>
 
-      <div className="mt-6 flex shrink-0 justify-end gap-2 border-t pt-4">
+      <DrawerFooterActions>
         <Button
           type="button"
           variant="outline"
@@ -333,7 +334,7 @@ export function CollaboratorFormDrawer({
         <Button type="submit" disabled={isPending}>
           {isPending ? "Enregistrement…" : submitLabel}
         </Button>
-      </div>
+      </DrawerFooterActions>
     </form>
   );
 }

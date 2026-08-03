@@ -3,6 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { requireActiveCollaboratorAction } from "@/lib/auth/require-action";
 import { uploadClientLogo } from "@/lib/clients/visuals";
+import {
+  formBool,
+  formCategoryIds,
+  formFile,
+  formOptional,
+  formText,
+} from "@/lib/form-data";
 import { createClient } from "@/lib/supabase/server";
 
 export type ClientActionResult =
@@ -23,33 +30,6 @@ export type ClientActionResult =
         >
       >;
     };
-
-function formText(formData: FormData, key: string): string {
-  const value = formData.get(key);
-  return typeof value === "string" ? value.trim() : "";
-}
-
-function formOptional(formData: FormData, key: string): string | null {
-  const value = formText(formData, key);
-  return value.length > 0 ? value : null;
-}
-
-function formBool(formData: FormData, key: string, fallback = true): boolean {
-  const value = formData.get(key);
-  if (value === null) return fallback;
-  return value === "true" || value === "on" || value === "1";
-}
-
-function formCategoryIds(formData: FormData): string[] {
-  return formData
-    .getAll("category_ids")
-    .filter((v): v is string => typeof v === "string" && v.length > 0);
-}
-
-function formFile(formData: FormData, key: string): File | null {
-  const value = formData.get(key);
-  return value instanceof File && value.size > 0 ? value : null;
-}
 
 function revalidateClients(id?: string) {
   revalidatePath("/clients");

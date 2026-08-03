@@ -7,6 +7,7 @@ import { createCategory, updateCategory } from "@/actions/categories";
 import { createTeam, updateTeam } from "@/actions/teams";
 import { CategoryMultiCombobox } from "@/components/categories/category-multi-combobox";
 import { LabelEntityFormDrawer } from "@/components/categories/label-entity-form-drawer";
+import { DrawerBody, DrawerFooterActions } from "@/components/drawers/drawer-section";
 import type { DrawerHelpers } from "@/components/drawers/drawer-stack-context";
 import { useDrawerStack } from "@/components/drawers/drawer-stack-context";
 import { Button } from "@/components/ui/button";
@@ -137,7 +138,7 @@ export function TeamFormDrawer({
 
   return (
     <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
-      <div className="flex-1 space-y-4">
+      <DrawerBody>
         <div className="grid gap-2">
           <Label htmlFor="team_name">
             Nom <span className="text-destructive">*</span>
@@ -202,9 +203,9 @@ export function TeamFormDrawer({
             <p className="text-sm text-destructive">{fieldErrors.notes}</p>
           ) : null}
         </div>
-      </div>
+      </DrawerBody>
 
-      <div className="mt-6 flex shrink-0 justify-end gap-2 border-t pt-4">
+      <DrawerFooterActions>
         <Button
           type="button"
           variant="outline"
@@ -216,7 +217,7 @@ export function TeamFormDrawer({
         <Button type="submit" disabled={isPending}>
           {isPending ? "Enregistrement…" : submitLabel}
         </Button>
-      </div>
+      </DrawerFooterActions>
     </form>
   );
 }

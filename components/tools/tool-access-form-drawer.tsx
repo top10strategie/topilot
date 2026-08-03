@@ -8,6 +8,7 @@ import {
   updateToolAccessRecord,
 } from "@/actions/tool-access";
 import { ClientFormDrawer } from "@/components/clients/client-form-drawer";
+import { DrawerBody, DrawerFooterActions } from "@/components/drawers/drawer-section";
 import type { DrawerHelpers } from "@/components/drawers/drawer-stack-context";
 import { useDrawerStack } from "@/components/drawers/drawer-stack-context";
 import { Button } from "@/components/ui/button";
@@ -165,7 +166,7 @@ export function ToolAccessFormDrawer({
       onSubmit={handleSubmit}
       noValidate
     >
-      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto">
+      <DrawerBody>
         <div className="space-y-2">
           <div className="flex flex-wrap items-center gap-2">
             <Label className="shrink-0">Client</Label>
@@ -295,9 +296,9 @@ export function ToolAccessFormDrawer({
             </p>
           ) : null}
         </div>
-      </div>
+      </DrawerBody>
 
-      <div className="mt-6 flex shrink-0 justify-end gap-2 border-t pt-4">
+      <DrawerFooterActions>
         <Button
           type="button"
           variant="outline"
@@ -313,7 +314,7 @@ export function ToolAccessFormDrawer({
               ? "Créer"
               : "Enregistrer"}
         </Button>
-      </div>
+      </DrawerFooterActions>
     </form>
   );
 }

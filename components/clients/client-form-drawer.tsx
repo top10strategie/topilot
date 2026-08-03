@@ -14,8 +14,10 @@ import {
   ContactFormDrawer,
   type ContactFormResult,
 } from "@/components/clients/contact-form-drawer";
+import { DrawerBody, DrawerFooterActions } from "@/components/drawers/drawer-section";
 import type { DrawerHelpers } from "@/components/drawers/drawer-stack-context";
 import { useDrawerStack } from "@/components/drawers/drawer-stack-context";
+import { EntityFormDocumentationBlock } from "@/components/layout/entity-form-documentation-block";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -263,7 +265,7 @@ export function ClientFormDrawer({
 
   return (
     <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
-      <div className="flex-1 space-y-6">
+      <DrawerBody className="space-y-6">
         <section className="space-y-4">
           <h3 className="text-sm font-semibold">Identification</h3>
 
@@ -489,16 +491,24 @@ export function ClientFormDrawer({
               />
             </div>
 
-            <p className="text-xs text-muted-foreground">
-              Documents et outils back-office : disponibles sur la fiche client
-              (documents) / au point Toolbox (outils).
-            </p>
+            {clientId ? (
+              <div className="space-y-3 border-t pt-4">
+                <h4 className="text-sm font-semibold">Documentations</h4>
+                <EntityFormDocumentationBlock
+                  entity="client"
+                  entityId={clientId}
+                  includeWikis
+                  categories={categories}
+                  collaborators={collaborators}
+                />
+              </div>
+            ) : null}
           </section>
         ) : null}
-      </div>
+      </DrawerBody>
 
       {showComplement ? (
-        <div className="mt-6 flex shrink-0 justify-end gap-2 border-t pt-4">
+        <DrawerFooterActions>
           <Button
             type="button"
             variant="outline"
@@ -514,9 +524,9 @@ export function ClientFormDrawer({
                 ? "Créer"
                 : "Enregistrer"}
           </Button>
-        </div>
+        </DrawerFooterActions>
       ) : (
-        <div className="mt-6 flex shrink-0 justify-end gap-2 border-t pt-4">
+        <DrawerFooterActions>
           <Button
             type="button"
             variant="outline"
@@ -525,7 +535,7 @@ export function ClientFormDrawer({
           >
             Annuler
           </Button>
-        </div>
+        </DrawerFooterActions>
       )}
     </form>
   );

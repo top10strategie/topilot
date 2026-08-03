@@ -5,22 +5,27 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { MagnifyingGlass, PencilSimple } from "@phosphor-icons/react";
 import { ClientConsultationDrawer } from "@/components/clients/client-consultation-drawer";
+import { EntityLinkedDocumentsSection } from "@/components/documents/entity-linked-documents-section";
 import { useDrawerStack } from "@/components/drawers/drawer-stack-context";
 import { EntityDetailsColumns } from "@/components/layout/entity-details-columns";
 import {
   EntityDocumentationColumns,
-  EntityDocumentationSection,
 } from "@/components/layout/entity-documentation-columns";
 import { IconActionButton } from "@/components/layout/icon-action-button";
 import { PageHero } from "@/components/layout/page-hero";
 import { MissionFormDrawer } from "@/components/missions/mission-form-drawer";
 import { EntityLinkedToolsSection } from "@/components/tools/entity-linked-tools-section";
+import { EntityLinkedWikisSection } from "@/components/wiki/entity-linked-wikis-section";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { CategoryItem } from "@/lib/categories/types";
+import type { CategoryItem, DocumentTypeItem } from "@/lib/categories/types";
 import type { ClientDetail, ClientListItem } from "@/lib/clients/types";
 import type { CollaboratorListItem } from "@/lib/collaborators/types";
+import type {
+  DocumentLinkOption,
+  LinkedDocumentItem,
+} from "@/lib/documents/types";
 import {
   formatMissionCharge,
   formatMissionDate,
@@ -32,6 +37,10 @@ import type {
   MissionOpportunityOption,
 } from "@/lib/missions/types";
 import type { LinkedToolItem } from "@/lib/tools/types";
+import type {
+  LinkedWikiItem,
+  WikiLinkOption,
+} from "@/lib/wiki/types";
 
 type MissionDetailPageClientProps = {
   mission: MissionDetail;
@@ -43,6 +52,11 @@ type MissionDetailPageClientProps = {
   linkedClient: ClientDetail | null;
   linkedTools: LinkedToolItem[];
   toolLinkOptions: Array<{ id: string; tool_name: string }>;
+  linkedDocuments: LinkedDocumentItem[];
+  documentLinkOptions: DocumentLinkOption[];
+  documentTypes: DocumentTypeItem[];
+  linkedWikis: LinkedWikiItem[];
+  wikiLinkOptions: WikiLinkOption[];
   canManagePrivacy: boolean;
 };
 
@@ -56,6 +70,11 @@ export function MissionDetailPageClient({
   linkedClient,
   linkedTools,
   toolLinkOptions,
+  linkedDocuments,
+  documentLinkOptions,
+  documentTypes,
+  linkedWikis,
+  wikiLinkOptions,
   canManagePrivacy,
 }: MissionDetailPageClientProps) {
   const router = useRouter();
@@ -275,11 +294,13 @@ export function MissionDetailPageClient({
           <TabsContent value="documentations" className="mt-4">
             <EntityDocumentationColumns
               documents={
-                <EntityDocumentationSection title="Documents">
-                  <p className="text-sm text-muted-foreground">
-                    Disponible au point Wiki &amp; Documents.
-                  </p>
-                </EntityDocumentationSection>
+                <EntityLinkedDocumentsSection
+                  entity="mission"
+                  entityId={mission.id}
+                  documents={linkedDocuments}
+                  linkOptions={documentLinkOptions}
+                  documentTypes={documentTypes}
+                />
               }
               tools={
                 <EntityLinkedToolsSection
@@ -293,11 +314,13 @@ export function MissionDetailPageClient({
                 />
               }
               wiki={
-                <EntityDocumentationSection title="Wiki">
-                  <p className="text-sm text-muted-foreground">
-                    Disponible au point Wiki &amp; Documents.
-                  </p>
-                </EntityDocumentationSection>
+                <EntityLinkedWikisSection
+                  entity="mission"
+                  entityId={mission.id}
+                  wikis={linkedWikis}
+                  linkOptions={wikiLinkOptions}
+                  categories={categories}
+                />
               }
             />
           </TabsContent>

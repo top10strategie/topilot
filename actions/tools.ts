@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { deleteVaultSecret } from "@/actions/vault";
 import { requireActiveCollaboratorAction } from "@/lib/auth/require-action";
+import { formCategoryIds, formOptional, formText } from "@/lib/form-data";
 import { createClient } from "@/lib/supabase/server";
 
 export type ToolActionResult =
@@ -16,22 +17,6 @@ export type ToolActionResult =
 export type DeleteToolResult =
   | { success: true }
   | { success: false; error: string };
-
-function formText(formData: FormData, key: string): string {
-  const value = formData.get(key);
-  return typeof value === "string" ? value.trim() : "";
-}
-
-function formOptional(formData: FormData, key: string): string | null {
-  const value = formText(formData, key);
-  return value.length > 0 ? value : null;
-}
-
-function formCategoryIds(formData: FormData): string[] {
-  return formData
-    .getAll("category_ids")
-    .filter((v): v is string => typeof v === "string" && v.length > 0);
-}
 
 function revalidateTools(id?: string) {
   revalidatePath("/tools");

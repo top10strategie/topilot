@@ -28,6 +28,8 @@ function hasOpenPortaledPicker(): boolean {
         '[data-slot="select-content"][data-state="open"]',
         '[data-slot="combobox-content"]',
         '[data-slot="combobox-content"][data-open]',
+        '[data-slot="dialog-overlay"]',
+        '[data-slot="dialog-content"]',
       ].join(", "),
     ),
   );
@@ -133,7 +135,13 @@ export function DrawerStackHost() {
               onPointerDownOutside={ignoreSheetOutside}
               onFocusOutside={ignoreSheetOutside}
               onEscapeKeyDown={(event) => {
-                if (!isTop || !entry.open) {
+                if (
+                  !isTop ||
+                  !entry.open ||
+                  document.querySelector(
+                    '[data-slot="dialog-content"], [data-slot="dialog-overlay"]',
+                  )
+                ) {
                   event.preventDefault();
                 }
               }}
@@ -141,13 +149,13 @@ export function DrawerStackHost() {
               <DrawerPortalContainerProvider>
                 {(portalRef) => (
                   <>
-                    <SheetHeader className="border-b px-4 py-4 text-left">
+                    <SheetHeader className="shrink-0 border-b p-4 text-left">
                       <SheetTitle>{entry.title}</SheetTitle>
                       <SheetDescription className="sr-only">
                         Tiroir {entry.title}
                       </SheetDescription>
                     </SheetHeader>
-                    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4">
+                    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
                       {entry.content}
                     </div>
                     {/* Portal host hors zone scroll : popovers cliquables dans le Sheet. */}

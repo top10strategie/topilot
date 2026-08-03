@@ -2,6 +2,7 @@
 
 import { useState, useTransition, type FormEvent } from "react";
 import { toast } from "sonner";
+import { DrawerBody, DrawerFooterActions } from "@/components/drawers/drawer-section";
 import type { DrawerHelpers } from "@/components/drawers/drawer-stack-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -89,7 +90,7 @@ export function LabelEntityFormDrawer({
 
   return (
     <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
-      <div className="flex-1 space-y-4">
+      <DrawerBody>
         <div className="grid gap-2">
           <Label htmlFor="entity_label">
             Titre <span className="text-destructive">*</span>
@@ -107,9 +108,9 @@ export function LabelEntityFormDrawer({
             <p className="text-sm text-destructive">{fieldError}</p>
           ) : null}
         </div>
-      </div>
+      </DrawerBody>
 
-      <div className="mt-6 flex shrink-0 justify-end gap-2 border-t pt-4">
+      <DrawerFooterActions>
         <Button
           type="button"
           variant="outline"
@@ -121,7 +122,7 @@ export function LabelEntityFormDrawer({
         <Button type="submit" disabled={isPending}>
           {isPending ? "Enregistrement…" : submitLabel}
         </Button>
-      </div>
+      </DrawerFooterActions>
     </form>
   );
 }

@@ -5,9 +5,13 @@ import { PageHero } from "@/components/layout/page-hero";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrentCollaborator } from "@/lib/auth/get-current-collaborator";
 import { isManagerOrDirection } from "@/lib/auth/roles";
-import { listCategories } from "@/lib/categories/queries";
+import { listCategories, listDocumentTypes } from "@/lib/categories/queries";
 import { getClientById, listClients } from "@/lib/clients/queries";
 import { listCollaborators } from "@/lib/collaborators/queries";
+import {
+  listDocumentLinkOptions,
+  listDocumentsByOpportunityId,
+} from "@/lib/documents/queries";
 import { listMissionsByOpportunityId } from "@/lib/missions/queries";
 import {
   getOpportunityById,
@@ -38,6 +42,9 @@ async function OpportunityDetailContent({
     currentCollaborator,
     linkedTools,
     toolLinkOptions,
+    linkedDocuments,
+    documentLinkOptions,
+    documentTypes,
   ] = await Promise.all([
     getOpportunityById(id),
     listCollaborators(),
@@ -48,6 +55,9 @@ async function OpportunityDetailContent({
     getCurrentCollaborator(),
     listToolsByOpportunityId(id),
     listToolLinkOptions(),
+    listDocumentsByOpportunityId(id),
+    listDocumentLinkOptions(),
+    listDocumentTypes(),
   ]);
 
   if (!opportunity) {
@@ -77,6 +87,9 @@ async function OpportunityDetailContent({
       currentCollaboratorId={currentCollaborator?.id ?? ""}
       linkedTools={linkedTools}
       toolLinkOptions={toolLinkOptions}
+      linkedDocuments={linkedDocuments}
+      documentLinkOptions={documentLinkOptions}
+      documentTypes={documentTypes}
       canManagePrivacy={
         currentCollaborator
           ? isManagerOrDirection(currentCollaborator.role)
