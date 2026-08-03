@@ -3,12 +3,20 @@ import { Top10PageClient } from "@/components/collaborators/top10-page-client";
 import { PageHero } from "@/components/layout/page-hero";
 import { Skeleton } from "@/components/ui/skeleton";
 import { loadPeopleDirectory } from "@/lib/collaborators/queries";
+import { listMissions } from "@/lib/missions/queries";
 
 async function Top10Content() {
-  const { teams, collaborators } = await loadPeopleDirectory();
+  const [{ teams, collaborators }, missions] = await Promise.all([
+    loadPeopleDirectory(),
+    listMissions(),
+  ]);
 
   return (
-    <Top10PageClient teams={teams} collaborators={collaborators} />
+    <Top10PageClient
+      teams={teams}
+      collaborators={collaborators}
+      missions={missions}
+    />
   );
 }
 

@@ -96,6 +96,8 @@ type MissionsPageClientProps = {
   categories: CategoryItem[];
   opportunityOptions: MissionOpportunityOption[];
   currentCollaboratorId: string;
+  initialTeamId?: string;
+  initialResponsibleId?: string;
 };
 
 type Filters = {
@@ -155,14 +157,24 @@ export function MissionsPageClient({
   categories,
   opportunityOptions,
   currentCollaboratorId,
+  initialTeamId = "",
+  initialResponsibleId = "",
 }: MissionsPageClientProps) {
   const router = useRouter();
   const { pushDrawer } = useDrawerStack();
   const [query, setQuery] = useState("");
   const [view, setView] = useState<"kanban" | "cards" | "table">("kanban");
   const [page, setPage] = useState(1);
-  const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
-  const [draftFilters, setDraftFilters] = useState<Filters>(DEFAULT_FILTERS);
+  const [filters, setFilters] = useState<Filters>({
+    ...DEFAULT_FILTERS,
+    teamId: initialTeamId,
+    responsibleId: initialResponsibleId,
+  });
+  const [draftFilters, setDraftFilters] = useState<Filters>({
+    ...DEFAULT_FILTERS,
+    teamId: initialTeamId,
+    responsibleId: initialResponsibleId,
+  });
   const [filterOpen, setFilterOpen] = useState(false);
   const filterPortalRef = useRef<HTMLDivElement>(null);
 

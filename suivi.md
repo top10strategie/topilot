@@ -1,5 +1,16 @@
 # Suivi des actions — TOPilot
 
+## **[2026-08-03] — Notes autosave, archivage fiches, extensions docs, tiroirs /top10**
+
+**Type :** `feature`
+**Fichiers concernés :** `actions/entity-notes.ts`, `actions/clients.ts`, `actions/opportunities.ts`, `actions/missions.ts`, `components/notes/entity-notes-editor.tsx`, `components/layout/confirm-status-dialog.tsx`, `components/*-detail-page-client.tsx`, `lib/documents/format.ts`, `components/documents/*`, `components/collaborators/consultation-drawers.tsx`, `components/collaborators/top10-page-client.tsx`, `components/collaborators/administration-page-client.tsx`, `lib/missions/queries.ts`, `app/(app)/top10/page.tsx`, `app/(app)/missions/page.tsx`, `suivi.md`
+
+### Description
+
+Éditeur de notes texte avec autosave (debounce + blur) sur fiches client / opportunité / mission et notes de pôle. Boutons poubelle Hero : client → inactif, mission → archivée, opportunité → perdue (modale « perte »). `/documents` : icônes d’extension sur cartes + colonne Format. Tiroirs consultation `/top10` (et admin) : `DrawerBody`, missions récentes, avatar +20 % `object-cover`.
+
+---
+
 ## **[2026-08-03] — Point 9 : Transverse avancé (analyses, profil, Home)**
 
 **Type :** `feature`

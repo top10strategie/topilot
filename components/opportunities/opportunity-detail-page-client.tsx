@@ -2,16 +2,19 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { MagnifyingGlass, PencilSimple } from "@phosphor-icons/react";
+import { MagnifyingGlass, PencilSimple, Trash } from "@phosphor-icons/react";
+import { markOpportunityAsLost } from "@/actions/opportunities";
 import { ClientConsultationDrawer } from "@/components/clients/client-consultation-drawer";
 import { EntityLinkedDocumentsSection } from "@/components/documents/entity-linked-documents-section";
 import { useDrawerStack } from "@/components/drawers/drawer-stack-context";
+import { ConfirmStatusDialog } from "@/components/layout/confirm-status-dialog";
 import { EntityDetailsColumns } from "@/components/layout/entity-details-columns";
 import { IconActionButton } from "@/components/layout/icon-action-button";
 import { PageHero } from "@/components/layout/page-hero";
 import { MissionConsultationDrawer } from "@/components/missions/mission-consultation-drawer";
 import { MissionFormDrawer } from "@/components/missions/mission-form-drawer";
 import { OpportunityFormDrawer } from "@/components/opportunities/opportunity-form-drawer";
+import { EntityNotesEditor } from "@/components/notes/entity-notes-editor";
 import { EntityLinkedToolsSection } from "@/components/tools/entity-linked-tools-section";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -87,6 +90,7 @@ export function OpportunityDetailPageClient({
   const { pushDrawer } = useDrawerStack();
   const [tab, setTab] = useState("informations");
   const [query, setQuery] = useState("");
+  const [lossOpen, setLossOpen] = useState(false);
 
   const matchesQuery = useMemo(() => {
     const q = query.trim().toLocaleLowerCase("fr");
@@ -201,6 +205,13 @@ export function OpportunityDetailPageClient({
             >
               <PencilSimple className="size-4" />
             </IconActionButton>
+            <IconActionButton
+              label="Passer en perte"
+              attention
+              onClick={() => setLossOpen(true)}
+            >
+              <Trash className="size-4" />
+            </IconActionButton>
           </div>
         }
       />
@@ -296,9 +307,11 @@ export function OpportunityDetailPageClient({
 
                     <section className="space-y-2 text-sm">
                       <h2 className="text-base font-semibold">Notes</h2>
-                      <p className="whitespace-pre-wrap text-muted-foreground">
-                        {opportunity.notes?.trim() || "Aucune note."}
-                      </p>
+                      <EntityNotesEditor
+                        entity="opportunity"
+                        entityId={opportunity.id}
+                        initialNotes={opportunity.notes}
+                      />
                     </section>
                   </>
                 }
@@ -475,6 +488,30 @@ export function OpportunityDetailPageClient({
           </TabsContent>
         </Tabs>
       </div>
+
+      <ConfirmStatusDialog
+        open={lossOpen}
+        onOpenChange={setLossOpen}
+        title="Passer l'opportunité en perte"
+        description={
+          <>
+            <p>
+              Vous souhaitez marquer{" "}
+              <strong>{opportunity.opportunity_name}</strong> comme perdue.
+              Confirmez-vous ?
+            </p>
+            <p>
+              L&apos;opportunité passera au statut « Perdue ». Aucune donnée
+              n&apos;est supprimée.
+            </p>
+          </>
+        }
+        confirmLabel="Passer en perte"
+        pendingLabel="Enregistrement…"
+        successMessage="Opportunité passée en perte."
+        onConfirm={() => markOpportunityAsLost(opportunity.id)}
+        onSuccess={() => router.push("/opportunities")}
+      />
     </div>
   );
 }
