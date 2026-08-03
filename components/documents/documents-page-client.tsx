@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import {
   DownloadSimple,
   Eye,
-  File as FileIcon,
   FunnelSimple,
   MagnifyingGlass,
   PencilSimple,
@@ -18,6 +17,7 @@ import { CategoryMultiCombobox } from "@/components/categories/category-multi-co
 import { useDrawerStack } from "@/components/drawers/drawer-stack-context";
 import { DeleteDocumentDialog } from "@/components/documents/delete-document-dialog";
 import { DocumentFormDrawer } from "@/components/documents/document-form-drawer";
+import { DocumentFormatThumb } from "@/components/documents/document-format-thumb";
 import { DocumentPreviewDialog } from "@/components/documents/document-preview-dialog";
 import { IconActionButton } from "@/components/layout/icon-action-button";
 import { ListPaginationFooter } from "@/components/layout/list-pagination-footer";
@@ -46,6 +46,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { DocumentTypeItem } from "@/lib/categories/types";
 import type { ClientListItem } from "@/lib/clients/types";
+import { getDocumentFileFormat } from "@/lib/documents/format";
 import type { DocumentListItem } from "@/lib/documents/types";
 
 const PAGE_SIZE = 25;
@@ -372,17 +373,7 @@ export function DocumentsPageClient({
                   className="flex h-full flex-col overflow-hidden transition-shadow hover:shadow-md"
                 >
                   <div className="flex min-w-0 flex-1 items-start gap-3 p-3 pb-2">
-                    <div className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-muted text-muted-foreground">
-                      {item.preview_url ? (
-                        <img
-                          src={item.preview_url}
-                          alt=""
-                          className="size-full object-cover"
-                        />
-                      ) : (
-                        <FileIcon className="size-6" aria-hidden />
-                      )}
-                    </div>
+                    <DocumentFormatThumb item={item} />
                     <div className="min-w-0 flex-1 space-y-1.5">
                       <div className="flex items-start justify-between gap-2">
                         <CardTitle className="text-base leading-snug">
@@ -419,11 +410,12 @@ export function DocumentsPageClient({
 
         <ListViewTabsContent value="table" className="flex-none">
           <div className="overflow-x-auto rounded-md border">
-            <table className="w-full min-w-[880px] text-left text-sm">
+            <table className="w-full min-w-[960px] text-left text-sm">
               <thead className="border-b bg-muted/40 text-xs text-muted-foreground">
                 <tr>
                   <th className="px-3 py-2 font-medium">Nom document</th>
                   <th className="px-3 py-2 font-medium">Type</th>
+                  <th className="px-3 py-2 font-medium">Format</th>
                   <th className="px-3 py-2 font-medium">Lié à</th>
                   <th className="px-3 py-2 font-medium">Date d&apos;ajout</th>
                   <th className="px-3 py-2 font-medium">Version</th>
@@ -436,7 +428,7 @@ export function DocumentsPageClient({
                 {pageItems.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={6}
+                      colSpan={7}
                       className="px-3 py-6 text-sm text-muted-foreground"
                     >
                       {query.trim() || hasActiveFilters
@@ -455,6 +447,9 @@ export function DocumentsPageClient({
                       </td>
                       <td className="px-3 py-2 text-muted-foreground">
                         {item.document_type.label}
+                      </td>
+                      <td className="px-3 py-2 uppercase text-muted-foreground">
+                        {getDocumentFileFormat(item)}
                       </td>
                       <td className="px-3 py-2 text-muted-foreground">
                         {linkedLabel(item)}

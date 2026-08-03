@@ -50,6 +50,7 @@ import type {
   TeamListItem,
 } from "@/lib/collaborators/types";
 import type { CategoryItem, DocumentTypeItem } from "@/lib/categories/types";
+import type { MissionListItem } from "@/lib/missions/types";
 
 type AdministrationPageClientProps = {
   canManagePeople: boolean;
@@ -57,6 +58,7 @@ type AdministrationPageClientProps = {
   collaborators: CollaboratorListItem[];
   categories: CategoryItem[];
   documentTypes: DocumentTypeItem[];
+  missions: MissionListItem[];
 };
 
 type PendingDeleteTeam = {
@@ -78,12 +80,45 @@ type PendingDeleteLabel = {
 
 type AdminTab = "categories" | "types" | "people";
 
+function recentMissionsForCollaborator(
+  missions: MissionListItem[],
+  collaboratorId: string,
+): MissionListItem[] {
+  return missions
+    .filter(
+      (mission) =>
+        mission.collaborator_id === collaboratorId &&
+        mission.kanban_status !== "archivee",
+    )
+    .slice(0, 10);
+}
+
+function recentMissionsForTeam(
+  missions: MissionListItem[],
+  collaborators: CollaboratorListItem[],
+  teamId: string,
+): MissionListItem[] {
+  const memberIds = new Set(
+    collaborators
+      .filter((person) => person.team_id === teamId)
+      .map((person) => person.id),
+  );
+  return missions
+    .filter(
+      (mission) =>
+        memberIds.has(mission.collaborator_id) &&
+        mission.kanban_status !== "archivee",
+    )
+    .slice(0, 10);
+}
+
 export function AdministrationPageClient({
   canManagePeople,
   teams,
   collaborators,
   categories,
   documentTypes,
+  missions,
 }: AdministrationPageClientProps) {
   const router = useRouter();
   const { pushDrawer } = useDrawerStack();
@@ -114,7 +149,13 @@ export function AdministrationPageClient({
     void pushDrawer({
       title: getCollaboratorFullName(collaborator),
       content: () => (
-        <CollaboratorConsultationContent collaborator={collaborator} />
+        <CollaboratorConsultationContent
+          collaborator={collaborator}
+          recentMissions={recentMissionsForCollaborator(
+            missions,
+            collaborator.id,
+          )}
+        />
       ),
     });
   };
@@ -128,6 +169,11 @@ export function AdministrationPageClient({
             ...team,
             members: team.members.filter((m) => m.status === "actif"),
           }}
+          recentMissions={recentMissionsForTeam(
+            missions,
+            collaborators,
+            team.id,
+          )}
           onOpenCollaborator={openCollaboratorConsultation}
         />
       ),

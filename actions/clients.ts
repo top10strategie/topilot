@@ -279,3 +279,39 @@ export async function updateClientRecord(
   revalidateClients(id);
   return { success: true, id };
 }
+
+/**
+ * Désactive un client (`is_active = false`) — pas de DELETE SQL.
+ */
+export async function deactivateClient(
+  id: string,
+): Promise<{ success: true } | { success: false; error: string }> {
+  const auth = await requireActiveCollaboratorAction();
+  if (!auth.success) {
+    return { success: false, error: auth.error };
+  }
+  if (!id.trim()) {
+    return { success: false, error: "Identifiant invalide." };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("client")
+    .update({ is_active: false })
+    .eq("id", id)
+    .select("id")
+    .maybeSingle();
+
+  if (error || !data) {
+    console.error("deactivateClient:", error);
+    return {
+      success: false,
+      error: error
+        ? `Impossible de désactiver le client : ${error.message}`
+        : "Client introuvable.",
+    };
+  }
+
+  revalidateClients(id);
+  return { success: true };
+}

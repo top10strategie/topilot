@@ -12,10 +12,12 @@ import {
 } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { deleteContactClient } from "@/actions/contact-clients";
+import { deactivateClient } from "@/actions/clients";
 import { ClientFormDrawer } from "@/components/clients/client-form-drawer";
 import { ContactFormDrawer } from "@/components/clients/contact-form-drawer";
 import { EntityLinkedDocumentsSection } from "@/components/documents/entity-linked-documents-section";
 import { useDrawerStack } from "@/components/drawers/drawer-stack-context";
+import { ConfirmStatusDialog } from "@/components/layout/confirm-status-dialog";
 import { EntityDetailsColumns } from "@/components/layout/entity-details-columns";
 import {
   EntityDocumentationColumns,
@@ -24,6 +26,7 @@ import { IconActionButton } from "@/components/layout/icon-action-button";
 import { PageHero } from "@/components/layout/page-hero";
 import { MissionConsultationDrawer } from "@/components/missions/mission-consultation-drawer";
 import { MissionFormDrawer } from "@/components/missions/mission-form-drawer";
+import { EntityNotesEditor } from "@/components/notes/entity-notes-editor";
 import { EntityLinkedToolsSection } from "@/components/tools/entity-linked-tools-section";
 import { EntityLinkedWikisSection } from "@/components/wiki/entity-linked-wikis-section";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -115,6 +118,7 @@ export function ClientDetailPageClient({
   const [pendingDelete, setPendingDelete] = useState<ContactClientItem | null>(
     null,
   );
+  const [archiveOpen, setArchiveOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const filteredContacts = useMemo(() => {
@@ -242,6 +246,13 @@ export function ClientDetailPageClient({
             <IconActionButton label="Édition Client" onClick={openEditClient}>
               <PencilSimple className="size-4" />
             </IconActionButton>
+            <IconActionButton
+              label="Désactiver le client"
+              attention
+              onClick={() => setArchiveOpen(true)}
+            >
+              <Trash className="size-4" />
+            </IconActionButton>
           </div>
         }
       />
@@ -317,9 +328,11 @@ export function ClientDetailPageClient({
 
                   <section className="space-y-2 text-sm">
                     <h2 className="text-base font-semibold">Notes</h2>
-                    <p className="whitespace-pre-wrap text-muted-foreground">
-                      {client.notes?.trim() || "Aucune note."}
-                    </p>
+                    <EntityNotesEditor
+                      entity="client"
+                      entityId={client.id}
+                      initialNotes={client.notes}
+                    />
                   </section>
                 </>
               }
@@ -634,6 +647,29 @@ export function ClientDetailPageClient({
           </DialogContent>
         </Dialog>
       ) : null}
+
+      <ConfirmStatusDialog
+        open={archiveOpen}
+        onOpenChange={setArchiveOpen}
+        title="Désactiver le client"
+        description={
+          <>
+            <p>
+              Vous souhaitez désactiver{" "}
+              <strong>{client.client_name}</strong>. Confirmez-vous ?
+            </p>
+            <p>
+              Le client passera au statut inactif. Aucune donnée n&apos;est
+              supprimée.
+            </p>
+          </>
+        }
+        confirmLabel="Désactiver"
+        pendingLabel="Désactivation…"
+        successMessage="Client désactivé."
+        onConfirm={() => deactivateClient(client.id)}
+        onSuccess={() => router.push("/clients")}
+      />
     </div>
   );
 }

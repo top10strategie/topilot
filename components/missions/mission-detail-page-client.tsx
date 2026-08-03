@@ -3,10 +3,12 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { MagnifyingGlass, PencilSimple } from "@phosphor-icons/react";
+import { MagnifyingGlass, PencilSimple, Trash } from "@phosphor-icons/react";
+import { archiveMission } from "@/actions/missions";
 import { ClientConsultationDrawer } from "@/components/clients/client-consultation-drawer";
 import { EntityLinkedDocumentsSection } from "@/components/documents/entity-linked-documents-section";
 import { useDrawerStack } from "@/components/drawers/drawer-stack-context";
+import { ConfirmStatusDialog } from "@/components/layout/confirm-status-dialog";
 import { EntityDetailsColumns } from "@/components/layout/entity-details-columns";
 import {
   EntityDocumentationColumns,
@@ -14,6 +16,7 @@ import {
 import { IconActionButton } from "@/components/layout/icon-action-button";
 import { PageHero } from "@/components/layout/page-hero";
 import { MissionFormDrawer } from "@/components/missions/mission-form-drawer";
+import { EntityNotesEditor } from "@/components/notes/entity-notes-editor";
 import { EntityLinkedToolsSection } from "@/components/tools/entity-linked-tools-section";
 import { EntityLinkedWikisSection } from "@/components/wiki/entity-linked-wikis-section";
 import { Badge } from "@/components/ui/badge";
@@ -81,6 +84,7 @@ export function MissionDetailPageClient({
   const { pushDrawer } = useDrawerStack();
   const [tab, setTab] = useState("informations");
   const [query, setQuery] = useState("");
+  const [archiveOpen, setArchiveOpen] = useState(false);
 
   const matchesQuery = useMemo(() => {
     const q = query.trim().toLocaleLowerCase("fr");
@@ -152,6 +156,13 @@ export function MissionDetailPageClient({
             <IconActionButton label="Édition Mission" onClick={openEdit}>
               <PencilSimple className="size-4" />
             </IconActionButton>
+            <IconActionButton
+              label="Archiver la mission"
+              attention
+              onClick={() => setArchiveOpen(true)}
+            >
+              <Trash className="size-4" />
+            </IconActionButton>
           </div>
         }
       />
@@ -222,9 +233,11 @@ export function MissionDetailPageClient({
 
                     <section className="space-y-2 text-sm">
                       <h2 className="text-base font-semibold">Notes</h2>
-                      <p className="whitespace-pre-wrap text-muted-foreground">
-                        {mission.notes?.trim() || "Aucune note."}
-                      </p>
+                      <EntityNotesEditor
+                        entity="mission"
+                        entityId={mission.id}
+                        initialNotes={mission.notes}
+                      />
                     </section>
                   </>
                 }
@@ -326,6 +339,29 @@ export function MissionDetailPageClient({
           </TabsContent>
         </Tabs>
       </div>
+
+      <ConfirmStatusDialog
+        open={archiveOpen}
+        onOpenChange={setArchiveOpen}
+        title="Archiver la mission"
+        description={
+          <>
+            <p>
+              Vous souhaitez archiver{" "}
+              <strong>{mission.mission_name}</strong>. Confirmez-vous ?
+            </p>
+            <p>
+              La mission passera au statut archivée. Aucune donnée n&apos;est
+              supprimée.
+            </p>
+          </>
+        }
+        confirmLabel="Archiver"
+        pendingLabel="Archivage…"
+        successMessage="Mission archivée."
+        onConfirm={() => archiveMission(mission.id)}
+        onSuccess={() => router.push("/missions")}
+      />
     </div>
   );
 }

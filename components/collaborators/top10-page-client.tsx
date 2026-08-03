@@ -20,19 +20,54 @@ import type {
   CollaboratorListItem,
   TeamListItem,
 } from "@/lib/collaborators/types";
+import type { MissionListItem } from "@/lib/missions/types";
 
 type Top10PageClientProps = {
   teams: TeamListItem[];
   collaborators: CollaboratorListItem[];
+  missions: MissionListItem[];
 };
 
 function matchesQuery(haystack: string, query: string): boolean {
   return haystack.toLocaleLowerCase("fr").includes(query);
 }
 
+function recentMissionsForCollaborator(
+  missions: MissionListItem[],
+  collaboratorId: string,
+): MissionListItem[] {
+  return missions
+    .filter(
+      (mission) =>
+        mission.collaborator_id === collaboratorId &&
+        mission.kanban_status !== "archivee",
+    )
+    .slice(0, 10);
+}
+
+function recentMissionsForTeam(
+  missions: MissionListItem[],
+  collaborators: CollaboratorListItem[],
+  teamId: string,
+): MissionListItem[] {
+  const memberIds = new Set(
+    collaborators
+      .filter((person) => person.team_id === teamId)
+      .map((person) => person.id),
+  );
+  return missions
+    .filter(
+      (mission) =>
+        memberIds.has(mission.collaborator_id) &&
+        mission.kanban_status !== "archivee",
+    )
+    .slice(0, 10);
+}
+
 export function Top10PageClient({
   teams,
   collaborators,
+  missions,
 }: Top10PageClientProps) {
   const { pushDrawer } = useDrawerStack();
   const [query, setQuery] = useState("");
@@ -115,7 +150,13 @@ export function Top10PageClient({
     void pushDrawer({
       title: getCollaboratorFullName(collaborator),
       content: () => (
-        <CollaboratorConsultationContent collaborator={collaborator} />
+        <CollaboratorConsultationContent
+          collaborator={collaborator}
+          recentMissions={recentMissionsForCollaborator(
+            missions,
+            collaborator.id,
+          )}
+        />
       ),
     });
   };
@@ -134,6 +175,11 @@ export function Top10PageClient({
             ...team,
             members: team.members.filter((m) => m.status === "actif"),
           }}
+          recentMissions={recentMissionsForTeam(
+            missions,
+            collaborators,
+            team.id,
+          )}
           onOpenCollaborator={(collaboratorId) => {
             openCollaboratorDrawer(collaboratorId);
           }}
