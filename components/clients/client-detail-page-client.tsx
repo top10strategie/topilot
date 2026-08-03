@@ -14,17 +14,18 @@ import { toast } from "sonner";
 import { deleteContactClient } from "@/actions/contact-clients";
 import { ClientFormDrawer } from "@/components/clients/client-form-drawer";
 import { ContactFormDrawer } from "@/components/clients/contact-form-drawer";
+import { EntityLinkedDocumentsSection } from "@/components/documents/entity-linked-documents-section";
 import { useDrawerStack } from "@/components/drawers/drawer-stack-context";
 import { EntityDetailsColumns } from "@/components/layout/entity-details-columns";
 import {
   EntityDocumentationColumns,
-  EntityDocumentationSection,
 } from "@/components/layout/entity-documentation-columns";
 import { IconActionButton } from "@/components/layout/icon-action-button";
 import { PageHero } from "@/components/layout/page-hero";
 import { MissionConsultationDrawer } from "@/components/missions/mission-consultation-drawer";
 import { MissionFormDrawer } from "@/components/missions/mission-form-drawer";
 import { EntityLinkedToolsSection } from "@/components/tools/entity-linked-tools-section";
+import { EntityLinkedWikisSection } from "@/components/wiki/entity-linked-wikis-section";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -43,7 +44,7 @@ import {
 } from "@/components/ui/hover-card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { CategoryItem } from "@/lib/categories/types";
+import type { CategoryItem, DocumentTypeItem } from "@/lib/categories/types";
 import {
   getClientResponsibleName,
   getClientStatusLabel,
@@ -51,6 +52,10 @@ import {
 } from "@/lib/clients/labels";
 import type { ClientDetail, ClientListItem, ContactClientItem } from "@/lib/clients/types";
 import type { CollaboratorListItem } from "@/lib/collaborators/types";
+import type {
+  DocumentLinkOption,
+  LinkedDocumentItem,
+} from "@/lib/documents/types";
 import {
   formatMissionCharge,
   formatMissionDate,
@@ -62,6 +67,10 @@ import type {
   MissionOpportunityOption,
 } from "@/lib/missions/types";
 import type { LinkedToolItem } from "@/lib/tools/types";
+import type {
+  LinkedWikiItem,
+  WikiLinkOption,
+} from "@/lib/wiki/types";
 
 type ClientDetailPageClientProps = {
   client: ClientDetail;
@@ -73,6 +82,11 @@ type ClientDetailPageClientProps = {
   currentCollaboratorId: string;
   linkedTools: LinkedToolItem[];
   toolLinkOptions: Array<{ id: string; tool_name: string }>;
+  linkedDocuments: LinkedDocumentItem[];
+  documentLinkOptions: DocumentLinkOption[];
+  documentTypes: DocumentTypeItem[];
+  linkedWikis: LinkedWikiItem[];
+  wikiLinkOptions: WikiLinkOption[];
   canManagePrivacy: boolean;
 };
 
@@ -86,6 +100,11 @@ export function ClientDetailPageClient({
   currentCollaboratorId,
   linkedTools,
   toolLinkOptions,
+  linkedDocuments,
+  documentLinkOptions,
+  documentTypes,
+  linkedWikis,
+  wikiLinkOptions,
   canManagePrivacy,
 }: ClientDetailPageClientProps) {
   const router = useRouter();
@@ -532,19 +551,13 @@ export function ClientDetailPageClient({
           <TabsContent value="documentations" className="mt-4">
             <EntityDocumentationColumns
               documents={
-                <EntityDocumentationSection title="Documents">
-                  {client.documents.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      Aucun document lié.
-                    </p>
-                  ) : (
-                    <ul className="space-y-1 text-sm">
-                      {client.documents.map((doc) => (
-                        <li key={doc.id}>{doc.document_name}</li>
-                      ))}
-                    </ul>
-                  )}
-                </EntityDocumentationSection>
+                <EntityLinkedDocumentsSection
+                  entity="client"
+                  entityId={client.id}
+                  documents={linkedDocuments}
+                  linkOptions={documentLinkOptions}
+                  documentTypes={documentTypes}
+                />
               }
               tools={
                 <EntityLinkedToolsSection
@@ -558,11 +571,13 @@ export function ClientDetailPageClient({
                 />
               }
               wiki={
-                <EntityDocumentationSection title="Wiki">
-                  <p className="text-sm text-muted-foreground">
-                    Disponible au point Wiki &amp; Documents.
-                  </p>
-                </EntityDocumentationSection>
+                <EntityLinkedWikisSection
+                  entity="client"
+                  entityId={client.id}
+                  wikis={linkedWikis}
+                  linkOptions={wikiLinkOptions}
+                  categories={categories}
+                />
               }
             />
           </TabsContent>

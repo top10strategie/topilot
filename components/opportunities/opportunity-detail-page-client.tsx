@@ -4,9 +4,9 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MagnifyingGlass, PencilSimple } from "@phosphor-icons/react";
 import { ClientConsultationDrawer } from "@/components/clients/client-consultation-drawer";
+import { EntityLinkedDocumentsSection } from "@/components/documents/entity-linked-documents-section";
 import { useDrawerStack } from "@/components/drawers/drawer-stack-context";
 import { EntityDetailsColumns } from "@/components/layout/entity-details-columns";
-import { EntityDocumentationSection } from "@/components/layout/entity-documentation-columns";
 import { IconActionButton } from "@/components/layout/icon-action-button";
 import { PageHero } from "@/components/layout/page-hero";
 import { MissionConsultationDrawer } from "@/components/missions/mission-consultation-drawer";
@@ -16,10 +16,14 @@ import { EntityLinkedToolsSection } from "@/components/tools/entity-linked-tools
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { CategoryItem } from "@/lib/categories/types";
+import type { CategoryItem, DocumentTypeItem } from "@/lib/categories/types";
 import type { ClientDetail, ClientListItem } from "@/lib/clients/types";
 import { getContactFullName } from "@/lib/clients/labels";
 import type { CollaboratorListItem } from "@/lib/collaborators/types";
+import type {
+  DocumentLinkOption,
+  LinkedDocumentItem,
+} from "@/lib/documents/types";
 import {
   formatOpportunityDate,
   formatOpportunityPrice,
@@ -56,6 +60,9 @@ type OpportunityDetailPageClientProps = {
   currentCollaboratorId: string;
   linkedTools: LinkedToolItem[];
   toolLinkOptions: Array<{ id: string; tool_name: string }>;
+  linkedDocuments: LinkedDocumentItem[];
+  documentLinkOptions: DocumentLinkOption[];
+  documentTypes: DocumentTypeItem[];
   canManagePrivacy: boolean;
 };
 
@@ -71,6 +78,9 @@ export function OpportunityDetailPageClient({
   currentCollaboratorId,
   linkedTools,
   toolLinkOptions,
+  linkedDocuments,
+  documentLinkOptions,
+  documentTypes,
   canManagePrivacy,
 }: OpportunityDetailPageClientProps) {
   const router = useRouter();
@@ -445,11 +455,13 @@ export function OpportunityDetailPageClient({
 
           <TabsContent value="documentations" className="mt-4">
             <div className="grid gap-6 md:grid-cols-2">
-              <EntityDocumentationSection title="Documents">
-                <p className="text-sm text-muted-foreground">
-                  Disponible au point Wiki &amp; Documents.
-                </p>
-              </EntityDocumentationSection>
+              <EntityLinkedDocumentsSection
+                entity="opportunity"
+                entityId={opportunity.id}
+                documents={linkedDocuments}
+                linkOptions={documentLinkOptions}
+                documentTypes={documentTypes}
+              />
               <EntityLinkedToolsSection
                 entity="opportunity"
                 entityId={opportunity.id}

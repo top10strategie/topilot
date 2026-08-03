@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireActiveCollaboratorAction } from "@/lib/auth/require-action";
 import { uploadContactProfilePicture } from "@/lib/clients/visuals";
+import { formBool, formFile, formOptional, formText } from "@/lib/form-data";
 import { createClient } from "@/lib/supabase/server";
 
 export type ContactActionResult =
@@ -18,27 +19,6 @@ export type ContactActionResult =
 export type DeleteContactResult =
   | { success: true }
   | { success: false; error: string };
-
-function formText(formData: FormData, key: string): string {
-  const value = formData.get(key);
-  return typeof value === "string" ? value.trim() : "";
-}
-
-function formOptional(formData: FormData, key: string): string | null {
-  const value = formText(formData, key);
-  return value.length > 0 ? value : null;
-}
-
-function formBool(formData: FormData, key: string, fallback = false): boolean {
-  const value = formData.get(key);
-  if (value === null) return fallback;
-  return value === "true" || value === "on" || value === "1";
-}
-
-function formFile(formData: FormData, key: string): File | null {
-  const value = formData.get(key);
-  return value instanceof File && value.size > 0 ? value : null;
-}
 
 function revalidateClient(clientId: string) {
   revalidatePath("/clients");

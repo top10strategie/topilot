@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { DrawerBody, DrawerFooterActions } from "@/components/drawers/drawer-section";
 import type { DrawerHelpers } from "@/components/drawers/drawer-stack-context";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -29,7 +30,7 @@ export function MissionConsultationDrawer({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex-1 space-y-6">
+      <DrawerBody className="space-y-6">
         <section className="space-y-4">
           <h3 className="text-sm font-semibold">Identification</h3>
 
@@ -128,9 +129,9 @@ export function MissionConsultationDrawer({
             points Toolbox et Wiki &amp; Documents.
           </p>
         </section>
-      </div>
+      </DrawerBody>
 
-      <div className="mt-6 flex shrink-0 justify-end gap-2 border-t pt-4">
+      <DrawerFooterActions>
         <Button
           type="button"
           onClick={() => {
@@ -140,7 +141,7 @@ export function MissionConsultationDrawer({
         >
           Aller à la mission
         </Button>
-      </div>
+      </DrawerFooterActions>
     </div>
   );
 }

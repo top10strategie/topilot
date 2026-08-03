@@ -7,6 +7,7 @@ import { createCategory, updateCategory } from "@/actions/categories";
 import { createToolRecord, updateToolRecord } from "@/actions/tools";
 import { CategoryMultiCombobox } from "@/components/categories/category-multi-combobox";
 import { LabelEntityFormDrawer } from "@/components/categories/label-entity-form-drawer";
+import { DrawerBody, DrawerFooterActions } from "@/components/drawers/drawer-section";
 import type { DrawerHelpers } from "@/components/drawers/drawer-stack-context";
 import { useDrawerStack } from "@/components/drawers/drawer-stack-context";
 import { ToolAccessFormDrawer } from "@/components/tools/tool-access-form-drawer";
@@ -194,7 +195,7 @@ export function ToolFormDrawer({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex-1 space-y-6">
+      <DrawerBody className="space-y-6">
         <section className="space-y-4">
           <h3 className="text-sm font-semibold">Identification</h3>
 
@@ -371,10 +372,10 @@ export function ToolFormDrawer({
             </section>
           </section>
         ) : null}
-      </div>
+      </DrawerBody>
 
       {mode === "edit" || showComplement ? (
-        <div className="mt-6 flex shrink-0 justify-end gap-2 border-t pt-4">
+        <DrawerFooterActions>
           <Button
             type="button"
             variant="outline"
@@ -394,9 +395,9 @@ export function ToolFormDrawer({
                 ? "Créer"
                 : "Enregistrer"}
           </Button>
-        </div>
+        </DrawerFooterActions>
       ) : (
-        <div className="mt-6 flex shrink-0 justify-end gap-2 border-t pt-4">
+        <DrawerFooterActions>
           <Button
             type="button"
             variant="outline"
@@ -405,7 +406,7 @@ export function ToolFormDrawer({
           >
             Annuler
           </Button>
-        </div>
+        </DrawerFooterActions>
       )}
     </div>
   );

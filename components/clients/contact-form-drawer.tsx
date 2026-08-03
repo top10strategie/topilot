@@ -6,6 +6,7 @@ import {
   createContactClient,
   updateContactClient,
 } from "@/actions/contact-clients";
+import { DrawerBody, DrawerFooterActions } from "@/components/drawers/drawer-section";
 import type { DrawerHelpers } from "@/components/drawers/drawer-stack-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -102,7 +103,7 @@ export function ContactFormDrawer({
 
   return (
     <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
-      <div className="flex-1 space-y-4">
+      <DrawerBody>
         <VisualFileField
           id="contact_avatar"
           label="Photo"
@@ -203,9 +204,9 @@ export function ContactFormDrawer({
             </p>
           ) : null}
         </div>
-      </div>
+      </DrawerBody>
 
-      <div className="mt-6 flex shrink-0 justify-end gap-2 border-t pt-4">
+      <DrawerFooterActions>
         <Button
           type="button"
           variant="outline"
@@ -221,7 +222,7 @@ export function ContactFormDrawer({
               ? "Créer"
               : "Enregistrer"}
         </Button>
-      </div>
+      </DrawerFooterActions>
     </form>
   );
 }

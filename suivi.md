@@ -1,5 +1,77 @@
 # Suivi des actions — TOPilot
 
+## **[2026-08-03] — Cleanup audit : FormData, liens CRM, code mort**
+
+**Type :** `refactor`
+**Fichiers concernés :** `lib/form-data.ts`, `lib/revalidate-crm-entity.ts`, `actions/{clients,contact-clients,documents,missions,opportunities,tools,wikis,document-links,tool-links,wiki-links}.ts`, suppression `components/tutorial/`, `entity-detail-placeholder.tsx`, `suivi.md`
+
+### Description
+
+Passe cleanup post-audit : helpers FormData unifiés, revalidation / tables de jonction CRM partagées pour docs & outils, suppression du scaffold tutorial et du placeholder orphelin. Lint, typecheck et build OK (warnings eslint-disable inutiles retirés).
+
+---
+
+## **[2026-08-03] — Fix recherche globale (fonction SQL manquante)**
+
+**Type :** `fix`
+**Fichiers concernés :** `supabase/migrations/20260803102000_is_manager_or_direction.sql`, `suivi.md`
+
+### Description
+
+La RPC `search_global` appelait `public.is_manager_or_direction()` sans que la fonction existe → erreur « Impossible d'effectuer la recherche » depuis la modale Header. Création du helper (équivalent de `current_collaborator_role() IN ('manager', 'direction')`) pour le filtrage des `tool_access` privés.
+
+---
+
+## **[2026-08-03] — Documentations dans les tiroirs client / opportunité / mission**
+
+**Type :** `feature`
+**Fichiers concernés :** `components/documents/entity-linked-documents-section.tsx`, `components/tools/entity-linked-tools-section.tsx`, `components/wiki/entity-linked-wikis-section.tsx`, `components/layout/entity-form-documentation-block.tsx`, `actions/entity-documentation-links.ts`, `components/clients/client-form-drawer.tsx`, `components/opportunities/opportunity-form-drawer.tsx`, `components/missions/mission-form-drawer.tsx`, `suivi.md`
+
+### Description
+
+Sections Documentations (Documents / Outils / Wiki) dans les tiroirs création/édition, visibles après enregistrement de l’identification. Callback `onLinksChange` pour rafraîchir l’état local du tiroir (les fiches gardent `router.refresh`). Matrice : client et mission = docs+outils+wiki ; opportunité = docs+outils. Onglet Documentations des fiches inchangé.
+
+---
+
+## **[2026-07-31] — Correctifs UX `/documents`**
+
+**Type :** `ux`
+**Fichiers concernés :** `lib/documents/*`, `app/api/documents/[id]/file/route.ts`, `components/documents/*`, `components/ui/switch.tsx`, `suivi.md`
+
+### Description
+
+« Lié à » enrichi via FK inverses (logo client, photos profil). Bouton Ouvrir → modale d’aperçu ; Télécharger via `?download=1` (Content-Disposition). Vignette sur cartes visuelles, Actions tableau plus étroites, filtres Type/Client en 2 colonnes. Tiroir : Source en tabs, Switch Oui/Non pour `is_visual`.
+
+---
+
+## **[2026-07-31] — Point 8 phase B : Wiki (Tiptap)**
+
+**Type :** `feature`
+**Fichiers concernés :** `app/(app)/wikis/page.tsx`, `actions/wikis.ts`, `actions/wiki-links.ts`, `lib/wiki/*`, `components/wiki/*`, fiches client/mission, `suivi.md`
+
+### Description
+
+Bibliothèque `/wikis` (Cartes/Tableau, filtres catégories, drawers création/édition/consultation, éditeur Tiptap). Sections Wiki liées sur fiches Client et Mission uniquement (pas d’opportunité). Dual write `content_html` + `content_text` pour le FTS.
+
+---
+
+## **[2026-07-31] — Point 8 phase A : Documents + versionning**
+
+**Type :** `feature`
+**Fichiers concernés :** `app/(app)/documents/page.tsx`, `app/api/documents/[id]/file/route.ts`, `actions/documents.ts`, `actions/document-links.ts`, `lib/documents/*`, `components/documents/*`, `supabase/migrations/20260731140000_documents_bucket.sql`, fiches client/mission/opportunité, `.cursor/rules/03_business_rules.mdc.md`, `suivi.md`
+
+### Description
+
+Bibliothèque `/documents` (Cartes/Tableau, filtres type/version/client, drawers création/édition, versionning à l’upload, suppression version ou lignée). Bucket Storage privé `documents` + proxy URL signée. Sections Documents liées sur fiches Client / Opportunité / Mission. Correction règles métier : pas de `opportunity_wiki`.
+
+### Détails techniques
+
+- Upload via service role ; `is_visual` fixe le bucket (`documents` / `visuels`)
+- Vue `document_latest` pour options de liaison ; liste complète + filtre « latest » côté UI
+- RPC `delete_document_version` / `delete_document_lineage` puis purge Storage
+
+---
+
 ## **[2026-07-31] — Footer fixe pagination listes**
 
 **Type :** `ux`

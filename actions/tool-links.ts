@@ -1,7 +1,12 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { requireActiveCollaboratorAction } from "@/lib/auth/require-action";
+import {
+  crmEntityFk,
+  revalidateCrmEntity,
+  toolJunctionTable,
+  type CrmLinkEntity,
+} from "@/lib/revalidate-crm-entity";
 import { createClient } from "@/lib/supabase/server";
 import { getToolById } from "@/lib/tools/queries";
 import type { ToolDetail } from "@/lib/tools/types";
@@ -11,38 +16,7 @@ export type ToolLinkActionResult =
   | { success: true }
   | { success: false; error: string };
 
-export type ToolLinkEntity = "client" | "mission" | "opportunity";
-
-function revalidateEntity(
-  entity: ToolLinkEntity,
-  entityId: string,
-  toolId?: string,
-) {
-  if (entity === "client") {
-    revalidatePath(`/clients/${entityId}`);
-    revalidatePath("/clients");
-  } else if (entity === "mission") {
-    revalidatePath(`/missions/${entityId}`);
-    revalidatePath("/missions");
-  } else {
-    revalidatePath(`/opportunities/${entityId}`);
-    revalidatePath("/opportunities");
-  }
-  revalidatePath("/tools");
-  if (toolId) revalidatePath(`/tools/${toolId}`);
-}
-
-function tableFor(entity: ToolLinkEntity): string {
-  if (entity === "client") return "client_tool";
-  if (entity === "mission") return "mission_tool";
-  return "opportunity_tool";
-}
-
-function fkFor(entity: ToolLinkEntity): string {
-  if (entity === "client") return "client_id";
-  if (entity === "mission") return "mission_id";
-  return "opportunity_id";
-}
+export type ToolLinkEntity = CrmLinkEntity;
 
 export async function fetchToolForConsultation(
   toolId: string,
@@ -80,8 +54,8 @@ export async function linkToolToEntity(input: {
   }
 
   const supabase = await createClient();
-  const table = tableFor(input.entity);
-  const fk = fkFor(input.entity);
+  const table = toolJunctionTable(input.entity);
+  const fk = crmEntityFk(input.entity);
 
   const { error } = await supabase.from(table).upsert(
     { [fk]: entityId, tool_id: toolId },
@@ -95,7 +69,10 @@ export async function linkToolToEntity(input: {
     };
   }
 
-  revalidateEntity(input.entity, entityId, toolId);
+  revalidateCrmEntity(input.entity, entityId, [
+    "/tools",
+    `/tools/${toolId}`,
+  ]);
   return { success: true };
 }
 
@@ -116,8 +93,8 @@ export async function unlinkToolFromEntity(input: {
   }
 
   const supabase = await createClient();
-  const table = tableFor(input.entity);
-  const fk = fkFor(input.entity);
+  const table = toolJunctionTable(input.entity);
+  const fk = crmEntityFk(input.entity);
 
   const { error } = await supabase
     .from(table)
@@ -132,6 +109,9 @@ export async function unlinkToolFromEntity(input: {
     };
   }
 
-  revalidateEntity(input.entity, entityId, toolId);
+  revalidateCrmEntity(input.entity, entityId, [
+    "/tools",
+    `/tools/${toolId}`,
+  ]);
   return { success: true };
 }

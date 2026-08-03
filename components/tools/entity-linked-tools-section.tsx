@@ -48,6 +48,8 @@ type EntityLinkedToolsSectionProps = {
   categories: CategoryItem[];
   collaborators?: CollaboratorListItem[];
   canManagePrivacy?: boolean;
+  /** Si fourni (ex. tiroir), rafraîchit l'état local au lieu de `router.refresh()`. */
+  onLinksChange?: () => void;
 };
 
 /**
@@ -61,6 +63,7 @@ export function EntityLinkedToolsSection({
   categories,
   collaborators = [],
   canManagePrivacy = false,
+  onLinksChange,
 }: EntityLinkedToolsSectionProps) {
   const router = useRouter();
   const { pushDrawer } = useDrawerStack();
@@ -70,6 +73,14 @@ export function EntityLinkedToolsSection({
     null,
   );
   const [isPending, startTransition] = useTransition();
+
+  const notifyChange = () => {
+    if (onLinksChange) {
+      onLinksChange();
+    } else {
+      router.refresh();
+    }
+  };
 
   const availableOptions = useMemo(() => {
     const linked = new Set(tools.map((t) => t.id));
@@ -116,7 +127,7 @@ export function EntityLinkedToolsSection({
           return;
         }
         toast.success("Outil créé et lié.");
-        router.refresh();
+        notifyChange();
       });
     });
   };
@@ -139,7 +150,7 @@ export function EntityLinkedToolsSection({
       toast.success("Outil lié.");
       setLinkOpen(false);
       setSelectedToolId("");
-      router.refresh();
+      notifyChange();
     });
   };
 
@@ -157,7 +168,7 @@ export function EntityLinkedToolsSection({
       }
       toast.success("Outil retiré.");
       setPendingUnlink(null);
-      router.refresh();
+      notifyChange();
     });
   };
 
