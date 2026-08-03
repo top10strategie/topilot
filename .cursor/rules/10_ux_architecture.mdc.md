@@ -375,9 +375,10 @@ Page à **plat, sans onglets** (contrairement à Client/Opportunité/Mission) :
 
 - Par défaut, seule la **dernière version** de chaque document est affichée (calculée dynamiquement : pour chaque famille de documents regroupée par `COALESCE(parent_document_id, id)`, la ligne avec le `version_number` le plus élevé — cf. `04_database_schema.mdc`, vue `document_latest`). Le filtre Version permet de faire apparaître aussi les versions antérieures.
 - Pas de page `[id]` dédiée pour `document` — toutes les actions se font depuis les icônes de la carte/ligne (voir ci-dessous), il n'y a pas de fiche à consulter séparément.
-- **Vue Cartes** (cf. section 5.1) : carte sans image → 3 colonnes desktop / 2 tablette / 1 téléphone.
-    - Carte : Titre (`document_name`) ; version (`version_number`, en haut à droite) ; Type (`document_type`) ; Visuel : (`is_visual`) ; Lié : Client/Opportunité/Mission (nom de l'entité liée via `client_document`/`opportunity_document`/`mission_document` — vide si le document n'est rattaché à aucune entité, ex. un document créé directement depuis `/documents`) ; Date (`created_at`).
-    - **4 icônes d'action directement sur la carte** (pas de passage par une fiche dédiée) : crayon (édition, ouvre le tiroir "Edition document"), lien externe (ouvre/prévisualise le fichier ou l'URL), téléchargement (`download`, télécharge le fichier), poubelle (suppression, modale de confirmation générique — "Toute suppression d'un document est définitive. Êtes-vous sûr de vouloir supprimer ce document ?").
+- **Vue Cartes** (cf. section 5.1 et 9.2 de `07_ux_composants_reutilisable.mdc`) : **carte avec image** → **4 colonnes desktop** / 2 tablette / 1 téléphone.
+    - Haut : image à gauche (aperçu visuel ou placeholder fichier) ; à droite Titre (`document_name`) + version (`version_number`) ; Type (`document_type`) / Visuel (`is_visual`) ; Lié : Client/Opportunité/Mission (via jonctions ou FK logo/avatar).
+    - Footer : date d'ajout à gauche ; 4 icônes d'action à droite (éditer, aperçu, télécharger, supprimer).
+    - **4 icônes d'action** (pas de page dédiée) : crayon (édition), œil (aperçu modale), téléchargement, poubelle (suppression — choix version / lignée).
 - **Vue Tableau** (cf. section 5.2) : colonnes Nom document, Type, **Lié à** (nom de l'entité liée, même logique que la carte), Date d'ajout, Version, Actions (mêmes 4 icônes que la vue Cartes).
 - **Pagination et compteur** (cf. section 5.3) : "Nombre de documents" (total, en bas à gauche) + pagination 25/page avec "Page : x/y" et navigation précédent/suivant (en bas à droite).
 - **Filtre** (modale, cf. section 5.4) :

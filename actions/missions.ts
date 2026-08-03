@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireActiveCollaboratorAction } from "@/lib/auth/require-action";
+import { formCategoryIds, formOptional, formText } from "@/lib/form-data";
 import type {
   MissionKanbanStatus,
   MissionScope,
@@ -39,22 +40,6 @@ const KANBAN_STATUSES = new Set<MissionKanbanStatus>([
 ]);
 
 const SCOPES = new Set<MissionScope>(["client", "interne"]);
-
-function formText(formData: FormData, key: string): string {
-  const value = formData.get(key);
-  return typeof value === "string" ? value.trim() : "";
-}
-
-function formOptional(formData: FormData, key: string): string | null {
-  const value = formText(formData, key);
-  return value.length > 0 ? value : null;
-}
-
-function formCategoryIds(formData: FormData): string[] {
-  return formData
-    .getAll("category_ids")
-    .filter((v): v is string => typeof v === "string" && v.length > 0);
-}
 
 function formOptionalNumber(
   formData: FormData,

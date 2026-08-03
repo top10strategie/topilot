@@ -87,9 +87,7 @@ export function AdministrationPageClient({
 }: AdministrationPageClientProps) {
   const router = useRouter();
   const { pushDrawer } = useDrawerStack();
-  const [activeTab, setActiveTab] = useState<AdminTab>(
-    canManagePeople ? "people" : "categories",
-  );
+  const [activeTab, setActiveTab] = useState<AdminTab>("categories");
   const [query, setQuery] = useState("");
   const [pendingDeleteTeam, setPendingDeleteTeam] =
     useState<PendingDeleteTeam | null>(null);
