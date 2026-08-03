@@ -383,3 +383,41 @@ export async function updateMissionsKanban(
   }
   return { success: true };
 }
+
+/**
+ * Archive une mission (`kanban_status = archivee`) — pas de DELETE SQL.
+ * `archived_at` est géré par le trigger DB.
+ */
+export async function archiveMission(
+  id: string,
+): Promise<{ success: true } | { success: false; error: string }> {
+  const auth = await requireActiveCollaboratorAction();
+  if (!auth.success) {
+    return { success: false, error: auth.error };
+  }
+  if (!id.trim()) {
+    return { success: false, error: "Identifiant invalide." };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("mission")
+    .update({ kanban_status: "archivee" })
+    .eq("id", id)
+    .select("id")
+    .maybeSingle();
+
+  if (error || !data) {
+    console.error("archiveMission:", error);
+    return {
+      success: false,
+      error: error
+        ? `Impossible d'archiver la mission : ${error.message}`
+        : "Mission introuvable.",
+    };
+  }
+
+  revalidatePath("/missions");
+  revalidatePath(`/missions/${id}`);
+  return { success: true };
+}

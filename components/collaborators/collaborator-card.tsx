@@ -42,6 +42,7 @@ export function CollaboratorAvatar({
         <AvatarImage
           src={collaborator.profile_picture_url}
           alt={getCollaboratorFullName(collaborator)}
+          className="object-cover"
         />
       ) : null}
       <AvatarFallback>{initials}</AvatarFallback>

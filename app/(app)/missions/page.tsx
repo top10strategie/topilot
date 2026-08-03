@@ -11,7 +11,12 @@ import {
   listMissions,
 } from "@/lib/missions/queries";
 
-async function MissionsContent() {
+async function MissionsContent({
+  searchParams,
+}: {
+  searchParams: Promise<{ teamId?: string; responsibleId?: string }>;
+}) {
+  const params = await searchParams;
   const [
     missions,
     collaborators,
@@ -36,6 +41,8 @@ async function MissionsContent() {
       categories={categories}
       opportunityOptions={opportunityOptions}
       currentCollaboratorId={currentCollaborator?.id ?? ""}
+      initialTeamId={params.teamId?.trim() || ""}
+      initialResponsibleId={params.responsibleId?.trim() || ""}
     />
   );
 }
@@ -56,10 +63,14 @@ function MissionsFallback() {
   );
 }
 
-export default function MissionsPage() {
+export default function MissionsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ teamId?: string; responsibleId?: string }>;
+}) {
   return (
     <Suspense fallback={<MissionsFallback />}>
-      <MissionsContent />
+      <MissionsContent searchParams={searchParams} />
     </Suspense>
   );
 }

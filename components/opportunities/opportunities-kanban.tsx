@@ -157,7 +157,11 @@ function OpportunityKanbanCardContent({
         <div className="flex items-center justify-between gap-2">
           <div className="flex min-w-0 flex-wrap gap-x-2">
             <span>{formatOpportunityPrice(item.price)}</span>
-            <span>
+            <span
+              className={cn(
+                item.kanban_status === "perdue" && "text-destructive",
+              )}
+            >
               {formatOpportunityProbability(item.probability_confirmation)}
             </span>
           </div>

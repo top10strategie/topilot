@@ -9,6 +9,7 @@ import {
   listDocumentTypes,
 } from "@/lib/categories/queries";
 import { loadPeopleDirectory } from "@/lib/collaborators/queries";
+import { listMissions } from "@/lib/missions/queries";
 
 async function AdministrationContent() {
   const current = await getCurrentCollaborator();
@@ -16,12 +17,13 @@ async function AdministrationContent() {
     ? canManageCollaboratorsAndTeams(current.role)
     : false;
 
-  const [categories, documentTypes, people] = await Promise.all([
+  const [categories, documentTypes, people, missions] = await Promise.all([
     listCategories(),
     listDocumentTypes(),
     canManagePeople
       ? loadPeopleDirectory()
       : Promise.resolve({ teams: [], collaborators: [] }),
+    canManagePeople ? listMissions() : Promise.resolve([]),
   ]);
 
   return (
@@ -31,6 +33,7 @@ async function AdministrationContent() {
       collaborators={people.collaborators}
       categories={categories}
       documentTypes={documentTypes}
+      missions={missions}
     />
   );
 }

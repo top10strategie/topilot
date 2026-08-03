@@ -1,5 +1,27 @@
 # Suivi des actions — TOPilot
 
+## **[2026-08-03] — Notes autosave, archivage fiches, extensions docs, tiroirs /top10**
+
+**Type :** `feature`
+**Fichiers concernés :** `actions/entity-notes.ts`, `actions/clients.ts`, `actions/opportunities.ts`, `actions/missions.ts`, `components/notes/entity-notes-editor.tsx`, `components/layout/confirm-status-dialog.tsx`, `components/*-detail-page-client.tsx`, `lib/documents/format.ts`, `components/documents/*`, `components/collaborators/consultation-drawers.tsx`, `components/collaborators/top10-page-client.tsx`, `components/collaborators/administration-page-client.tsx`, `lib/missions/queries.ts`, `app/(app)/top10/page.tsx`, `app/(app)/missions/page.tsx`, `suivi.md`
+
+### Description
+
+Éditeur de notes texte avec autosave (debounce + blur) sur fiches client / opportunité / mission et notes de pôle. Boutons poubelle Hero : client → inactif, mission → archivée, opportunité → perdue (modale « perte »). `/documents` : icônes d’extension sur cartes + colonne Format. Tiroirs consultation `/top10` (et admin) : `DrawerBody`, missions récentes, avatar +20 % `object-cover`.
+
+---
+
+## **[2026-08-03] — Point 9 : Transverse avancé (analyses, profil, Home)**
+
+**Type :** `feature`
+**Fichiers concernés :** `lib/analyses/*`, `components/analyses/*`, `app/(app)/analyses/page.tsx`, `lib/settings/*`, `actions/settings.ts`, `components/settings/*`, `app/(app)/settings/page.tsx`, `components/home/*`, `app/(app)/page.tsx`, `supabase/migrations/20260803120000_setting_home_widgets.sql`, `package.json` (recharts), `suivi.md`
+
+### Description
+
+Branche `feature/transverse-avance`. Page `/analyses` (KPI + graphiques Recharts Opportunités / Missions / Abonnements). Page `/settings` (profil, thème immédiat, MDP, tiroir édition). Home configurable via 13 widgets (`setting.home_widgets`). Audit_log déjà alimenté par triggers (336+ lignes) — UI historique reportée au point 10.
+
+---
+
 ## **[2026-08-03] — Cleanup audit : FormData, liens CRM, code mort**
 
 **Type :** `refactor`

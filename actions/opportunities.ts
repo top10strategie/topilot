@@ -407,3 +407,39 @@ export async function updateOpportunitiesKanban(
   }
   return { success: true };
 }
+
+/**
+ * Passe une opportunité en statut `perdue` (message métier « perte »).
+ */
+export async function markOpportunityAsLost(
+  id: string,
+): Promise<{ success: true } | { success: false; error: string }> {
+  const auth = await requireActiveCollaboratorAction();
+  if (!auth.success) {
+    return { success: false, error: auth.error };
+  }
+  if (!id.trim()) {
+    return { success: false, error: "Identifiant invalide." };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("opportunity")
+    .update({ kanban_status: "perdue" })
+    .eq("id", id)
+    .select("id")
+    .maybeSingle();
+
+  if (error || !data) {
+    console.error("markOpportunityAsLost:", error);
+    return {
+      success: false,
+      error: error
+        ? `Impossible de marquer l'opportunité comme perdue : ${error.message}`
+        : "Opportunité introuvable.",
+    };
+  }
+
+  revalidateOpportunities(id);
+  return { success: true };
+}
