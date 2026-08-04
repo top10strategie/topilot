@@ -215,7 +215,9 @@ export async function updateMissionRecord(
   const collaborator_id = formText(formData, "collaborator_id");
   const client_id = formOptional(formData, "client_id");
   const opportunity_id = formOptional(formData, "opportunity_id");
-  const notes = formOptional(formData, "notes");
+  const notes = formData.has("notes")
+    ? formOptional(formData, "notes")
+    : undefined;
   const start_at = formOptional(formData, "start_at");
   const end_at = formOptional(formData, "end_at");
   const kanbanRaw = formText(formData, "kanban_status");
@@ -281,15 +283,17 @@ export async function updateMissionRecord(
     collaborator_id,
     client_id: resolvedClientId,
     opportunity_id,
-    notes,
     start_at,
     end_at,
     estimated_charge: estimated,
     kanban_status: kanbanRaw,
   };
 
-  if (existing.notes !== notes) {
-    payload.notes_updated_at = new Date().toISOString();
+  if (notes !== undefined) {
+    payload.notes = notes;
+    if (existing.notes !== notes) {
+      payload.notes_updated_at = new Date().toISOString();
+    }
   }
 
   const { data, error } = await supabase

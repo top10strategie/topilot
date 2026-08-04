@@ -42,6 +42,7 @@ import {
   OPPORTUNITY_KANBAN_STATUSES,
   OPPORTUNITY_PRIORITIES,
 } from "@/lib/opportunities/labels";
+import type { OpportunityDuplicatePrefill } from "@/lib/crm/duplicate-prefill";
 import type {
   OpportunityCategoryItem,
   OpportunityContactOption,
@@ -58,6 +59,8 @@ type OpportunityFormDrawerProps = {
   contacts: OpportunityContactOption[];
   availableCategories: CategoryItem[];
   helpers: DrawerHelpers<{ id: string; opportunity_name: string }>;
+  /** Prefill création (duplication). */
+  duplicatePrefill?: OpportunityDuplicatePrefill;
 };
 
 type LocalClient = Pick<ClientListItem, "id" | "client_name">;
@@ -74,6 +77,7 @@ export function OpportunityFormDrawer({
   contacts: initialContacts,
   availableCategories = [],
   helpers,
+  duplicatePrefill,
 }: OpportunityFormDrawerProps) {
   const { pushDrawer } = useDrawerStack();
   const activeCollaborators = useMemo(
@@ -95,28 +99,42 @@ export function OpportunityFormDrawer({
   );
 
   const [opportunityName, setOpportunityName] = useState(
-    opportunity?.opportunity_name ?? "",
+    duplicatePrefill?.opportunity_name ?? opportunity?.opportunity_name ?? "",
   );
-  const [clientId, setClientId] = useState(opportunity?.client_id ?? "");
+  const [clientId, setClientId] = useState(
+    duplicatePrefill?.client_id ?? opportunity?.client_id ?? "",
+  );
   const [contactClientId, setContactClientId] = useState(
-    opportunity?.contact_client_id ?? "",
+    duplicatePrefill?.contact_client_id ??
+      opportunity?.contact_client_id ??
+      "",
   );
   const [responsibleId, setResponsibleId] = useState(
-    opportunity?.collaborator_id ?? "",
+    duplicatePrefill?.collaborator_id ?? opportunity?.collaborator_id ?? "",
   );
   const [lastMeetingAt, setLastMeetingAt] = useState(
-    opportunity?.last_meeting_at ?? "",
+    duplicatePrefill?.last_meeting_at ?? opportunity?.last_meeting_at ?? "",
   );
-  const [dueDateAt, setDueDateAt] = useState(opportunity?.due_date_at ?? "");
-  const [endAt, setEndAt] = useState(opportunity?.end_at ?? "");
+  const [dueDateAt, setDueDateAt] = useState(
+    duplicatePrefill ? "" : (opportunity?.due_date_at ?? ""),
+  );
+  const [endAt, setEndAt] = useState(
+    duplicatePrefill ? "" : (opportunity?.end_at ?? ""),
+  );
 
   const [price, setPrice] = useState(
-    opportunity?.price != null ? String(opportunity.price) : "",
+    duplicatePrefill
+      ? ""
+      : opportunity?.price != null
+        ? String(opportunity.price)
+        : "",
   );
   const [probability, setProbability] = useState(
-    opportunity?.probability_confirmation != null
-      ? String(opportunity.probability_confirmation)
-      : "10",
+    duplicatePrefill
+      ? "10"
+      : opportunity?.probability_confirmation != null
+        ? String(opportunity.probability_confirmation)
+        : "10",
   );
   const [priority, setPriority] = useState<OpportunityPriority>(
     opportunity?.priority ?? "normal",
@@ -124,9 +142,15 @@ export function OpportunityFormDrawer({
   const [kanbanStatus, setKanbanStatus] = useState<OpportunityKanbanStatus>(
     opportunity?.kanban_status ?? "suspect",
   );
-  const [action, setAction] = useState(opportunity?.action ?? "");
-  const [source, setSource] = useState(opportunity?.source ?? "");
-  const [notes, setNotes] = useState(opportunity?.notes ?? "");
+  const [action, setAction] = useState(
+    duplicatePrefill?.action ?? opportunity?.action ?? "",
+  );
+  const [source, setSource] = useState(
+    duplicatePrefill?.source ?? opportunity?.source ?? "",
+  );
+  const [notes, setNotes] = useState(
+    duplicatePrefill?.notes ?? opportunity?.notes ?? "",
+  );
 
   const [clients, setClients] = useState<LocalClient[]>(() =>
     [...initialClients]
@@ -142,6 +166,8 @@ export function OpportunityFormDrawer({
       const byId = new Map<string, OpportunityCategoryItem>();
       for (const item of availableCategories) byId.set(item.id, item);
       for (const item of opportunity?.categories ?? []) byId.set(item.id, item);
+      for (const item of duplicatePrefill?.categories ?? [])
+        byId.set(item.id, item);
       return [...byId.values()].sort((a, b) =>
         a.label.localeCompare(b.label, "fr"),
       );
@@ -149,7 +175,9 @@ export function OpportunityFormDrawer({
   );
   const [selectedCategories, setSelectedCategories] = useState<
     OpportunityCategoryItem[]
-  >(() => [...(opportunity?.categories ?? [])]);
+  >(() => [
+    ...(duplicatePrefill?.categories ?? opportunity?.categories ?? []),
+  ]);
 
   const [fieldErrors, setFieldErrors] = useState<
     Partial<Record<string, string>>
@@ -302,6 +330,15 @@ export function OpportunityFormDrawer({
           return;
         }
         setOpportunityId(result.id);
+        if (result.kanban_status) {
+          setKanbanStatus(result.kanban_status);
+        }
+        if (
+          result.probability_confirmation != null &&
+          Number.isFinite(result.probability_confirmation)
+        ) {
+          setProbability(String(result.probability_confirmation));
+        }
         setIdentificationSaved(true);
         toast.success("Opportunité créée. Complétez les informations.");
         return;
@@ -334,7 +371,9 @@ export function OpportunityFormDrawer({
       formData.set("kanban_status", kanbanStatus);
       formData.set("action", action);
       formData.set("source", source);
-      formData.set("notes", notes);
+      if (mode === "create") {
+        formData.set("notes", notes);
+      }
       for (const category of selectedCategories) {
         formData.append("category_ids", category.id);
       }
@@ -715,16 +754,18 @@ export function OpportunityFormDrawer({
               />
             </div>
 
-            <div className="grid gap-2">
-              <Label htmlFor="opportunity_notes">Notes</Label>
-              <Textarea
-                id="opportunity_notes"
-                value={notes}
-                onChange={(event) => setNotes(event.target.value)}
-                disabled={isPending}
-                rows={4}
-              />
-            </div>
+            {mode === "create" ? (
+              <div className="grid gap-2">
+                <Label htmlFor="opportunity_notes">Notes</Label>
+                <Textarea
+                  id="opportunity_notes"
+                  value={notes}
+                  onChange={(event) => setNotes(event.target.value)}
+                  disabled={isPending}
+                  rows={4}
+                />
+              </div>
+            ) : null}
 
             {opportunityId ? (
               <div className="space-y-3 border-t pt-4">

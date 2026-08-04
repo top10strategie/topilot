@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { DrawerBody, DrawerFooterActions } from "@/components/drawers/drawer-section";
 import type { DrawerHelpers } from "@/components/drawers/drawer-stack-context";
+import { EntityFormDocumentationBlock } from "@/components/layout/entity-form-documentation-block";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -35,6 +36,12 @@ export function ClientConsultationDrawer({
   ]
     .filter(Boolean)
     .join(", ");
+
+  const contactsChronological = [...client.contacts].sort((a, b) =>
+    a.created_at.localeCompare(b.created_at),
+  );
+
+  const notesText = client.notes?.trim() ?? "";
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -113,25 +120,48 @@ export function ClientConsultationDrawer({
 
           <div className="grid gap-2 text-sm">
             <p className="text-muted-foreground">Contacts</p>
-            {client.contacts.length === 0 ? (
+            {contactsChronological.length === 0 ? (
               <p className="text-muted-foreground">Aucun contact</p>
             ) : (
-              <ul className="space-y-1">
-                {client.contacts.map((contact) => (
-                  <li key={contact.id} className="font-medium">
-                    {getContactFullName(contact)}
-                    {contact.is_main ? (
-                      <span className="ml-1 text-xs font-normal text-muted-foreground">
-                        (principal)
-                      </span>
-                    ) : null}
-                    {contact.job_title ? (
-                      <span className="block text-xs font-normal text-muted-foreground">
-                        {contact.job_title}
-                      </span>
-                    ) : null}
-                  </li>
-                ))}
+              <ul className="space-y-3">
+                {contactsChronological.map((contact) => {
+                  const phone = contact.phone_number?.trim() || null;
+                  const email = contact.email_address?.trim() || null;
+                  const jobTitle = contact.job_title?.trim() || null;
+                  const showSecondLine = Boolean(jobTitle || email);
+
+                  return (
+                    <li key={contact.id} className="font-medium">
+                      <div className="flex items-baseline justify-between gap-3">
+                        <span className="min-w-0">
+                          {getContactFullName(contact)}
+                          {contact.is_main ? (
+                            <span className="ml-1 text-xs font-normal text-muted-foreground">
+                              (principal)
+                            </span>
+                          ) : null}
+                        </span>
+                        {phone ? (
+                          <span className="shrink-0 text-xs font-normal text-muted-foreground">
+                            {phone}
+                          </span>
+                        ) : null}
+                      </div>
+                      {showSecondLine ? (
+                        <div className="mt-0.5 flex items-baseline justify-between gap-3">
+                          <span className="min-w-0 text-xs font-normal text-muted-foreground">
+                            {jobTitle ?? ""}
+                          </span>
+                          {email ? (
+                            <span className="shrink-0 text-xs font-normal text-muted-foreground">
+                              {email}
+                            </span>
+                          ) : null}
+                        </div>
+                      ) : null}
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>
@@ -151,17 +181,21 @@ export function ClientConsultationDrawer({
             </div>
           </div>
 
-          <div className="grid gap-1 text-sm">
-            <p className="text-muted-foreground">Notes</p>
-            <p className="whitespace-pre-wrap text-muted-foreground">
-              {client.notes?.trim() || "Aucune note."}
-            </p>
-          </div>
+          {notesText ? (
+            <div className="grid gap-1 text-sm">
+              <p className="text-muted-foreground">Notes</p>
+              <p className="whitespace-pre-wrap text-muted-foreground">
+                {notesText}
+              </p>
+            </div>
+          ) : null}
 
-          <p className="text-xs text-muted-foreground">
-            Documents et outils : disponibles sur la fiche client / au point
-            Toolbox.
-          </p>
+          <EntityFormDocumentationBlock
+            entity="client"
+            entityId={client.id}
+            includeWikis={false}
+            readOnly
+          />
         </section>
       </DrawerBody>
 

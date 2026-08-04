@@ -240,7 +240,9 @@ export function ClientFormDrawer({
       formData.set("address_zip", addressZip);
       formData.set("address_city", addressCity);
       formData.set("drive_link", driveLink);
-      formData.set("notes", notes);
+      if (mode === "create") {
+        formData.set("notes", notes);
+      }
       formData.set("is_active", isActive ? "true" : "false");
       for (const category of selectedCategories) {
         formData.append("category_ids", category.id);
@@ -480,16 +482,18 @@ export function ClientFormDrawer({
               />
             </div>
 
-            <div className="grid gap-2">
-              <Label htmlFor="client_notes">Notes</Label>
-              <Textarea
-                id="client_notes"
-                value={notes}
-                onChange={(event) => setNotes(event.target.value)}
-                disabled={isPending}
-                rows={4}
-              />
-            </div>
+            {mode === "create" ? (
+              <div className="grid gap-2">
+                <Label htmlFor="client_notes">Notes</Label>
+                <Textarea
+                  id="client_notes"
+                  value={notes}
+                  onChange={(event) => setNotes(event.target.value)}
+                  disabled={isPending}
+                  rows={4}
+                />
+              </div>
+            ) : null}
 
             {clientId ? (
               <div className="space-y-3 border-t pt-4">

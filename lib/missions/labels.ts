@@ -1,5 +1,6 @@
 import type {
   MissionKanbanStatus,
+  MissionRecurrenceFrequency,
   MissionResponsibleItem,
   MissionScope,
 } from "./types";
@@ -13,6 +14,12 @@ export const MISSION_KANBAN_STATUSES: MissionKanbanStatus[] = [
 
 export const MISSION_SCOPES: MissionScope[] = ["client", "interne"];
 
+export const MISSION_RECURRENCE_FREQUENCIES: MissionRecurrenceFrequency[] = [
+  "mensuelle",
+  "trimestrielle",
+  "annuelle",
+];
+
 const KANBAN_STATUS_LABELS: Record<MissionKanbanStatus, string> = {
   a_faire: "À faire",
   en_cours: "En cours",
@@ -24,6 +31,19 @@ const SCOPE_LABELS: Record<MissionScope, string> = {
   client: "Client",
   interne: "Interne",
 };
+
+const RECURRENCE_FREQUENCY_LABELS: Record<MissionRecurrenceFrequency, string> =
+  {
+    mensuelle: "Mensuelle",
+    trimestrielle: "Trimestrielle",
+    annuelle: "Annuelle",
+  };
+
+export function getMissionRecurrenceFrequencyLabel(
+  frequency: MissionRecurrenceFrequency,
+): string {
+  return RECURRENCE_FREQUENCY_LABELS[frequency];
+}
 
 export function getMissionKanbanStatusLabel(
   status: MissionKanbanStatus,

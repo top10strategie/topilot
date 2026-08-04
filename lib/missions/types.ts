@@ -6,6 +6,18 @@ export type MissionKanbanStatus =
 
 export type MissionScope = "client" | "interne";
 
+export type MissionRecurrenceFrequency =
+  | "mensuelle"
+  | "trimestrielle"
+  | "annuelle";
+
+export type MissionSeriesItem = {
+  id: string;
+  frequency: MissionRecurrenceFrequency;
+  starts_on: string;
+  ends_on: string | null;
+};
+
 export type MissionCategoryItem = {
   id: string;
   label: string;
@@ -35,6 +47,7 @@ export type MissionListItem = {
   client_id: string | null;
   collaborator_id: string;
   opportunity_id: string | null;
+  series_id: string | null;
   kanban_status: MissionKanbanStatus;
   kanban_order: number | null;
   archived_at: string | null;
@@ -46,10 +59,22 @@ export type MissionListItem = {
   opportunity: MissionOpportunityRef | null;
   responsible: MissionResponsibleItem;
   categories: MissionCategoryItem[];
+  series: MissionSeriesItem | null;
 };
 
 export type MissionDetail = MissionListItem & {
   notes: string | null;
+};
+
+/** Prefill tiroir création (duplication B1). */
+export type MissionDuplicatePrefill = {
+  mission_name: string;
+  mission_scope: MissionScope;
+  client_id: string | null;
+  collaborator_id: string;
+  estimated_charge: number | null;
+  notes: string | null;
+  categories: MissionCategoryItem[];
 };
 
 /** Options légères pour sélecteurs (création / édition). */
