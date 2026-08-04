@@ -343,14 +343,6 @@ export function OpportunityDetailPageClient({
                         )}
                       </div>
                       <div>
-                        <p className="text-muted-foreground">Contact</p>
-                        <p>
-                          {opportunity.contact
-                            ? getContactFullName(opportunity.contact)
-                            : "—"}
-                        </p>
-                      </div>
-                      <div>
                         <p className="text-muted-foreground">
                           Responsable opportunité
                         </p>

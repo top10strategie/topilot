@@ -1,6 +1,7 @@
 "use client";
 
 import { Repeat, StopCircle } from "@phosphor-icons/react";
+import { IconActionButton } from "@/components/layout/icon-action-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -79,16 +80,13 @@ export function MissionRecurrenceFields({
         <div className="flex items-center justify-between gap-2">
           <h3 className="text-sm font-semibold">Récurrence</h3>
           {!seriesStopped && onRequestStop ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              aria-label="Arrêter la récurrence"
-              title="Arrêter la récurrence"
+            <IconActionButton
+              label="Arrêter la récurrence"
+              attention
               onClick={onRequestStop}
             >
               <StopCircle className="size-4" />
-            </Button>
+            </IconActionButton>
           ) : null}
         </div>
         <dl className="grid gap-2 text-sm">
@@ -121,17 +119,16 @@ export function MissionRecurrenceFields({
       <div className="flex items-center justify-between gap-2">
         <h3 className="text-sm font-semibold">Récurrence</h3>
         {showStop ? (
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            aria-label="Arrêter la récurrence"
-            title="Arrêter la récurrence"
-            disabled={disabled}
-            onClick={onRequestStop}
-          >
-            <StopCircle className="size-4" />
-          </Button>
+          onRequestStop ? (
+            <IconActionButton
+              label="Arrêter la récurrence"
+              attention
+              disabled={disabled}
+              onClick={onRequestStop}
+            >
+              <StopCircle className="size-4" />
+            </IconActionButton>
+          ) : null
         ) : (
           <Button
             type="button"

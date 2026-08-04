@@ -54,6 +54,7 @@ function mapContact(row: {
   phone_number: string | null;
   email_address: string | null;
   profile_picture: DocumentVisualRow | null;
+  created_at: string;
 }): ContactClientItem {
   return {
     id: row.id,
@@ -66,6 +67,7 @@ function mapContact(row: {
     phone_number: row.phone_number,
     email_address: row.email_address,
     profile_picture_url: resolveVisualPublicUrl(row.profile_picture),
+    created_at: row.created_at,
   };
 }
 
@@ -275,6 +277,7 @@ export async function getClientById(id: string): Promise<ClientDetail | null> {
         notes,
         phone_number,
         email_address,
+        created_at,
         profile_picture:profile_picture_id ( id, file_path, is_visual )
       ),
       client_document (
@@ -318,6 +321,7 @@ export async function getClientById(id: string): Promise<ClientDetail | null> {
       notes: string | null;
       phone_number: string | null;
       email_address: string | null;
+      created_at: string;
       profile_picture: DocumentVisualRow | null;
     }> | null;
     client_document: Array<{

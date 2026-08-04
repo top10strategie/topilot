@@ -28,6 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { VisualFileField } from "@/components/visuels/visual-file-field";
 import type { CategoryItem } from "@/lib/categories/types";
 import { getCollaboratorFullName } from "@/lib/collaborators/labels";
@@ -94,6 +95,7 @@ export function ClientFormDrawer({
   const [addressZip, setAddressZip] = useState(client?.address_zip ?? "");
   const [addressCity, setAddressCity] = useState(client?.address_city ?? "");
   const [driveLink, setDriveLink] = useState(client?.drive_link ?? "");
+  const [notes, setNotes] = useState(client?.notes ?? "");
   const [isActive, setIsActive] = useState(client?.is_active ?? true);
 
   const [categories, setCategories] = useState<ClientCategoryItem[]>(() => {
@@ -238,6 +240,9 @@ export function ClientFormDrawer({
       formData.set("address_zip", addressZip);
       formData.set("address_city", addressCity);
       formData.set("drive_link", driveLink);
+      if (mode === "create") {
+        formData.set("notes", notes);
+      }
       formData.set("is_active", isActive ? "true" : "false");
       for (const category of selectedCategories) {
         formData.append("category_ids", category.id);
@@ -476,6 +481,19 @@ export function ClientFormDrawer({
                 emptyListMessage="Aucune catégorie. Créez-en une avec le bouton ci-dessus."
               />
             </div>
+
+            {mode === "create" ? (
+              <div className="grid gap-2">
+                <Label htmlFor="client_notes">Notes</Label>
+                <Textarea
+                  id="client_notes"
+                  value={notes}
+                  onChange={(event) => setNotes(event.target.value)}
+                  disabled={isPending}
+                  rows={4}
+                />
+              </div>
+            ) : null}
 
             {clientId ? (
               <div className="space-y-3 border-t pt-4">

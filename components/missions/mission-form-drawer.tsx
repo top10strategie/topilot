@@ -35,6 +35,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import type { CategoryItem } from "@/lib/categories/types";
 import { getCollaboratorFullName } from "@/lib/collaborators/labels";
 import type { CollaboratorListItem } from "@/lib/collaborators/types";
@@ -89,7 +90,6 @@ export function MissionFormDrawer({
   lockedFields,
 }: MissionFormDrawerProps) {
   const { pushDrawer } = useDrawerStack();
-  const isDuplicateCreate = mode === "create" && Boolean(duplicatePrefill);
 
   const lockedScope = lockedFields?.mission_scope;
   const lockedClientId = lockedFields?.client_id;
@@ -152,7 +152,7 @@ export function MissionFormDrawer({
   const [endAt, setEndAt] = useState(
     duplicatePrefill ? "" : (mission?.end_at ?? ""),
   );
-  const [notes] = useState(
+  const [notes, setNotes] = useState(
     duplicatePrefill?.notes ?? mission?.notes ?? "",
   );
   const [recurrence, setRecurrence] = useState<MissionRecurrenceDraft>(() =>
@@ -280,7 +280,9 @@ export function MissionFormDrawer({
     formData.set("kanban_status", kanbanStatus);
     if (startAt) formData.set("start_at", startAt);
     if (endAt) formData.set("end_at", endAt);
-    formData.set("notes", notes);
+    if (mode === "create") {
+      formData.set("notes", notes);
+    }
     if (missionScope === "client") {
       const oppId = lockedOpportunityId ?? opportunityId;
       if (oppId) {
@@ -362,8 +364,7 @@ export function MissionFormDrawer({
     });
   };
 
-  const showComplement =
-    mode === "edit" || identificationSaved || isDuplicateCreate;
+  const showComplement = mode === "edit" || identificationSaved;
   const seriesStopped =
     Boolean(mission?.series?.ends_on) &&
     (mission?.series?.ends_on ?? "") <= new Date().toISOString().slice(0, 10);
@@ -665,6 +666,19 @@ export function MissionFormDrawer({
                   {opportunityOptions.find((o) => o.id === lockedOpportunityId)
                     ?.opportunity_name ?? "—"}
                 </p>
+              </div>
+            ) : null}
+
+            {mode === "create" ? (
+              <div className="grid gap-2">
+                <Label htmlFor="mission_notes">Notes</Label>
+                <Textarea
+                  id="mission_notes"
+                  value={notes}
+                  onChange={(event) => setNotes(event.target.value)}
+                  disabled={isPending}
+                  rows={4}
+                />
               </div>
             ) : null}
 

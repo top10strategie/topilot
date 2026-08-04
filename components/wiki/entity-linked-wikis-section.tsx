@@ -47,6 +47,8 @@ type EntityLinkedWikisSectionProps = {
   categories: CategoryItem[];
   /** Si fourni (ex. tiroir), rafraîchit l'état local au lieu de `router.refresh()`. */
   onLinksChange?: () => void;
+  /** Consultation : pas d'ajout/retrait ; section absente si liste vide. */
+  readOnly?: boolean;
 };
 
 export function EntityLinkedWikisSection({
@@ -56,6 +58,7 @@ export function EntityLinkedWikisSection({
   linkOptions,
   categories,
   onLinksChange,
+  readOnly = false,
 }: EntityLinkedWikisSectionProps) {
   const router = useRouter();
   const { pushDrawer } = useDrawerStack();
@@ -153,18 +156,24 @@ export function EntityLinkedWikisSection({
     });
   };
 
+  if (readOnly && wikis.length === 0) {
+    return null;
+  }
+
   return (
     <>
       <EntityDocumentationSection
         title="Wiki"
         action={
-          <IconActionButton
-            label="Ajouter un wiki"
-            variant="outline"
-            onClick={() => setLinkOpen(true)}
-          >
-            <Plus className="size-4" />
-          </IconActionButton>
+          readOnly ? undefined : (
+            <IconActionButton
+              label="Ajouter un wiki"
+              variant="outline"
+              onClick={() => setLinkOpen(true)}
+            >
+              <Plus className="size-4" />
+            </IconActionButton>
+          )
         }
       >
         {wikis.length === 0 ? (
@@ -196,130 +205,136 @@ export function EntityLinkedWikisSection({
                     </span>
                   ) : null}
                 </button>
-                <IconActionButton
-                  label="Retirer le wiki"
-                  attention
-                  onClick={() => setPendingUnlink(wiki)}
-                >
-                  <Trash className="size-3.5" />
-                </IconActionButton>
+                {readOnly ? null : (
+                  <IconActionButton
+                    label="Retirer le wiki"
+                    attention
+                    onClick={() => setPendingUnlink(wiki)}
+                  >
+                    <Trash className="size-3.5" />
+                  </IconActionButton>
+                )}
               </li>
             ))}
           </ul>
         )}
       </EntityDocumentationSection>
 
-      <Dialog open={linkOpen} onOpenChange={setLinkOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Lier un wiki</DialogTitle>
-            <DialogDescription>
-              Associez un wiki existant, ou créez-en un nouveau (il sera lié
-              automatiquement).
-            </DialogDescription>
-          </DialogHeader>
+      {readOnly ? null : (
+        <>
+          <Dialog open={linkOpen} onOpenChange={setLinkOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Lier un wiki</DialogTitle>
+                <DialogDescription>
+                  Associez un wiki existant, ou créez-en un nouveau (il sera lié
+                  automatiquement).
+                </DialogDescription>
+              </DialogHeader>
 
-          <div className="space-y-3">
-            <div className="grid gap-2">
-              <Label>Wiki existant</Label>
-              <Select
-                value={selectedWikiId || "__unset__"}
-                onValueChange={(value) =>
-                  setSelectedWikiId(value === "__unset__" ? "" : value)
-                }
-                disabled={isPending || availableOptions.length === 0}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue
-                    placeholder={
-                      availableOptions.length === 0
-                        ? "Tous les wikis sont déjà liés"
-                        : "Sélectionner un wiki"
+              <div className="space-y-3">
+                <div className="grid gap-2">
+                  <Label>Wiki existant</Label>
+                  <Select
+                    value={selectedWikiId || "__unset__"}
+                    onValueChange={(value) =>
+                      setSelectedWikiId(value === "__unset__" ? "" : value)
                     }
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__unset__" disabled>
-                    Sélectionner un wiki
-                  </SelectItem>
-                  {availableOptions.map((opt) => (
-                    <SelectItem key={opt.id} value={opt.id}>
-                      {opt.title}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+                    disabled={isPending || availableOptions.length === 0}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue
+                        placeholder={
+                          availableOptions.length === 0
+                            ? "Tous les wikis sont déjà liés"
+                            : "Sélectionner un wiki"
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__unset__" disabled>
+                        Sélectionner un wiki
+                      </SelectItem>
+                      {availableOptions.map((opt) => (
+                        <SelectItem key={opt.id} value={opt.id}>
+                          {opt.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
 
-          <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-between">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={isPending}
-              onClick={openCreateAndLink}
+              <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-between">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={isPending}
+                  onClick={openCreateAndLink}
+                >
+                  Créer un nouveau wiki
+                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={isPending}
+                    onClick={() => setLinkOpen(false)}
+                  >
+                    Annuler
+                  </Button>
+                  <Button
+                    type="button"
+                    disabled={isPending || !selectedWikiId}
+                    onClick={handleLinkExisting}
+                  >
+                    {isPending ? "Liaison…" : "Lier"}
+                  </Button>
+                </div>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {pendingUnlink ? (
+            <Dialog
+              open
+              onOpenChange={(open) => {
+                if (!open) setPendingUnlink(null);
+              }}
             >
-              Créer un nouveau wiki
-            </Button>
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                disabled={isPending}
-                onClick={() => setLinkOpen(false)}
-              >
-                Annuler
-              </Button>
-              <Button
-                type="button"
-                disabled={isPending || !selectedWikiId}
-                onClick={handleLinkExisting}
-              >
-                {isPending ? "Liaison…" : "Lier"}
-              </Button>
-            </div>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {pendingUnlink ? (
-        <Dialog
-          open
-          onOpenChange={(open) => {
-            if (!open) setPendingUnlink(null);
-          }}
-        >
-          <DialogContent className="border-destructive">
-            <DialogHeader>
-              <DialogTitle className="text-destructive">
-                Retirer le wiki
-              </DialogTitle>
-              <DialogDescription>
-                Retirer <strong>{pendingUnlink.title}</strong> de cette fiche ?
-                Le wiki reste dans la bibliothèque.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter className="gap-2 sm:gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                disabled={isPending}
-                onClick={() => setPendingUnlink(null)}
-              >
-                Annuler
-              </Button>
-              <Button
-                type="button"
-                variant="destructive"
-                disabled={isPending}
-                onClick={handleUnlink}
-              >
-                {isPending ? "Retrait…" : "Retirer"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      ) : null}
+              <DialogContent className="border-destructive">
+                <DialogHeader>
+                  <DialogTitle className="text-destructive">
+                    Retirer le wiki
+                  </DialogTitle>
+                  <DialogDescription>
+                    Retirer <strong>{pendingUnlink.title}</strong> de cette
+                    fiche ? Le wiki reste dans la bibliothèque.
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter className="gap-2 sm:gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={isPending}
+                    onClick={() => setPendingUnlink(null)}
+                  >
+                    Annuler
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    disabled={isPending}
+                    onClick={handleUnlink}
+                  >
+                    {isPending ? "Retrait…" : "Retirer"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          ) : null}
+        </>
+      )}
     </>
   );
 }

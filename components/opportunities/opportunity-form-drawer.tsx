@@ -29,6 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import type { CategoryItem } from "@/lib/categories/types";
 import { getCollaboratorFullName } from "@/lib/collaborators/labels";
 import type { CollaboratorListItem } from "@/lib/collaborators/types";
@@ -147,7 +148,7 @@ export function OpportunityFormDrawer({
   const [source, setSource] = useState(
     duplicatePrefill?.source ?? opportunity?.source ?? "",
   );
-  const [notes] = useState(
+  const [notes, setNotes] = useState(
     duplicatePrefill?.notes ?? opportunity?.notes ?? "",
   );
 
@@ -329,6 +330,15 @@ export function OpportunityFormDrawer({
           return;
         }
         setOpportunityId(result.id);
+        if (result.kanban_status) {
+          setKanbanStatus(result.kanban_status);
+        }
+        if (
+          result.probability_confirmation != null &&
+          Number.isFinite(result.probability_confirmation)
+        ) {
+          setProbability(String(result.probability_confirmation));
+        }
         setIdentificationSaved(true);
         toast.success("Opportunité créée. Complétez les informations.");
         return;
@@ -361,7 +371,9 @@ export function OpportunityFormDrawer({
       formData.set("kanban_status", kanbanStatus);
       formData.set("action", action);
       formData.set("source", source);
-      formData.set("notes", notes);
+      if (mode === "create") {
+        formData.set("notes", notes);
+      }
       for (const category of selectedCategories) {
         formData.append("category_ids", category.id);
       }
@@ -385,9 +397,7 @@ export function OpportunityFormDrawer({
     });
   };
 
-  const isDuplicateCreate = mode === "create" && Boolean(duplicatePrefill);
-  const showComplement =
-    mode === "edit" || identificationSaved || isDuplicateCreate;
+  const showComplement = mode === "edit" || identificationSaved;
 
   return (
     <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
@@ -743,6 +753,19 @@ export function OpportunityFormDrawer({
                 disabled={isPending}
               />
             </div>
+
+            {mode === "create" ? (
+              <div className="grid gap-2">
+                <Label htmlFor="opportunity_notes">Notes</Label>
+                <Textarea
+                  id="opportunity_notes"
+                  value={notes}
+                  onChange={(event) => setNotes(event.target.value)}
+                  disabled={isPending}
+                  rows={4}
+                />
+              </div>
+            ) : null}
 
             {opportunityId ? (
               <div className="space-y-3 border-t pt-4">

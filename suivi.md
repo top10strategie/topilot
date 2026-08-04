@@ -1,5 +1,38 @@
 # Suivi des actions — TOPilot
 
+## **[2026-08-04] — Consultation client/mission + fiche opportunité**
+
+**Type :** `fix`
+**Fichiers concernés :** `components/opportunities/opportunity-detail-page-client.tsx`, `components/clients/client-consultation-drawer.tsx`, `components/missions/mission-consultation-drawer.tsx`, `components/layout/entity-form-documentation-block.tsx`, `components/documents/entity-linked-documents-section.tsx`, `components/tools/entity-linked-tools-section.tsx`, `components/wiki/entity-linked-wikis-section.tsx`, `lib/clients/types.ts`, `lib/clients/queries.ts`, `.cursor/rules/10_ux_architecture.mdc.md`, `suivi.md`
+
+### Description
+
+Retrait du Contact sur `/opportunities/[id]`. Tiroir consultation client : tél./email par contact, Notes masquées si vides, docs/outils en lecture seule. Tiroir mission : même pattern docs/outils/wiki. Sections liées : prop `readOnly` (pas de Plus/Trash, sections vides absentes).
+
+---
+
+## **[2026-08-04] — Notes dans tiroirs création uniquement**
+
+**Type :** `fix`
+**Fichiers concernés :** `components/clients/client-form-drawer.tsx`, `components/opportunities/opportunity-form-drawer.tsx`, `components/missions/mission-form-drawer.tsx`, `actions/missions.ts`, `suivi.md`
+
+### Description
+
+Champ Notes rétabli en création (client / opportunité / mission) ; absent en édition (édition sur fiche). `updateMissionRecord` n’écrit les notes que si présentes dans le FormData.
+
+---
+
+## **[2026-08-04] — Fix duplication : flux 2 étapes + sync statut/proba**
+
+**Type :** `fix`
+**Fichiers concernés :** `components/missions/mission-form-drawer.tsx`, `components/opportunities/opportunity-form-drawer.tsx`, `actions/opportunities.ts`, `suivi.md`
+
+### Description
+
+La duplication reprend le flux création en 2 étapes (complément masqué jusqu’au 1er Enregistrer). `createOpportunityRecord` renvoie `kanban_status` / `probability_confirmation` du trigger pour éviter d’écraser `besoin_specifie` / 50 % au 2ᵉ save.
+
+---
+
 ## **[2026-08-04] — Duplication missions/opportunités + récurrence missions**
 
 **Type :** `feature`

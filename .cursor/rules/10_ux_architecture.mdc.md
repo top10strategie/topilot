@@ -244,7 +244,7 @@ Structure Hero + Tabs :
 **Contenu - Tabs** : "Informations" | "Missions" | "Documentations"
 
 - **Informations** :
-    - Colonne gauche : Titre (`opportunity_name`), Client (`client_id`), Contact (`contact_client_id`), Responsable opportunité (`collaborator_id`). En dessous : Notes (`notes`, édition inline, historisée dans `audit_log`).
+    - Colonne gauche : Titre (`opportunity_name`), Client (`client_id`), Responsable opportunité (`collaborator_id`). En dessous : Notes (`notes`, édition inline, historisée dans `audit_log`).
     - Colonne droite : Statut (`kanban_status`), Montant (`price`), Montant pondéré (`average_price`, **lecture seule**, calculé), Probabilité (`probability_confirmation`), Urgence (`priority`), Action (`action`), Source (`source`), Date de dernière rencontre (`last_meeting_at`), Echéance (`due_date_at`), Date de clôture (`end_at`).
 - **Missions** : tableau des missions liées à cette opportunité (`mission.opportunity_id`). Colonnes (cf. `03_business_rules.mdc`) : Nom mission, Collaborateur, Catégories, Début, Fin, Statut. Bouton d'ajout (`circles-three-plus`, en haut à droite de l'onglet, au-dessus du tableau ; ouvre un drawer mission avec `opportunity_id` verrouillé). Clic sur une ligne : tiroir de **consultation** de la mission (contenu = tiroir d'édition mission en lecture seule, footer "Aller à la mission" → `/missions/[id]`).
 - **Documentations** : 2 blocs côte à côte pour les documents et les outils : libellé + bouton d'ajout à droite + liste en dessous. Clic sur un item outil : tiroir de consultation (comportement général, cf. section 6/7 de `07_ux_composants_reutilisable.mdc`). Le clic sur un document permet la consultation soit du lien, soit du document (ouverture d'un onglet externe).

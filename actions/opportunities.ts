@@ -10,7 +10,12 @@ import type {
 import { createClient } from "@/lib/supabase/server";
 
 export type OpportunityActionResult =
-  | { success: true; id: string }
+  | {
+      success: true;
+      id: string;
+      kanban_status?: OpportunityKanbanStatus;
+      probability_confirmation?: number;
+    }
   | {
       success: false;
       error: string;
@@ -189,7 +194,7 @@ export async function createOpportunityRecord(
       // Placeholder : le trigger BEFORE INSERT écrase toujours kanban_status.
       kanban_status: "suspect",
     })
-    .select("id")
+    .select("id, kanban_status, probability_confirmation")
     .single();
 
   if (error) {
@@ -201,7 +206,12 @@ export async function createOpportunityRecord(
   }
 
   revalidateOpportunities(data.id);
-  return { success: true, id: data.id };
+  return {
+    success: true,
+    id: data.id as string,
+    kanban_status: data.kanban_status as OpportunityKanbanStatus,
+    probability_confirmation: Number(data.probability_confirmation),
+  };
 }
 
 /** Mise à jour complète (édition / complément après création). */

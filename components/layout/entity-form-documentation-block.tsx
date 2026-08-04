@@ -24,22 +24,26 @@ type EntityFormDocumentationBlockProps = {
   entityId: string;
   /** Client / mission : true. Opportunité : false. */
   includeWikis?: boolean;
-  categories: CategoryItem[];
+  categories?: CategoryItem[];
   collaborators?: CollaboratorListItem[];
   canManagePrivacy?: boolean;
+  /** Consultation : sections sans ajout/retrait ; bloc absent si tout est vide. */
+  readOnly?: boolean;
 };
 
 /**
- * Sections Documentations (docs / outils / wiki) pour un tiroir création/édition.
+ * Sections Documentations (docs / outils / wiki) pour un tiroir création/édition
+ * ou consultation (lecture seule).
  * Charge et recharge les listes liées localement (pas de `router.refresh`).
  */
 export function EntityFormDocumentationBlock({
   entity,
   entityId,
   includeWikis = entity === "client" || entity === "mission",
-  categories,
+  categories = [],
   collaborators = [],
   canManagePrivacy = false,
+  readOnly = false,
 }: EntityFormDocumentationBlockProps) {
   const [loading, setLoading] = useState(true);
   const [linkedDocuments, setLinkedDocuments] = useState<LinkedDocumentItem[]>(
@@ -53,6 +57,8 @@ export function EntityFormDocumentationBlock({
   const [toolLinkOptions, setToolLinkOptions] = useState<ToolLinkOption[]>([]);
   const [linkedWikis, setLinkedWikis] = useState<LinkedWikiItem[]>([]);
   const [wikiLinkOptions, setWikiLinkOptions] = useState<WikiLinkOption[]>([]);
+
+  const showWikis = includeWikis && (entity === "client" || entity === "mission");
 
   const reloadLinks = useCallback(() => {
     if (!entityId) return;
@@ -84,6 +90,7 @@ export function EntityFormDocumentationBlock({
   }, [reloadLinks]);
 
   if (loading) {
+    if (readOnly) return null;
     return (
       <p className="text-sm text-muted-foreground">
         Chargement des documentations…
@@ -91,11 +98,20 @@ export function EntityFormDocumentationBlock({
     );
   }
 
+  if (
+    readOnly &&
+    linkedDocuments.length === 0 &&
+    linkedTools.length === 0 &&
+    (!showWikis || linkedWikis.length === 0)
+  ) {
+    return null;
+  }
+
   return (
     <div
       className={cn(
         "grid gap-6",
-        includeWikis ? "md:grid-cols-2 lg:grid-cols-3" : "md:grid-cols-2",
+        showWikis ? "md:grid-cols-2 lg:grid-cols-3" : "md:grid-cols-2",
       )}
     >
       <EntityLinkedDocumentsSection
@@ -104,7 +120,8 @@ export function EntityFormDocumentationBlock({
         documents={linkedDocuments}
         linkOptions={documentLinkOptions}
         documentTypes={documentTypes}
-        onLinksChange={reloadLinks}
+        onLinksChange={readOnly ? undefined : reloadLinks}
+        readOnly={readOnly}
       />
       <EntityLinkedToolsSection
         entity={entity}
@@ -114,16 +131,18 @@ export function EntityFormDocumentationBlock({
         categories={categories}
         collaborators={collaborators}
         canManagePrivacy={canManagePrivacy}
-        onLinksChange={reloadLinks}
+        onLinksChange={readOnly ? undefined : reloadLinks}
+        readOnly={readOnly}
       />
-      {includeWikis && (entity === "client" || entity === "mission") ? (
+      {showWikis ? (
         <EntityLinkedWikisSection
           entity={entity}
           entityId={entityId}
           wikis={linkedWikis}
           linkOptions={wikiLinkOptions}
           categories={categories}
-          onLinksChange={reloadLinks}
+          onLinksChange={readOnly ? undefined : reloadLinks}
+          readOnly={readOnly}
         />
       ) : null}
     </div>
