@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useTransition, type MouseEvent } from "react";
 import { useRouter } from "next/navigation";
 import {
+  CopySimple,
   GearSix,
   MagnifyingGlass,
   PencilSimple,
@@ -18,6 +19,7 @@ import { ContactFormDrawer } from "@/components/clients/contact-form-drawer";
 import { EntityLinkedDocumentsSection } from "@/components/documents/entity-linked-documents-section";
 import { useDrawerStack } from "@/components/drawers/drawer-stack-context";
 import { ConfirmStatusDialog } from "@/components/layout/confirm-status-dialog";
+import { DuplicateConfirmDialog } from "@/components/layout/duplicate-confirm-dialog";
 import { EntityDetailsColumns } from "@/components/layout/entity-details-columns";
 import {
   EntityDocumentationColumns,
@@ -48,6 +50,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { CategoryItem, DocumentTypeItem } from "@/lib/categories/types";
+import { buildMissionDuplicatePrefill } from "@/lib/crm/duplicate-prefill";
 import {
   getClientResponsibleName,
   getClientStatusLabel,
@@ -119,6 +122,8 @@ export function ClientDetailPageClient({
     null,
   );
   const [archiveOpen, setArchiveOpen] = useState(false);
+  const [missionDuplicateTarget, setMissionDuplicateTarget] =
+    useState<MissionListItem | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const filteredContacts = useMemo(() => {
@@ -211,6 +216,35 @@ export function ClientDetailPageClient({
     });
   };
 
+  const openDuplicateMission = (source: MissionListItem) => {
+    void pushDrawer({
+      title: "Nouvelle mission",
+      content: (helpers) => (
+        <MissionFormDrawer
+          mode="create"
+          collaborators={collaborators}
+          clients={clients}
+          availableCategories={categories}
+          opportunityOptions={opportunityOptions}
+          currentCollaboratorId={currentCollaboratorId}
+          duplicatePrefill={buildMissionDuplicatePrefill(source)}
+          helpers={helpers}
+        />
+      ),
+    }).then((created) => {
+      if (created) router.refresh();
+    });
+  };
+
+  const requestMissionDuplicate = (
+    event: MouseEvent,
+    mission: MissionListItem,
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setMissionDuplicateTarget(mission);
+  };
+
   const openMissionConsultation = (mission: MissionListItem) => {
     void pushDrawer({
       title: mission.mission_name,
@@ -218,6 +252,10 @@ export function ClientDetailPageClient({
         <MissionConsultationDrawer
           mission={{ ...mission, notes: null }}
           helpers={helpers}
+          onDuplicate={() => {
+            helpers.dismiss();
+            openDuplicateMission(mission);
+          }}
         />
       ),
     });
@@ -512,13 +550,14 @@ export function ClientDetailPageClient({
                     <th className="px-3 py-2 font-medium">Début</th>
                     <th className="px-3 py-2 font-medium">Fin</th>
                     <th className="px-3 py-2 font-medium">Temps vendu</th>
+                    <th className="px-3 py-2 font-medium">Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {missions.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={7}
+                        colSpan={8}
                         className="px-3 py-6 text-sm text-muted-foreground"
                       >
                         Aucune mission pour ce client. Créez-en une pour
@@ -552,6 +591,16 @@ export function ClientDetailPageClient({
                         </td>
                         <td className="px-3 py-2">
                           {formatMissionCharge(mission.estimated_charge)}
+                        </td>
+                        <td className="px-3 py-2">
+                          <IconActionButton
+                            label="Dupliquer la mission"
+                            onClick={(event) =>
+                              requestMissionDuplicate(event, mission)
+                            }
+                          >
+                            <CopySimple className="size-4" />
+                          </IconActionButton>
                         </td>
                       </tr>
                     ))
@@ -596,6 +645,20 @@ export function ClientDetailPageClient({
           </TabsContent>
         </Tabs>
       </div>
+
+      <DuplicateConfirmDialog
+        open={missionDuplicateTarget != null}
+        onOpenChange={(open) => {
+          if (!open) setMissionDuplicateTarget(null);
+        }}
+        entityLabel="mission"
+        entityName={missionDuplicateTarget?.mission_name ?? ""}
+        onConfirm={() => {
+          if (missionDuplicateTarget) {
+            openDuplicateMission(missionDuplicateTarget);
+          }
+        }}
+      />
 
       {pendingDelete ? (
         <Dialog

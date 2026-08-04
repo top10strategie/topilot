@@ -10,7 +10,12 @@ import type {
 import { createClient } from "@/lib/supabase/server";
 
 export type OpportunityActionResult =
-  | { success: true; id: string }
+  | {
+      success: true;
+      id: string;
+      kanban_status?: OpportunityKanbanStatus;
+      probability_confirmation?: number;
+    }
   | {
       success: false;
       error: string;
@@ -189,7 +194,7 @@ export async function createOpportunityRecord(
       // Placeholder : le trigger BEFORE INSERT écrase toujours kanban_status.
       kanban_status: "suspect",
     })
-    .select("id")
+    .select("id, kanban_status, probability_confirmation")
     .single();
 
   if (error) {
@@ -201,7 +206,12 @@ export async function createOpportunityRecord(
   }
 
   revalidateOpportunities(data.id);
-  return { success: true, id: data.id };
+  return {
+    success: true,
+    id: data.id as string,
+    kanban_status: data.kanban_status as OpportunityKanbanStatus,
+    probability_confirmation: Number(data.probability_confirmation),
+  };
 }
 
 /** Mise à jour complète (édition / complément après création). */
@@ -226,7 +236,6 @@ export async function updateOpportunityRecord(
   const end_at = formOptional(formData, "end_at");
   const action = formOptional(formData, "action");
   const source = formOptional(formData, "source");
-  const notes = formOptional(formData, "notes");
   const priorityRaw = formText(formData, "priority");
   const kanbanRaw = formText(formData, "kanban_status");
   const price = formOptionalNumber(formData, "price");
@@ -293,6 +302,10 @@ export async function updateOpportunityRecord(
     };
   }
 
+  const notes = formData.has("notes")
+    ? formOptional(formData, "notes")
+    : undefined;
+
   const payload: Record<string, unknown> = {
     opportunity_name,
     client_id,
@@ -303,15 +316,17 @@ export async function updateOpportunityRecord(
     end_at,
     action,
     source,
-    notes,
     priority: priorityRaw,
     kanban_status: kanbanRaw,
     price,
     probability_confirmation: probability ?? 10,
   };
 
-  if (existing.notes !== notes) {
-    payload.notes_updated_at = new Date().toISOString();
+  if (notes !== undefined) {
+    payload.notes = notes;
+    if (existing.notes !== notes) {
+      payload.notes_updated_at = new Date().toISOString();
+    }
   }
 
   const { data, error } = await supabase

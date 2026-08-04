@@ -29,6 +29,7 @@ export type ContactClientItem = {
   phone_number: string | null;
   email_address: string | null;
   profile_picture_url: string | null;
+  created_at: string;
 };
 
 export type ClientDocumentItem = {

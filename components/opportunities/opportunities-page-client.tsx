@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, type MouseEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  CopySimple,
   FunnelSimple,
   Kanban,
   MagnifyingGlass,
@@ -13,6 +14,7 @@ import {
 } from "@phosphor-icons/react";
 import { CategoryMultiCombobox } from "@/components/categories/category-multi-combobox";
 import { useDrawerStack } from "@/components/drawers/drawer-stack-context";
+import { DuplicateConfirmDialog } from "@/components/layout/duplicate-confirm-dialog";
 import { IconActionButton } from "@/components/layout/icon-action-button";
 import { ListPaginationFooter } from "@/components/layout/list-pagination-footer";
 import {
@@ -52,6 +54,7 @@ import type { CategoryItem } from "@/lib/categories/types";
 import type { ClientListItem } from "@/lib/clients/types";
 import { getCollaboratorFullName } from "@/lib/collaborators/labels";
 import type { CollaboratorListItem } from "@/lib/collaborators/types";
+import { buildOpportunityDuplicatePrefill } from "@/lib/crm/duplicate-prefill";
 import {
   formatOpportunityDate,
   formatOpportunityPrice,
@@ -137,6 +140,8 @@ export function OpportunitiesPageClient({
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [draftFilters, setDraftFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [filterOpen, setFilterOpen] = useState(false);
+  const [duplicateTarget, setDuplicateTarget] =
+    useState<OpportunityListItem | null>(null);
   const filterPortalRef = useRef<HTMLDivElement>(null);
 
   const draftSelectedCategories = useMemo(
@@ -275,7 +280,7 @@ export function OpportunitiesPageClient({
     filters.amountBucket !== "all" ||
     filters.probabilityBucket !== "all";
 
-  const openCreate = () => {
+  const openCreate = (duplicateSource?: OpportunityListItem) => {
     void pushDrawer({
       title: "Nouvelle opportunité",
       content: (helpers) => (
@@ -285,12 +290,26 @@ export function OpportunitiesPageClient({
           clients={clients}
           contacts={contacts}
           availableCategories={categories}
+          duplicatePrefill={
+            duplicateSource
+              ? buildOpportunityDuplicatePrefill(duplicateSource)
+              : undefined
+          }
           helpers={helpers}
         />
       ),
     }).then((created) => {
       if (created) router.refresh();
     });
+  };
+
+  const requestDuplicate = (
+    event: MouseEvent,
+    item: OpportunityListItem,
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setDuplicateTarget(item);
   };
 
   const toggleDraftStatus = (status: OpportunityKanbanStatus) => {
@@ -349,7 +368,7 @@ export function OpportunitiesPageClient({
             </IconActionButton>
             <IconActionButton
               label="Nouvelle opportunité"
-              onClick={openCreate}
+              onClick={() => openCreate()}
             >
               <PencilSimple className="size-4" />
             </IconActionButton>
@@ -380,9 +399,18 @@ export function OpportunitiesPageClient({
                 <Link key={item.id} href={`/opportunities/${item.id}`}>
                   <Card className="h-full transition-colors hover:bg-muted/40">
                     <CardHeader className="space-y-2 p-4 pb-2">
-                      <CardTitle className="text-base leading-snug">
-                        {item.opportunity_name}
-                      </CardTitle>
+                      <div className="flex items-start justify-between gap-2">
+                        <CardTitle className="min-w-0 text-base leading-snug">
+                          {item.opportunity_name}
+                        </CardTitle>
+                        <IconActionButton
+                          label="Dupliquer l'opportunité"
+                          className="shrink-0"
+                          onClick={(event) => requestDuplicate(event, item)}
+                        >
+                          <CopySimple className="size-4" />
+                        </IconActionButton>
+                      </div>
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex min-w-0 flex-wrap items-center gap-1.5">
                           {item.categories.length === 0 ? (
@@ -451,13 +479,14 @@ export function OpportunitiesPageClient({
                   <th className="px-3 py-2 font-medium">Échéance</th>
                   <th className="px-3 py-2 font-medium">Clôture</th>
                   <th className="px-3 py-2 font-medium">Montant</th>
+                  <th className="px-3 py-2 font-medium">Action</th>
                 </tr>
               </thead>
               <tbody>
                 {pageItems.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={9}
+                      colSpan={10}
                       className="px-3 py-6 text-sm text-muted-foreground"
                     >
                       {query.trim() || hasActiveFilters
@@ -500,6 +529,14 @@ export function OpportunitiesPageClient({
                       <td className="px-3 py-2">
                         {formatOpportunityPrice(item.price)}
                       </td>
+                      <td className="px-3 py-2">
+                        <IconActionButton
+                          label="Dupliquer l'opportunité"
+                          onClick={(event) => requestDuplicate(event, item)}
+                        >
+                          <CopySimple className="size-4" />
+                        </IconActionButton>
+                      </td>
                     </tr>
                   ))
                 )}
@@ -519,6 +556,18 @@ export function OpportunitiesPageClient({
           onPageChange={setPage}
         />
       ) : null}
+
+      <DuplicateConfirmDialog
+        open={duplicateTarget != null}
+        onOpenChange={(open) => {
+          if (!open) setDuplicateTarget(null);
+        }}
+        entityLabel="opportunité"
+        entityName={duplicateTarget?.opportunity_name ?? ""}
+        onConfirm={() => {
+          if (duplicateTarget) openCreate(duplicateTarget);
+        }}
+      />
 
       <Dialog open={filterOpen} onOpenChange={setFilterOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto overflow-x-visible sm:max-w-2xl">

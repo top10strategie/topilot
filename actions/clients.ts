@@ -213,7 +213,9 @@ export async function updateClientRecord(
     };
   }
 
-  const notes = formOptional(formData, "notes");
+  const notes = formData.has("notes")
+    ? formOptional(formData, "notes")
+    : undefined;
   let logo_id = existing.logo_id as string | null;
   const logoFile = formFile(formData, "logo");
   if (formBool(formData, "clear_logo", false)) {
@@ -241,13 +243,15 @@ export async function updateClientRecord(
     address_city: formOptional(formData, "address_city"),
     address_zip: formOptional(formData, "address_zip"),
     drive_link: formOptional(formData, "drive_link"),
-    notes,
     logo_id,
     is_active: formBool(formData, "is_active", true),
   };
 
-  if (existing.notes !== notes) {
-    payload.notes_updated_at = new Date().toISOString();
+  if (notes !== undefined) {
+    payload.notes = notes;
+    if (existing.notes !== notes) {
+      payload.notes_updated_at = new Date().toISOString();
+    }
   }
 
   const { data, error } = await supabase

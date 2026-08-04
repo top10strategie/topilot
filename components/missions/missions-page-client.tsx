@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, type MouseEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  CopySimple,
   FunnelSimple,
   Kanban,
   MagnifyingGlass,
@@ -13,6 +14,7 @@ import {
 } from "@phosphor-icons/react";
 import { CategoryMultiCombobox } from "@/components/categories/category-multi-combobox";
 import { useDrawerStack } from "@/components/drawers/drawer-stack-context";
+import { DuplicateConfirmDialog } from "@/components/layout/duplicate-confirm-dialog";
 import { IconActionButton } from "@/components/layout/icon-action-button";
 import { ListPaginationFooter } from "@/components/layout/list-pagination-footer";
 import {
@@ -52,6 +54,7 @@ import type { CategoryItem } from "@/lib/categories/types";
 import type { ClientListItem } from "@/lib/clients/types";
 import { getCollaboratorFullName } from "@/lib/collaborators/labels";
 import type { CollaboratorListItem } from "@/lib/collaborators/types";
+import { buildMissionDuplicatePrefill } from "@/lib/crm/duplicate-prefill";
 import {
   formatMissionCharge,
   formatMissionDate,
@@ -176,6 +179,8 @@ export function MissionsPageClient({
     responsibleId: initialResponsibleId,
   });
   const [filterOpen, setFilterOpen] = useState(false);
+  const [duplicateTarget, setDuplicateTarget] =
+    useState<MissionListItem | null>(null);
   const filterPortalRef = useRef<HTMLDivElement>(null);
 
   const draftSelectedCategories = useMemo(
@@ -298,7 +303,7 @@ export function MissionsPageClient({
     Boolean(filters.endFrom) ||
     Boolean(filters.endTo);
 
-  const openCreate = () => {
+  const openCreate = (duplicateSource?: MissionListItem) => {
     void pushDrawer({
       title: "Nouvelle mission",
       content: (helpers) => (
@@ -309,12 +314,23 @@ export function MissionsPageClient({
           availableCategories={categories}
           opportunityOptions={opportunityOptions}
           currentCollaboratorId={currentCollaboratorId}
+          duplicatePrefill={
+            duplicateSource
+              ? buildMissionDuplicatePrefill(duplicateSource)
+              : undefined
+          }
           helpers={helpers}
         />
       ),
     }).then((created) => {
       if (created) router.refresh();
     });
+  };
+
+  const requestDuplicate = (event: MouseEvent, item: MissionListItem) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setDuplicateTarget(item);
   };
 
   const toggleDraftStatus = (status: MissionKanbanStatus) => {
@@ -368,7 +384,10 @@ export function MissionsPageClient({
             >
               <FunnelSimple className="size-4" />
             </IconActionButton>
-            <IconActionButton label="Nouvelle mission" onClick={openCreate}>
+            <IconActionButton
+              label="Nouvelle mission"
+              onClick={() => openCreate()}
+            >
               <PencilSimple className="size-4" />
             </IconActionButton>
           </div>
@@ -398,9 +417,18 @@ export function MissionsPageClient({
                 <Link key={item.id} href={`/missions/${item.id}`}>
                   <Card className="h-full transition-colors hover:bg-muted/40">
                     <CardHeader className="space-y-2 p-4 pb-2">
-                      <CardTitle className="text-base leading-snug">
-                        {item.mission_name}
-                      </CardTitle>
+                      <div className="flex items-start justify-between gap-2">
+                        <CardTitle className="min-w-0 text-base leading-snug">
+                          {item.mission_name}
+                        </CardTitle>
+                        <IconActionButton
+                          label="Dupliquer la mission"
+                          className="shrink-0"
+                          onClick={(event) => requestDuplicate(event, item)}
+                        >
+                          <CopySimple className="size-4" />
+                        </IconActionButton>
+                      </div>
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex min-w-0 flex-wrap items-center gap-1.5">
                           {item.categories.length === 0 ? (
@@ -466,13 +494,14 @@ export function MissionsPageClient({
                   <th className="px-3 py-2 font-medium">Début</th>
                   <th className="px-3 py-2 font-medium">Fin</th>
                   <th className="px-3 py-2 font-medium">Temps vendu</th>
+                  <th className="px-3 py-2 font-medium">Action</th>
                 </tr>
               </thead>
               <tbody>
                 {pageItems.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={9}
+                      colSpan={10}
                       className="px-3 py-6 text-sm text-muted-foreground"
                     >
                       {query.trim() || hasActiveFilters
@@ -517,6 +546,14 @@ export function MissionsPageClient({
                       <td className="px-3 py-2">
                         {formatMissionCharge(item.estimated_charge)}
                       </td>
+                      <td className="px-3 py-2">
+                        <IconActionButton
+                          label="Dupliquer la mission"
+                          onClick={(event) => requestDuplicate(event, item)}
+                        >
+                          <CopySimple className="size-4" />
+                        </IconActionButton>
+                      </td>
                     </tr>
                   ))
                 )}
@@ -536,6 +573,18 @@ export function MissionsPageClient({
           onPageChange={setPage}
         />
       ) : null}
+
+      <DuplicateConfirmDialog
+        open={duplicateTarget != null}
+        onOpenChange={(open) => {
+          if (!open) setDuplicateTarget(null);
+        }}
+        entityLabel="mission"
+        entityName={duplicateTarget?.mission_name ?? ""}
+        onConfirm={() => {
+          if (duplicateTarget) openCreate(duplicateTarget);
+        }}
+      />
 
       <Dialog open={filterOpen} onOpenChange={setFilterOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto overflow-x-visible sm:max-w-2xl">

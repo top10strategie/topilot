@@ -45,6 +45,8 @@ type EntityLinkedDocumentsSectionProps = {
   documentTypes: DocumentTypeItem[];
   /** Si fourni (ex. tiroir), rafraîchit l'état local au lieu de `router.refresh()`. */
   onLinksChange?: () => void;
+  /** Consultation : pas d'ajout/retrait ; section absente si liste vide. */
+  readOnly?: boolean;
 };
 
 function documentHref(doc: LinkedDocumentItem): string {
@@ -62,6 +64,7 @@ export function EntityLinkedDocumentsSection({
   linkOptions,
   documentTypes,
   onLinksChange,
+  readOnly = false,
 }: EntityLinkedDocumentsSectionProps) {
   const router = useRouter();
   const { pushDrawer } = useDrawerStack();
@@ -149,18 +152,24 @@ export function EntityLinkedDocumentsSection({
     });
   };
 
+  if (readOnly && documents.length === 0) {
+    return null;
+  }
+
   return (
     <>
       <EntityDocumentationSection
         title="Documents"
         action={
-          <IconActionButton
-            label="Ajouter un document"
-            variant="outline"
-            onClick={() => setLinkOpen(true)}
-          >
-            <Plus className="size-4" />
-          </IconActionButton>
+          readOnly ? undefined : (
+            <IconActionButton
+              label="Ajouter un document"
+              variant="outline"
+              onClick={() => setLinkOpen(true)}
+            >
+              <Plus className="size-4" />
+            </IconActionButton>
+          )
         }
       >
         {documents.length === 0 ? (
@@ -187,130 +196,136 @@ export function EntityLinkedDocumentsSection({
                     </Badge>
                   </span>
                 </button>
-                <IconActionButton
-                  label="Retirer le document"
-                  attention
-                  onClick={() => setPendingUnlink(doc)}
-                >
-                  <Trash className="size-3.5" />
-                </IconActionButton>
+                {readOnly ? null : (
+                  <IconActionButton
+                    label="Retirer le document"
+                    attention
+                    onClick={() => setPendingUnlink(doc)}
+                  >
+                    <Trash className="size-3.5" />
+                  </IconActionButton>
+                )}
               </li>
             ))}
           </ul>
         )}
       </EntityDocumentationSection>
 
-      <Dialog open={linkOpen} onOpenChange={setLinkOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Lier un document</DialogTitle>
-            <DialogDescription>
-              Associez un document existant, ou créez-en un nouveau (il sera lié
-              automatiquement).
-            </DialogDescription>
-          </DialogHeader>
+      {readOnly ? null : (
+        <>
+          <Dialog open={linkOpen} onOpenChange={setLinkOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Lier un document</DialogTitle>
+                <DialogDescription>
+                  Associez un document existant, ou créez-en un nouveau (il
+                  sera lié automatiquement).
+                </DialogDescription>
+              </DialogHeader>
 
-          <div className="space-y-3">
-            <div className="grid gap-2">
-              <Label>Document existant</Label>
-              <Select
-                value={selectedDocumentId || "__unset__"}
-                onValueChange={(value) =>
-                  setSelectedDocumentId(value === "__unset__" ? "" : value)
-                }
-                disabled={isPending || availableOptions.length === 0}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue
-                    placeholder={
-                      availableOptions.length === 0
-                        ? "Tous les documents sont déjà liés"
-                        : "Sélectionner un document"
+              <div className="space-y-3">
+                <div className="grid gap-2">
+                  <Label>Document existant</Label>
+                  <Select
+                    value={selectedDocumentId || "__unset__"}
+                    onValueChange={(value) =>
+                      setSelectedDocumentId(value === "__unset__" ? "" : value)
                     }
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__unset__" disabled>
-                    Sélectionner un document
-                  </SelectItem>
-                  {availableOptions.map((opt) => (
-                    <SelectItem key={opt.id} value={opt.id}>
-                      {opt.document_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+                    disabled={isPending || availableOptions.length === 0}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue
+                        placeholder={
+                          availableOptions.length === 0
+                            ? "Tous les documents sont déjà liés"
+                            : "Sélectionner un document"
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__unset__" disabled>
+                        Sélectionner un document
+                      </SelectItem>
+                      {availableOptions.map((opt) => (
+                        <SelectItem key={opt.id} value={opt.id}>
+                          {opt.document_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
 
-          <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-between">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={isPending}
-              onClick={openCreateAndLink}
+              <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-between">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={isPending}
+                  onClick={openCreateAndLink}
+                >
+                  Créer un nouveau document
+                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={isPending}
+                    onClick={() => setLinkOpen(false)}
+                  >
+                    Annuler
+                  </Button>
+                  <Button
+                    type="button"
+                    disabled={isPending || !selectedDocumentId}
+                    onClick={handleLinkExisting}
+                  >
+                    {isPending ? "Liaison…" : "Lier"}
+                  </Button>
+                </div>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {pendingUnlink ? (
+            <Dialog
+              open
+              onOpenChange={(open) => {
+                if (!open) setPendingUnlink(null);
+              }}
             >
-              Créer un nouveau document
-            </Button>
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                disabled={isPending}
-                onClick={() => setLinkOpen(false)}
-              >
-                Annuler
-              </Button>
-              <Button
-                type="button"
-                disabled={isPending || !selectedDocumentId}
-                onClick={handleLinkExisting}
-              >
-                {isPending ? "Liaison…" : "Lier"}
-              </Button>
-            </div>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {pendingUnlink ? (
-        <Dialog
-          open
-          onOpenChange={(open) => {
-            if (!open) setPendingUnlink(null);
-          }}
-        >
-          <DialogContent className="border-destructive">
-            <DialogHeader>
-              <DialogTitle className="text-destructive">
-                Retirer le document
-              </DialogTitle>
-              <DialogDescription>
-                Retirer <strong>{pendingUnlink.document_name}</strong> de cette
-                fiche ? Le document reste dans la bibliothèque.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter className="gap-2 sm:gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                disabled={isPending}
-                onClick={() => setPendingUnlink(null)}
-              >
-                Annuler
-              </Button>
-              <Button
-                type="button"
-                variant="destructive"
-                disabled={isPending}
-                onClick={handleUnlink}
-              >
-                {isPending ? "Retrait…" : "Retirer"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      ) : null}
+              <DialogContent className="border-destructive">
+                <DialogHeader>
+                  <DialogTitle className="text-destructive">
+                    Retirer le document
+                  </DialogTitle>
+                  <DialogDescription>
+                    Retirer <strong>{pendingUnlink.document_name}</strong> de
+                    cette fiche ? Le document reste dans la bibliothèque.
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter className="gap-2 sm:gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={isPending}
+                    onClick={() => setPendingUnlink(null)}
+                  >
+                    Annuler
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    disabled={isPending}
+                    onClick={handleUnlink}
+                  >
+                    {isPending ? "Retrait…" : "Retirer"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          ) : null}
+        </>
+      )}
     </>
   );
 }

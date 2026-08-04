@@ -3,12 +3,13 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { MagnifyingGlass, PencilSimple, Trash } from "@phosphor-icons/react";
+import { CopySimple, MagnifyingGlass, PencilSimple, Trash } from "@phosphor-icons/react";
 import { archiveMission } from "@/actions/missions";
 import { ClientConsultationDrawer } from "@/components/clients/client-consultation-drawer";
 import { EntityLinkedDocumentsSection } from "@/components/documents/entity-linked-documents-section";
 import { useDrawerStack } from "@/components/drawers/drawer-stack-context";
 import { ConfirmStatusDialog } from "@/components/layout/confirm-status-dialog";
+import { DuplicateConfirmDialog } from "@/components/layout/duplicate-confirm-dialog";
 import { EntityDetailsColumns } from "@/components/layout/entity-details-columns";
 import {
   EntityDocumentationColumns,
@@ -25,6 +26,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { CategoryItem, DocumentTypeItem } from "@/lib/categories/types";
 import type { ClientDetail, ClientListItem } from "@/lib/clients/types";
 import type { CollaboratorListItem } from "@/lib/collaborators/types";
+import { buildMissionDuplicatePrefill } from "@/lib/crm/duplicate-prefill";
 import type {
   DocumentLinkOption,
   LinkedDocumentItem,
@@ -85,6 +87,7 @@ export function MissionDetailPageClient({
   const [tab, setTab] = useState("informations");
   const [query, setQuery] = useState("");
   const [archiveOpen, setArchiveOpen] = useState(false);
+  const [duplicateOpen, setDuplicateOpen] = useState(false);
 
   const matchesQuery = useMemo(() => {
     const q = query.trim().toLocaleLowerCase("fr");
@@ -123,6 +126,26 @@ export function MissionDetailPageClient({
     });
   };
 
+  const openDuplicate = () => {
+    void pushDrawer({
+      title: "Nouvelle mission",
+      content: (helpers) => (
+        <MissionFormDrawer
+          mode="create"
+          collaborators={collaborators}
+          clients={clients}
+          availableCategories={categories}
+          opportunityOptions={opportunityOptions}
+          currentCollaboratorId={currentCollaboratorId}
+          duplicatePrefill={buildMissionDuplicatePrefill(mission)}
+          helpers={helpers}
+        />
+      ),
+    }).then((created) => {
+      if (created) router.refresh();
+    });
+  };
+
   const openClientConsultation = () => {
     if (!linkedClient) return;
     void pushDrawer({
@@ -155,6 +178,12 @@ export function MissionDetailPageClient({
             </div>
             <IconActionButton label="Édition Mission" onClick={openEdit}>
               <PencilSimple className="size-4" />
+            </IconActionButton>
+            <IconActionButton
+              label="Dupliquer la mission"
+              onClick={() => setDuplicateOpen(true)}
+            >
+              <CopySimple className="size-4" />
             </IconActionButton>
             <IconActionButton
               label="Archiver la mission"
@@ -339,6 +368,14 @@ export function MissionDetailPageClient({
           </TabsContent>
         </Tabs>
       </div>
+
+      <DuplicateConfirmDialog
+        open={duplicateOpen}
+        onOpenChange={setDuplicateOpen}
+        entityLabel="mission"
+        entityName={mission.mission_name}
+        onConfirm={openDuplicate}
+      />
 
       <ConfirmStatusDialog
         open={archiveOpen}
