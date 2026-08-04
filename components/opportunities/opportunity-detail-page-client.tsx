@@ -1,13 +1,19 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type MouseEvent } from "react";
 import { useRouter } from "next/navigation";
-import { MagnifyingGlass, PencilSimple, Trash } from "@phosphor-icons/react";
+import {
+  CopySimple,
+  MagnifyingGlass,
+  PencilSimple,
+  Trash,
+} from "@phosphor-icons/react";
 import { markOpportunityAsLost } from "@/actions/opportunities";
 import { ClientConsultationDrawer } from "@/components/clients/client-consultation-drawer";
 import { EntityLinkedDocumentsSection } from "@/components/documents/entity-linked-documents-section";
 import { useDrawerStack } from "@/components/drawers/drawer-stack-context";
 import { ConfirmStatusDialog } from "@/components/layout/confirm-status-dialog";
+import { DuplicateConfirmDialog } from "@/components/layout/duplicate-confirm-dialog";
 import { EntityDetailsColumns } from "@/components/layout/entity-details-columns";
 import { IconActionButton } from "@/components/layout/icon-action-button";
 import { PageHero } from "@/components/layout/page-hero";
@@ -23,6 +29,10 @@ import type { CategoryItem, DocumentTypeItem } from "@/lib/categories/types";
 import type { ClientDetail, ClientListItem } from "@/lib/clients/types";
 import { getContactFullName } from "@/lib/clients/labels";
 import type { CollaboratorListItem } from "@/lib/collaborators/types";
+import {
+  buildMissionDuplicatePrefill,
+  buildOpportunityDuplicatePrefill,
+} from "@/lib/crm/duplicate-prefill";
 import type {
   DocumentLinkOption,
   LinkedDocumentItem,
@@ -91,6 +101,9 @@ export function OpportunityDetailPageClient({
   const [tab, setTab] = useState("informations");
   const [query, setQuery] = useState("");
   const [lossOpen, setLossOpen] = useState(false);
+  const [duplicateOpen, setDuplicateOpen] = useState(false);
+  const [missionDuplicateTarget, setMissionDuplicateTarget] =
+    useState<MissionListItem | null>(null);
 
   const matchesQuery = useMemo(() => {
     const q = query.trim().toLocaleLowerCase("fr");
@@ -131,6 +144,54 @@ export function OpportunityDetailPageClient({
     }).then((updated) => {
       if (updated) router.refresh();
     });
+  };
+
+  const openDuplicate = () => {
+    void pushDrawer({
+      title: "Nouvelle opportunité",
+      content: (helpers) => (
+        <OpportunityFormDrawer
+          mode="create"
+          collaborators={collaborators}
+          clients={clients}
+          contacts={contacts}
+          availableCategories={categories}
+          duplicatePrefill={buildOpportunityDuplicatePrefill(opportunity)}
+          helpers={helpers}
+        />
+      ),
+    }).then((created) => {
+      if (created) router.refresh();
+    });
+  };
+
+  const openDuplicateMission = (source: MissionListItem) => {
+    void pushDrawer({
+      title: "Nouvelle mission",
+      content: (helpers) => (
+        <MissionFormDrawer
+          mode="create"
+          collaborators={collaborators}
+          clients={clients}
+          availableCategories={categories}
+          opportunityOptions={opportunityOptions}
+          currentCollaboratorId={currentCollaboratorId}
+          duplicatePrefill={buildMissionDuplicatePrefill(source)}
+          helpers={helpers}
+        />
+      ),
+    }).then((created) => {
+      if (created) router.refresh();
+    });
+  };
+
+  const requestMissionDuplicate = (
+    event: MouseEvent,
+    mission: MissionListItem,
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setMissionDuplicateTarget(mission);
   };
 
   const openClientConsultation = () => {
@@ -174,6 +235,10 @@ export function OpportunityDetailPageClient({
         <MissionConsultationDrawer
           mission={{ ...mission, notes: null }}
           helpers={helpers}
+          onDuplicate={() => {
+            helpers.dismiss();
+            openDuplicateMission(mission);
+          }}
         />
       ),
     });
@@ -204,6 +269,12 @@ export function OpportunityDetailPageClient({
               onClick={openEdit}
             >
               <PencilSimple className="size-4" />
+            </IconActionButton>
+            <IconActionButton
+              label="Dupliquer l'opportunité"
+              onClick={() => setDuplicateOpen(true)}
+            >
+              <CopySimple className="size-4" />
             </IconActionButton>
             <IconActionButton
               label="Passer en perte"
@@ -420,13 +491,14 @@ export function OpportunityDetailPageClient({
                     <th className="px-3 py-2 font-medium">Début</th>
                     <th className="px-3 py-2 font-medium">Fin</th>
                     <th className="px-3 py-2 font-medium">Temps vendu</th>
+                    <th className="px-3 py-2 font-medium">Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {missions.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={6}
+                        colSpan={7}
                         className="px-3 py-6 text-sm text-muted-foreground"
                       >
                         Aucune mission liée à cette opportunité. Créez-en une
@@ -458,6 +530,16 @@ export function OpportunityDetailPageClient({
                         <td className="px-3 py-2">
                           {formatMissionCharge(mission.estimated_charge)}
                         </td>
+                        <td className="px-3 py-2">
+                          <IconActionButton
+                            label="Dupliquer la mission"
+                            onClick={(event) =>
+                              requestMissionDuplicate(event, mission)
+                            }
+                          >
+                            <CopySimple className="size-4" />
+                          </IconActionButton>
+                        </td>
                       </tr>
                     ))
                   )}
@@ -488,6 +570,28 @@ export function OpportunityDetailPageClient({
           </TabsContent>
         </Tabs>
       </div>
+
+      <DuplicateConfirmDialog
+        open={duplicateOpen}
+        onOpenChange={setDuplicateOpen}
+        entityLabel="opportunité"
+        entityName={opportunity.opportunity_name}
+        onConfirm={openDuplicate}
+      />
+
+      <DuplicateConfirmDialog
+        open={missionDuplicateTarget != null}
+        onOpenChange={(open) => {
+          if (!open) setMissionDuplicateTarget(null);
+        }}
+        entityLabel="mission"
+        entityName={missionDuplicateTarget?.mission_name ?? ""}
+        onConfirm={() => {
+          if (missionDuplicateTarget) {
+            openDuplicateMission(missionDuplicateTarget);
+          }
+        }}
+      />
 
       <ConfirmStatusDialog
         open={lossOpen}

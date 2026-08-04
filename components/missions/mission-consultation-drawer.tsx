@@ -1,8 +1,16 @@
 "use client";
 
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { stopMissionSeries } from "@/actions/mission-series";
 import { DrawerBody, DrawerFooterActions } from "@/components/drawers/drawer-section";
 import type { DrawerHelpers } from "@/components/drawers/drawer-stack-context";
+import { ConfirmStatusDialog } from "@/components/layout/confirm-status-dialog";
+import { DuplicateConfirmDialog } from "@/components/layout/duplicate-confirm-dialog";
+import {
+  createEmptyRecurrenceDraft,
+  MissionRecurrenceFields,
+} from "@/components/missions/mission-recurrence-fields";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,6 +25,8 @@ import type { MissionDetail } from "@/lib/missions/types";
 type MissionConsultationDrawerProps = {
   mission: MissionDetail;
   helpers: DrawerHelpers<null>;
+  /** Après confirmation : le parent ouvre le tiroir création prérempli. */
+  onDuplicate?: () => void;
 };
 
 /**
@@ -25,8 +35,18 @@ type MissionConsultationDrawerProps = {
 export function MissionConsultationDrawer({
   mission,
   helpers,
+  onDuplicate,
 }: MissionConsultationDrawerProps) {
   const router = useRouter();
+  const [duplicateOpen, setDuplicateOpen] = useState(false);
+  const [stopOpen, setStopOpen] = useState(false);
+  const [, startTransition] = useTransition();
+
+  const seriesStopped =
+    Boolean(mission.series?.ends_on) &&
+    (mission.series?.ends_on ?? "") <= new Date().toISOString().slice(0, 10);
+
+  const recurrenceDraft = createEmptyRecurrenceDraft(mission.series);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -129,9 +149,35 @@ export function MissionConsultationDrawer({
             points Toolbox et Wiki &amp; Documents.
           </p>
         </section>
+
+        {mission.series ? (
+          <section className="space-y-4 border-t pt-4">
+            <MissionRecurrenceFields
+              draft={recurrenceDraft}
+              onChange={() => undefined}
+              hasExistingSeries
+              seriesStopped={seriesStopped}
+              readOnly
+              onRequestStop={
+                seriesStopped ? undefined : () => setStopOpen(true)
+              }
+            />
+          </section>
+        ) : null}
       </DrawerBody>
 
-      <DrawerFooterActions>
+      <DrawerFooterActions
+        className={onDuplicate ? "justify-between sm:justify-between" : undefined}
+      >
+        {onDuplicate ? (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setDuplicateOpen(true)}
+          >
+            Dupliquer la mission
+          </Button>
+        ) : null}
         <Button
           type="button"
           onClick={() => {
@@ -142,6 +188,40 @@ export function MissionConsultationDrawer({
           Aller à la mission
         </Button>
       </DrawerFooterActions>
+
+      {onDuplicate ? (
+        <DuplicateConfirmDialog
+          open={duplicateOpen}
+          onOpenChange={setDuplicateOpen}
+          entityLabel="mission"
+          entityName={mission.mission_name}
+          onConfirm={onDuplicate}
+        />
+      ) : null}
+
+      {mission.series_id ? (
+        <ConfirmStatusDialog
+          open={stopOpen}
+          onOpenChange={setStopOpen}
+          title="Arrêter la récurrence"
+          description={
+            <p>
+              Vous souhaitez arrêter la série de récurrence. La fin de série
+              sera fixée à aujourd&apos;hui. Confirmez-vous ?
+            </p>
+          }
+          confirmLabel="Arrêter"
+          pendingLabel="Arrêt…"
+          successMessage="Récurrence arrêtée."
+          onConfirm={() => stopMissionSeries(mission.series_id!, mission.id)}
+          onSuccess={() => {
+            startTransition(() => {
+              router.refresh();
+            });
+            helpers.dismiss();
+          }}
+        />
+      ) : null}
     </div>
   );
 }

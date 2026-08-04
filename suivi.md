@@ -1,5 +1,16 @@
 # Suivi des actions — TOPilot
 
+## **[2026-08-04] — Duplication missions/opportunités + récurrence missions**
+
+**Type :** `feature`
+**Fichiers concernés :** `supabase/migrations/20260804120000_mission_series.sql`, `actions/mission-series.ts`, `lib/missions/*`, `lib/crm/duplicate-prefill.ts`, `components/missions/*`, `components/opportunities/*`, `components/clients/*`, `components/layout/duplicate-confirm-dialog.tsx`, `app/api/cron/mission-recurrence/route.ts`, `vercel.json`, `.env.example`, `suivi.md`
+
+### Description
+
+Branche `feature/duplication-recurrence`. Duplication B1 (modale + tiroir création prérempli, sans docs/outils/wikis) sur listes, fiches, tableaux embarqués et consultation mission. Récurrence missions via `mission_series` + cron J−10 (`/api/cron/mission-recurrence`). Notes retirées des tiroirs client/opportunité (édition sur fiche).
+
+---
+
 ## **[2026-08-03] — Notes autosave, archivage fiches, extensions docs, tiroirs /top10**
 
 **Type :** `feature`

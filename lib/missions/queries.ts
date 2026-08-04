@@ -6,8 +6,10 @@ import type {
   MissionKanbanStatus,
   MissionListItem,
   MissionOpportunityOption,
+  MissionRecurrenceFrequency,
   MissionResponsibleItem,
   MissionScope,
+  MissionSeriesItem,
 } from "./types";
 
 type DocumentVisualRow = {
@@ -47,6 +49,7 @@ const MISSION_LIST_SELECT = `
   client_id,
   collaborator_id,
   opportunity_id,
+  series_id,
   kanban_status,
   kanban_order,
   archived_at,
@@ -62,6 +65,7 @@ const MISSION_LIST_SELECT = `
     last_name,
     profile_picture:profile_picture_id ( id, file_path, is_visual )
   ),
+  series:series_id ( id, frequency, starts_on, ends_on ),
   mission_category (
     category:category_id ( id, label )
   )
@@ -74,6 +78,7 @@ type MissionListRow = {
   client_id: string | null;
   collaborator_id: string;
   opportunity_id: string | null;
+  series_id: string | null;
   kanban_status: MissionKanbanStatus;
   kanban_order: number | null;
   archived_at: string | null;
@@ -88,6 +93,12 @@ type MissionListRow = {
     first_name: string;
     last_name: string;
     profile_picture: DocumentVisualRow | null;
+  } | null;
+  series: {
+    id: string;
+    frequency: MissionRecurrenceFrequency;
+    starts_on: string;
+    ends_on: string | null;
   } | null;
   mission_category: Array<{
     category: { id: string; label: string } | null;
@@ -115,6 +126,15 @@ function mapListItem(row: MissionListRow): MissionListItem {
         profile_picture_url: null,
       };
 
+  const series: MissionSeriesItem | null = row.series
+    ? {
+        id: row.series.id,
+        frequency: row.series.frequency,
+        starts_on: row.series.starts_on,
+        ends_on: row.series.ends_on,
+      }
+    : null;
+
   return {
     id: row.id,
     mission_name: row.mission_name,
@@ -122,6 +142,7 @@ function mapListItem(row: MissionListRow): MissionListItem {
     client_id: row.client_id,
     collaborator_id: row.collaborator_id,
     opportunity_id: row.opportunity_id,
+    series_id: row.series_id,
     kanban_status: row.kanban_status,
     kanban_order: row.kanban_order,
     archived_at: row.archived_at,
@@ -133,6 +154,7 @@ function mapListItem(row: MissionListRow): MissionListItem {
     opportunity: row.opportunity,
     responsible,
     categories,
+    series,
   };
 }
 

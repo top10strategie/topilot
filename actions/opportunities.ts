@@ -226,7 +226,6 @@ export async function updateOpportunityRecord(
   const end_at = formOptional(formData, "end_at");
   const action = formOptional(formData, "action");
   const source = formOptional(formData, "source");
-  const notes = formOptional(formData, "notes");
   const priorityRaw = formText(formData, "priority");
   const kanbanRaw = formText(formData, "kanban_status");
   const price = formOptionalNumber(formData, "price");
@@ -293,6 +292,10 @@ export async function updateOpportunityRecord(
     };
   }
 
+  const notes = formData.has("notes")
+    ? formOptional(formData, "notes")
+    : undefined;
+
   const payload: Record<string, unknown> = {
     opportunity_name,
     client_id,
@@ -303,15 +306,17 @@ export async function updateOpportunityRecord(
     end_at,
     action,
     source,
-    notes,
     priority: priorityRaw,
     kanban_status: kanbanRaw,
     price,
     probability_confirmation: probability ?? 10,
   };
 
-  if (existing.notes !== notes) {
-    payload.notes_updated_at = new Date().toISOString();
+  if (notes !== undefined) {
+    payload.notes = notes;
+    if (existing.notes !== notes) {
+      payload.notes_updated_at = new Date().toISOString();
+    }
   }
 
   const { data, error } = await supabase

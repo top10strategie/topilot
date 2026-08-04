@@ -8,13 +8,23 @@ import {
   createMissionRecord,
   updateMissionRecord,
 } from "@/actions/missions";
+import {
+  stopMissionSeries,
+  syncMissionRecurrence,
+} from "@/actions/mission-series";
 import { CategoryMultiCombobox } from "@/components/categories/category-multi-combobox";
 import { LabelEntityFormDrawer } from "@/components/categories/label-entity-form-drawer";
 import { ClientFormDrawer } from "@/components/clients/client-form-drawer";
 import { DrawerBody, DrawerFooterActions } from "@/components/drawers/drawer-section";
 import type { DrawerHelpers } from "@/components/drawers/drawer-stack-context";
 import { useDrawerStack } from "@/components/drawers/drawer-stack-context";
+import { ConfirmStatusDialog } from "@/components/layout/confirm-status-dialog";
 import { EntityFormDocumentationBlock } from "@/components/layout/entity-form-documentation-block";
+import {
+  createEmptyRecurrenceDraft,
+  MissionRecurrenceFields,
+  type MissionRecurrenceDraft,
+} from "@/components/missions/mission-recurrence-fields";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,7 +35,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import type { CategoryItem } from "@/lib/categories/types";
 import { getCollaboratorFullName } from "@/lib/collaborators/labels";
 import type { CollaboratorListItem } from "@/lib/collaborators/types";
@@ -37,6 +46,7 @@ import {
 import type {
   MissionCategoryItem,
   MissionDetail,
+  MissionDuplicatePrefill,
   MissionKanbanStatus,
   MissionOpportunityOption,
   MissionScope,
@@ -51,6 +61,8 @@ type MissionFormDrawerProps = {
   opportunityOptions: MissionOpportunityOption[];
   currentCollaboratorId: string;
   helpers: DrawerHelpers<{ id: string; mission_name: string }>;
+  /** Prefill création (duplication). */
+  duplicatePrefill?: MissionDuplicatePrefill;
   /** Verrouillage FK phase C */
   lockedFields?: {
     mission_scope?: MissionScope;
@@ -73,9 +85,11 @@ export function MissionFormDrawer({
   opportunityOptions,
   currentCollaboratorId,
   helpers,
+  duplicatePrefill,
   lockedFields,
 }: MissionFormDrawerProps) {
   const { pushDrawer } = useDrawerStack();
+  const isDuplicateCreate = mode === "create" && Boolean(duplicatePrefill);
 
   const lockedScope = lockedFields?.mission_scope;
   const lockedClientId = lockedFields?.client_id;
@@ -99,28 +113,52 @@ export function MissionFormDrawer({
     mode === "edit",
   );
 
-  const [missionName, setMissionName] = useState(mission?.mission_name ?? "");
+  const [missionName, setMissionName] = useState(
+    duplicatePrefill?.mission_name ?? mission?.mission_name ?? "",
+  );
   const [isInterne, setIsInterne] = useState(
-    () => (lockedScope ?? mission?.mission_scope ?? "client") === "interne",
+    () =>
+      (lockedScope ??
+        duplicatePrefill?.mission_scope ??
+        mission?.mission_scope ??
+        "client") === "interne",
   );
   const [clientId, setClientId] = useState(
-    lockedClientId ?? mission?.client_id ?? "",
+    lockedClientId ??
+      duplicatePrefill?.client_id ??
+      mission?.client_id ??
+      "",
   );
   const [responsibleId, setResponsibleId] = useState(
-    mission?.collaborator_id ?? currentCollaboratorId,
+    duplicatePrefill?.collaborator_id ??
+      mission?.collaborator_id ??
+      currentCollaboratorId,
   );
   const [opportunityId, setOpportunityId] = useState(
-    lockedOpportunityId ?? mission?.opportunity_id ?? "",
+    lockedOpportunityId ??
+      (duplicatePrefill ? "" : (mission?.opportunity_id ?? "")),
   );
-  const [estimatedCharge, setEstimatedCharge] = useState(
-    mission?.estimated_charge != null ? String(mission.estimated_charge) : "",
-  );
+  const [estimatedCharge, setEstimatedCharge] = useState(() => {
+    const charge =
+      duplicatePrefill?.estimated_charge ?? mission?.estimated_charge;
+    return charge != null ? String(charge) : "";
+  });
   const [kanbanStatus, setKanbanStatus] = useState<MissionKanbanStatus>(
-    mission?.kanban_status ?? "a_faire",
+    duplicatePrefill ? "a_faire" : (mission?.kanban_status ?? "a_faire"),
   );
-  const [startAt, setStartAt] = useState(mission?.start_at ?? "");
-  const [endAt, setEndAt] = useState(mission?.end_at ?? "");
-  const [notes, setNotes] = useState(mission?.notes ?? "");
+  const [startAt, setStartAt] = useState(
+    duplicatePrefill ? "" : (mission?.start_at ?? ""),
+  );
+  const [endAt, setEndAt] = useState(
+    duplicatePrefill ? "" : (mission?.end_at ?? ""),
+  );
+  const [notes] = useState(
+    duplicatePrefill?.notes ?? mission?.notes ?? "",
+  );
+  const [recurrence, setRecurrence] = useState<MissionRecurrenceDraft>(() =>
+    createEmptyRecurrenceDraft(mission?.series ?? null),
+  );
+  const [stopOpen, setStopOpen] = useState(false);
 
   const [clients, setClients] = useState<LocalClient[]>(() =>
     [...initialClients]
@@ -132,13 +170,14 @@ export function MissionFormDrawer({
     const byId = new Map<string, MissionCategoryItem>();
     for (const item of availableCategories) byId.set(item.id, item);
     for (const item of mission?.categories ?? []) byId.set(item.id, item);
+    for (const item of duplicatePrefill?.categories ?? []) byId.set(item.id, item);
     return [...byId.values()].sort((a, b) =>
       a.label.localeCompare(b.label, "fr"),
     );
   });
   const [selectedCategories, setSelectedCategories] = useState<
     MissionCategoryItem[]
-  >(() => [...(mission?.categories ?? [])]);
+  >(() => [...(duplicatePrefill?.categories ?? mission?.categories ?? [])]);
 
   const [fieldErrors, setFieldErrors] = useState<
     Partial<Record<string, string>>
@@ -295,6 +334,24 @@ export function MissionFormDrawer({
         return;
       }
 
+      const wantsRecurrence = Boolean(
+        recurrence.enabled && recurrence.frequency,
+      );
+
+      if (wantsRecurrence) {
+        const seriesResult = await syncMissionRecurrence({
+          missionId: result.id,
+          enabled: true,
+          frequency: recurrence.frequency,
+          startsOn: recurrence.startsOn || null,
+          endsOn: recurrence.endsOn || null,
+        });
+        if (!seriesResult.success) {
+          toast.error(seriesResult.error);
+          return;
+        }
+      }
+
       toast.success(
         mode === "create" ? "Mission enregistrée." : "Mission mise à jour.",
       );
@@ -305,7 +362,11 @@ export function MissionFormDrawer({
     });
   };
 
-  const showComplement = mode === "edit" || identificationSaved;
+  const showComplement =
+    mode === "edit" || identificationSaved || isDuplicateCreate;
+  const seriesStopped =
+    Boolean(mission?.series?.ends_on) &&
+    (mission?.series?.ends_on ?? "") <= new Date().toISOString().slice(0, 10);
   const showScopeToggle = !lockedScope;
   const showClientField = missionScope === "client" && !lockedClientId;
   const showLockedClient = missionScope === "client" && Boolean(lockedClientId);
@@ -607,14 +668,14 @@ export function MissionFormDrawer({
               </div>
             ) : null}
 
-            <div className="grid gap-2">
-              <Label htmlFor="mission_notes">Notes</Label>
-              <Textarea
-                id="mission_notes"
-                value={notes}
-                onChange={(event) => setNotes(event.target.value)}
+            <div className="space-y-3 border-t pt-4">
+              <MissionRecurrenceFields
+                draft={recurrence}
+                onChange={setRecurrence}
+                hasExistingSeries={Boolean(mission?.series_id)}
+                seriesStopped={seriesStopped}
                 disabled={isPending}
-                rows={4}
+                onRequestStop={() => setStopOpen(true)}
               />
             </div>
 
@@ -664,6 +725,33 @@ export function MissionFormDrawer({
           </Button>
         </DrawerFooterActions>
       )}
+
+      {mission?.series_id ? (
+        <ConfirmStatusDialog
+          open={stopOpen}
+          onOpenChange={setStopOpen}
+          title="Arrêter la récurrence"
+          description={
+            <p>
+              Vous souhaitez arrêter la série de récurrence. La fin de série
+              sera fixée à aujourd&apos;hui. Confirmez-vous ?
+            </p>
+          }
+          confirmLabel="Arrêter"
+          pendingLabel="Arrêt…"
+          successMessage="Récurrence arrêtée."
+          onConfirm={() =>
+            stopMissionSeries(mission.series_id!, mission.id)
+          }
+          onSuccess={() => {
+            setRecurrence((prev) => ({
+              ...prev,
+              endsOn: new Date().toISOString().slice(0, 10),
+            }));
+            helpers.dismiss();
+          }}
+        />
+      ) : null}
     </form>
   );
 }
