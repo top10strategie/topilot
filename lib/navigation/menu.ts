@@ -6,6 +6,7 @@ import {
   Cardholder,
   ChartDonut,
   CirclesFour,
+  ClockCounterClockwise,
   File,
   Intersect,
   Screwdriver,
@@ -15,6 +16,8 @@ export type NavItem = {
   title: string;
   href: string;
   icon: Icon;
+  /** Si true, visible uniquement Manager / Direction. */
+  managerOrDirectionOnly?: boolean;
 };
 
 export const primaryNavItems: NavItem[] = [
@@ -65,6 +68,12 @@ export const secondaryNavItems: NavItem[] = [
     title: "Gestion Admin",
     href: "/administration",
     icon: Intersect,
+  },
+  {
+    title: "Historique",
+    href: "/history",
+    icon: ClockCounterClockwise,
+    managerOrDirectionOnly: true,
   },
 ];
 

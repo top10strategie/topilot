@@ -14,6 +14,7 @@ import {
 import { toast } from "sonner";
 import { deleteContactClient } from "@/actions/contact-clients";
 import { deactivateClient } from "@/actions/clients";
+import { AuditHistoryButton } from "@/components/audit/audit-history-button";
 import { ClientFormDrawer } from "@/components/clients/client-form-drawer";
 import { ContactFormDrawer } from "@/components/clients/contact-form-drawer";
 import { EntityLinkedDocumentsSection } from "@/components/documents/entity-linked-documents-section";
@@ -94,6 +95,7 @@ type ClientDetailPageClientProps = {
   linkedWikis: LinkedWikiItem[];
   wikiLinkOptions: WikiLinkOption[];
   canManagePrivacy: boolean;
+  canViewHistory: boolean;
 };
 
 export function ClientDetailPageClient({
@@ -112,6 +114,7 @@ export function ClientDetailPageClient({
   linkedWikis,
   wikiLinkOptions,
   canManagePrivacy,
+  canViewHistory,
 }: ClientDetailPageClientProps) {
   const router = useRouter();
   const { pushDrawer } = useDrawerStack();
@@ -291,6 +294,12 @@ export function ClientDetailPageClient({
             >
               <Trash className="size-4" />
             </IconActionButton>
+            {canViewHistory ? (
+              <AuditHistoryButton
+                scope={{ kind: "client", clientId: client.id }}
+                dialogTitle={`Historique — ${client.client_name}`}
+              />
+            ) : null}
           </div>
         }
       />

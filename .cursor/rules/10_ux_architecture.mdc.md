@@ -24,6 +24,7 @@ alwaysApply: true
 /wikis                         → Liste des pages wikis
 /analyses                      → Etudes et analyses (opportunités, missions, abonnements)
 /administration                → Gestion des catégories, types et utilisateurs
+/history                       → Historique CRM (`audit_log`, Manager / Direction)
 /settings                      → Paramètres utilisateur + profil
 ```
 

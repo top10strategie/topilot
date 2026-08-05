@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CopySimple, MagnifyingGlass, PencilSimple, Trash } from "@phosphor-icons/react";
 import { archiveMission } from "@/actions/missions";
+import { AuditHistoryButton } from "@/components/audit/audit-history-button";
 import { ClientConsultationDrawer } from "@/components/clients/client-consultation-drawer";
 import { EntityLinkedDocumentsSection } from "@/components/documents/entity-linked-documents-section";
 import { useDrawerStack } from "@/components/drawers/drawer-stack-context";
@@ -63,6 +64,7 @@ type MissionDetailPageClientProps = {
   linkedWikis: LinkedWikiItem[];
   wikiLinkOptions: WikiLinkOption[];
   canManagePrivacy: boolean;
+  canViewHistory: boolean;
 };
 
 export function MissionDetailPageClient({
@@ -81,6 +83,7 @@ export function MissionDetailPageClient({
   linkedWikis,
   wikiLinkOptions,
   canManagePrivacy,
+  canViewHistory,
 }: MissionDetailPageClientProps) {
   const router = useRouter();
   const { pushDrawer } = useDrawerStack();
@@ -192,6 +195,16 @@ export function MissionDetailPageClient({
             >
               <Trash className="size-4" />
             </IconActionButton>
+            {canViewHistory ? (
+              <AuditHistoryButton
+                scope={{
+                  kind: "mission",
+                  missionId: mission.id,
+                  seriesId: mission.series_id,
+                }}
+                dialogTitle={`Historique — ${mission.mission_name}`}
+              />
+            ) : null}
           </div>
         }
       />

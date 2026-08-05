@@ -47,6 +47,7 @@ async function ToolDetailContent({
       }))}
       collaborators={collaborators}
       canManagePrivacy={canManagePrivacy}
+      canViewHistory={canManagePrivacy}
     />
   );
 }
