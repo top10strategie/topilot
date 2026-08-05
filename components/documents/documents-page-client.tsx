@@ -13,6 +13,7 @@ import {
   Trash,
 } from "@phosphor-icons/react";
 import { toast } from "sonner";
+import { AuditHistoryButton } from "@/components/audit/audit-history-button";
 import { CategoryMultiCombobox } from "@/components/categories/category-multi-combobox";
 import { useDrawerStack } from "@/components/drawers/drawer-stack-context";
 import { DeleteDocumentDialog } from "@/components/documents/delete-document-dialog";
@@ -82,6 +83,7 @@ type DocumentsPageClientProps = {
   documents: DocumentListItem[];
   documentTypes: DocumentTypeItem[];
   clients: ClientListItem[];
+  canViewHistory: boolean;
 };
 
 function formatDate(iso: string): string {
@@ -105,6 +107,7 @@ export function DocumentsPageClient({
   documents,
   documentTypes,
   clients,
+  canViewHistory,
 }: DocumentsPageClientProps) {
   const router = useRouter();
   const { pushDrawer } = useDrawerStack();
@@ -353,6 +356,12 @@ export function DocumentsPageClient({
             <IconActionButton label="Nouveau document" onClick={openCreate}>
               <PencilSimple className="size-4" />
             </IconActionButton>
+            {canViewHistory ? (
+              <AuditHistoryButton
+                scope={{ kind: "documents" }}
+                dialogTitle="Historique — Documents"
+              />
+            ) : null}
           </div>
         }
       />

@@ -11,6 +11,7 @@ import {
   Trash,
 } from "@phosphor-icons/react";
 import { CategoryMultiCombobox } from "@/components/categories/category-multi-combobox";
+import { AuditHistoryButton } from "@/components/audit/audit-history-button";
 import { useDrawerStack } from "@/components/drawers/drawer-stack-context";
 import { IconActionButton } from "@/components/layout/icon-action-button";
 import { ListPaginationFooter } from "@/components/layout/list-pagination-footer";
@@ -61,6 +62,7 @@ const WIKI_VIEW_TABS: ListViewTab[] = [
 type WikisPageClientProps = {
   wikis: WikiListItem[];
   categories: CategoryItem[];
+  canViewHistory: boolean;
 };
 
 function formatDate(iso: string | null): string {
@@ -76,7 +78,11 @@ function formatDate(iso: string | null): string {
   }
 }
 
-export function WikisPageClient({ wikis, categories }: WikisPageClientProps) {
+export function WikisPageClient({
+  wikis,
+  categories,
+  canViewHistory,
+}: WikisPageClientProps) {
   const router = useRouter();
   const { pushDrawer } = useDrawerStack();
   const [query, setQuery] = useState("");
@@ -224,6 +230,12 @@ export function WikisPageClient({ wikis, categories }: WikisPageClientProps) {
             <IconActionButton label="Nouveau Wiki" onClick={openCreate}>
               <PencilSimple className="size-4" />
             </IconActionButton>
+            {canViewHistory ? (
+              <AuditHistoryButton
+                scope={{ kind: "wikis" }}
+                dialogTitle="Historique — Wikis"
+              />
+            ) : null}
           </div>
         }
       />

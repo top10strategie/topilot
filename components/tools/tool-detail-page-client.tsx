@@ -11,6 +11,7 @@ import {
   Trash,
 } from "@phosphor-icons/react";
 import { useDrawerStack } from "@/components/drawers/drawer-stack-context";
+import { AuditHistoryButton } from "@/components/audit/audit-history-button";
 import { EntityDetailsColumns } from "@/components/layout/entity-details-columns";
 import { IconActionButton } from "@/components/layout/icon-action-button";
 import { PageHero } from "@/components/layout/page-hero";
@@ -47,6 +48,7 @@ type ToolDetailPageClientProps = {
   clients: ClientOption[];
   collaborators: CollaboratorListItem[];
   canManagePrivacy: boolean;
+  canViewHistory: boolean;
 };
 
 export function ToolDetailPageClient({
@@ -55,6 +57,7 @@ export function ToolDetailPageClient({
   clients,
   collaborators,
   canManagePrivacy,
+  canViewHistory,
 }: ToolDetailPageClientProps) {
   const router = useRouter();
   const { pushDrawer } = useDrawerStack();
@@ -185,6 +188,12 @@ export function ToolDetailPageClient({
             <IconActionButton label="Édition Outil" onClick={openEdit}>
               <PencilSimple className="size-4" />
             </IconActionButton>
+            {canViewHistory ? (
+              <AuditHistoryButton
+                scope={{ kind: "tool", toolId: tool.id }}
+                dialogTitle={`Historique — ${tool.tool_name}`}
+              />
+            ) : null}
           </div>
         }
       />

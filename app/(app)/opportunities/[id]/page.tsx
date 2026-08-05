@@ -95,6 +95,11 @@ async function OpportunityDetailContent({
           ? isManagerOrDirection(currentCollaborator.role)
           : false
       }
+      canViewHistory={
+        currentCollaborator
+          ? isManagerOrDirection(currentCollaborator.role)
+          : false
+      }
     />
   );
 }

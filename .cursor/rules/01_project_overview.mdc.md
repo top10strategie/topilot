@@ -65,7 +65,7 @@ Centraliser l'information client, opportunité, missions et réduire la dispersi
 6. **Pipe production** — mission (kanban + vues), clôture opportunité → création mission(s).
 7. **Toolbox** — tool, tool_access (+ Vault), tool_subscription, exchange_rate, abonnements.
 8. **Wiki & Documents** — wiki (Tiptap), documents + versionning.
-9. **Transverse avancé** — audit_log/historique, dashboards & analyses (CA, budget), page profil/préférences.
-10. **Transverse à délibérer** - missions récurrentes et ré-authentification avant changement de mot de passe (règles à préciser à ce moment), affichage de l'historique.
+9. **Transverse avancé** — audit_log/historique (`/history` + modales fiches), dashboards & analyses (CA, budget), page profil/préférences.
+10. **Transverse à délibérer** - missions récurrentes et ré-authentification avant changement de mot de passe (règles à préciser à ce moment).
 
 Cet ordre reflète les dépendances techniques (fondations avant tout) et fonctionnelles (les collaborateurs/équipes sont référencés par toutes les autres entités).

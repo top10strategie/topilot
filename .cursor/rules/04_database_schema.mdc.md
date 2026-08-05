@@ -657,7 +657,7 @@ CREATE TABLE public.audit_log (
   collaborator_id  uuid REFERENCES public.collaborator(id) ON DELETE RESTRICT,
   entity_type      text NOT NULL CHECK (entity_type = ANY (ARRAY[
                       'category', 'team', 'collaborator', 'client', 'contact_client',
-                      'opportunity', 'mission', 'document_type', 'document',
+                      'opportunity', 'mission', 'mission_series', 'document_type', 'document',
                       'tool', 'tool_access', 'tool_subscription', 'tool_subscription_price',
                       'exchange_rate', 'wiki', 'setting', 'note'
                     ]::text[])),
@@ -704,7 +704,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 ```
 
-> À appliquer (`AFTER INSERT OR UPDATE OR DELETE ... FOR EACH ROW`) sur les 16 tables nommées dans le `CHECK` de `audit_log.entity_type`, à l'exception de la valeur `note` (voir fonction dédiée ci-dessous). Jamais sur `audit_log` elle-même (boucle infinie), ni sur les tables de jonction.
+> À appliquer (`AFTER INSERT OR UPDATE OR DELETE ... FOR EACH ROW`) sur les 17 tables nommées dans le `CHECK` de `audit_log.entity_type`, à l'exception de la valeur `note` (voir fonction dédiée ci-dessous). Jamais sur `audit_log` elle-même (boucle infinie), ni sur les tables de jonction.
 
 ```sql
 -- Historisation dédiée des notes : uniquement quand le champ `notes` change,
