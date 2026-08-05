@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition, type MouseEvent } from "react";
+import { useMemo, useState, type MouseEvent } from "react";
 import { useRouter } from "next/navigation";
 import {
   CopySimple,
@@ -11,7 +11,6 @@ import {
   Trash,
   UserPlus,
 } from "@phosphor-icons/react";
-import { toast } from "sonner";
 import { deleteContactClient } from "@/actions/contact-clients";
 import { deactivateClient } from "@/actions/clients";
 import { AuditHistoryButton } from "@/components/audit/audit-history-button";
@@ -34,15 +33,6 @@ import { EntityLinkedToolsSection } from "@/components/tools/entity-linked-tools
 import { EntityLinkedWikisSection } from "@/components/wiki/entity-linked-wikis-section";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import {
   HoverCard,
   HoverCardContent,
@@ -127,7 +117,6 @@ export function ClientDetailPageClient({
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [missionDuplicateTarget, setMissionDuplicateTarget] =
     useState<MissionListItem | null>(null);
-  const [isPending, startTransition] = useTransition();
 
   const filteredContacts = useMemo(() => {
     const q = query.trim().toLocaleLowerCase("fr");
@@ -670,54 +659,28 @@ export function ClientDetailPageClient({
       />
 
       {pendingDelete ? (
-        <Dialog
+        <ConfirmStatusDialog
           open
           onOpenChange={(open) => {
             if (!open) setPendingDelete(null);
           }}
-        >
-          <DialogContent className="border-destructive">
-            <DialogHeader>
-              <DialogTitle className="text-destructive">
-                Supprimer le contact
-              </DialogTitle>
-              <DialogDescription>
-                Vous souhaitez supprimer{" "}
-                <strong>{getContactFullName(pendingDelete)}</strong>.
-                Confirmez-vous ? La suppression est définitive.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter className="gap-2 sm:gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                disabled={isPending}
-                onClick={() => setPendingDelete(null)}
-              >
-                Annuler
-              </Button>
-              <Button
-                type="button"
-                variant="destructive"
-                disabled={isPending}
-                onClick={() => {
-                  startTransition(async () => {
-                    const result = await deleteContactClient(pendingDelete.id);
-                    if (!result.success) {
-                      toast.error(result.error);
-                      return;
-                    }
-                    toast.success("Contact supprimé.");
-                    setPendingDelete(null);
-                    router.refresh();
-                  });
-                }}
-              >
-                {isPending ? "Suppression…" : "Supprimer"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+          title="Supprimer le contact"
+          description={
+            <p>
+              Vous souhaitez supprimer{" "}
+              <strong>{getContactFullName(pendingDelete)}</strong>.
+              Confirmez-vous ? La suppression est définitive.
+            </p>
+          }
+          confirmLabel="Supprimer"
+          pendingLabel="Suppression…"
+          successMessage="Contact supprimé."
+          onConfirm={() => deleteContactClient(pendingDelete.id)}
+          onSuccess={() => {
+            setPendingDelete(null);
+            router.refresh();
+          }}
+        />
       ) : null}
 
       <ConfirmStatusDialog

@@ -1,5 +1,38 @@
 # Suivi des actions — TOPilot
 
+## **[2026-08-05] — Avatar sidebar + footer consultation wiki**
+
+**Type :** `fix`
+**Fichiers concernés :** `lib/auth/get-current-collaborator.ts`, `lib/auth/collaborator-display.ts`, `components/layout/app-sidebar.tsx`, `components/wiki/wiki-consultation-drawer.tsx`, `suivi.md`
+
+### Description
+
+Photo de profil chargée via `getCurrentCollaborator` et affichée dans le footer sidebar. Bouton « Aller aux wikis » masqué sur `/wikis`.
+
+---
+
+## **[2026-08-05] — Refactor sections liées + dialogs delete**
+
+**Type :** `refactor`
+**Fichiers concernés :** `components/layout/entity-linked-resource-section.tsx`, `components/{documents,tools,wiki}/entity-linked-*-section.tsx`, `components/{wiki,tools,categories,collaborators}/delete-*-dialog.tsx`, `components/collaborators/anonymize-collaborator-dialog.tsx`, `components/clients/client-detail-page-client.tsx`, `suivi.md`
+
+### Description
+
+Shell générique `EntityLinkedResourceSection` (docs/outils/wiki) ; dialogs delete near-duplicates en façades `ConfirmStatusDialog` (wiki, outil, accès, abo, label, anonymisation collab, contact client). Conservés séparés : document (2 actions), équipe (garde membres).
+
+---
+
+## **[2026-08-05] — Quick wins refactor (auth cache, lazy charts/éditeur, URLs visuels)**
+
+**Type :** `refactor`
+**Fichiers concernés :** `lib/auth/get-current-collaborator.ts`, `lib/visuels/public-url.ts`, `lib/{clients,missions,opportunities,collaborators,settings}/queries.ts`, `components/analyses/analysis-bar-chart-lazy.tsx`, panels analyses + `home-widget-renderer.tsx`, `components/wiki/wiki-form-drawer.tsx`, `suivi.md`
+
+### Description
+
+Branche `feature/refactor-quick-wins`. `React.cache` sur `getCurrentCollaborator` ; Recharts et TipTap en `next/dynamic` ; `resolveVisualPublicUrl` centralisé (réutilise `publicVisuelUrl`).
+
+---
+
 ## **[2026-08-05] — Footer pagination admin catégories/types**
 
 **Type :** `fix`

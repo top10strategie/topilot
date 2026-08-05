@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { getSupabaseUrl } from "@/lib/supabase/env";
+import { resolveVisualPublicUrl } from "@/lib/visuels/public-url";
 import type {
   CollaboratorListItem,
   CollaboratorRole,
@@ -36,16 +36,6 @@ type TeamRow = {
     category: { id: string; label: string } | null;
   }> | null;
 };
-
-function resolveVisualPublicUrl(
-  document: DocumentVisualRow | null,
-): string | null {
-  if (!document?.is_visual || !document.file_path) {
-    return null;
-  }
-  const base = getSupabaseUrl().replace(/\/$/, "");
-  return `${base}/storage/v1/object/public/visuels/${document.file_path}`;
-}
 
 function mapCollaborator(row: CollaboratorRow): CollaboratorListItem {
   return {

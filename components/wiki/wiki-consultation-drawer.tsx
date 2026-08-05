@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { DrawerBody, DrawerFooterActions } from "@/components/drawers/drawer-section";
 import type { DrawerHelpers } from "@/components/drawers/drawer-stack-context";
 import { Badge } from "@/components/ui/badge";
@@ -13,13 +13,15 @@ type WikiConsultationDrawerProps = {
 };
 
 /**
- * Tiroir de consultation wiki — footer « Aller aux wikis ».
+ * Tiroir de consultation wiki — footer « Aller aux wikis » hors page /wikis.
  */
 export function WikiConsultationDrawer({
   wiki,
   helpers,
 }: WikiConsultationDrawerProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const showGoToWikis = pathname !== "/wikis";
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -73,15 +75,17 @@ export function WikiConsultationDrawer({
         >
           Fermer
         </Button>
-        <Button
-          type="button"
-          onClick={() => {
-            helpers.dismiss();
-            router.push("/wikis");
-          }}
-        >
-          Aller aux wikis
-        </Button>
+        {showGoToWikis ? (
+          <Button
+            type="button"
+            onClick={() => {
+              helpers.dismiss();
+              router.push("/wikis");
+            }}
+          >
+            Aller aux wikis
+          </Button>
+        ) : null}
       </DrawerFooterActions>
     </div>
   );
