@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition, type FormEvent } from "react";
+import dynamic from "next/dynamic";
 import { Plus } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { createCategory, updateCategory } from "@/actions/categories";
@@ -10,12 +11,24 @@ import { LabelEntityFormDrawer } from "@/components/categories/label-entity-form
 import { DrawerBody, DrawerFooterActions } from "@/components/drawers/drawer-section";
 import type { DrawerHelpers } from "@/components/drawers/drawer-stack-context";
 import { useDrawerStack } from "@/components/drawers/drawer-stack-context";
-import { WikiRichTextEditor } from "@/components/wiki/wiki-rich-text-editor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { CategoryItem } from "@/lib/categories/types";
 import type { WikiLinkEntity, WikiListItem } from "@/lib/wiki/types";
+
+const WikiRichTextEditor = dynamic(
+  () =>
+    import("@/components/wiki/wiki-rich-text-editor").then(
+      (mod) => mod.WikiRichTextEditor,
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <p className="text-sm text-muted-foreground">Chargement de l&apos;éditeur…</p>
+    ),
+  },
+);
 
 type WikiFormDrawerProps = {
   mode: "create" | "edit";

@@ -6,6 +6,7 @@ export type CurrentCollaborator = {
   last_name: string;
   email: string;
   role: CollaboratorRole;
+  profile_picture_url: string | null;
 };
 
 export function getCollaboratorDisplayName(

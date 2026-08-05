@@ -1,6 +1,6 @@
 "use client";
 
-import { AnalysisBarChart } from "@/components/analyses/analysis-bar-chart";
+import { AnalysisBarChart } from "@/components/analyses/analysis-bar-chart-lazy";
 import { AnalysisKpiGrid } from "@/components/analyses/analysis-kpi-grid";
 import type { MissionsAnalysis } from "@/lib/analyses/types";
 

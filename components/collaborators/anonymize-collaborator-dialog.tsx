@@ -1,17 +1,7 @@
 "use client";
 
-import { useTransition } from "react";
-import { toast } from "sonner";
 import { anonymizeCollaboratorAction } from "@/actions/collaborators";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { ConfirmStatusDialog } from "@/components/layout/confirm-status-dialog";
 
 type AnonymizeCollaboratorDialogProps = {
   open: boolean;
@@ -31,61 +21,29 @@ export function AnonymizeCollaboratorDialog({
   collaboratorName,
   onAnonymized,
 }: AnonymizeCollaboratorDialogProps) {
-  const [isPending, startTransition] = useTransition();
-
-  const handleConfirm = () => {
-    startTransition(async () => {
-      const result = await anonymizeCollaboratorAction(collaboratorId);
-      if (!result.success) {
-        toast.error(result.error);
-        return;
-      }
-      toast.success("Collaborateur anonymisé.");
-      onOpenChange(false);
-      onAnonymized();
-    });
-  };
-
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="border-destructive">
-        <DialogHeader>
-          <DialogTitle className="text-destructive">
-            Supprimer le collaborateur
-          </DialogTitle>
-          <DialogDescription asChild>
-            <div className="space-y-2 text-sm text-muted-foreground">
-              <p>
-                Vous souhaitez supprimer <strong>{collaboratorName}</strong>.
-                Confirmez-vous ?
-              </p>
-              <p>
-                Toute suppression d&apos;un collaborateur est définitive : ses
-                données nominatives seront anonymisées et l&apos;accès à
-                l&apos;application sera révoqué.
-              </p>
-            </div>
-          </DialogDescription>
-        </DialogHeader>
-        <DialogFooter className="gap-2 sm:gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={isPending}
-          >
-            Annuler
-          </Button>
-          <Button
-            type="button"
-            variant="destructive"
-            onClick={handleConfirm}
-            disabled={isPending}
-          >
-            {isPending ? "Suppression…" : "Supprimer"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <ConfirmStatusDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Supprimer le collaborateur"
+      description={
+        <>
+          <p>
+            Vous souhaitez supprimer <strong>{collaboratorName}</strong>.
+            Confirmez-vous ?
+          </p>
+          <p>
+            Toute suppression d&apos;un collaborateur est définitive : ses
+            données nominatives seront anonymisées et l&apos;accès à
+            l&apos;application sera révoqué.
+          </p>
+        </>
+      }
+      confirmLabel="Supprimer"
+      pendingLabel="Suppression…"
+      successMessage="Collaborateur anonymisé."
+      onConfirm={() => anonymizeCollaboratorAction(collaboratorId)}
+      onSuccess={onAnonymized}
+    />
   );
 }

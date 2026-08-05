@@ -1,16 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
-import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { ConfirmStatusDialog } from "@/components/layout/confirm-status-dialog";
 
 type DeleteLabelEntityDialogProps = {
   open: boolean;
@@ -32,64 +22,32 @@ export function DeleteLabelEntityDialog({
   onConfirm,
   onDeleted,
 }: DeleteLabelEntityDialogProps) {
-  const [isPending, startTransition] = useTransition();
-
-  const handleConfirm = () => {
-    startTransition(async () => {
-      const result = await onConfirm();
-      if (!result.success) {
-        toast.error(result.error ?? "Suppression impossible.");
-        return;
-      }
-      toast.success(
-        entityKindLabel === "Catégorie"
-          ? "Catégorie supprimée."
-          : "Type documentaire supprimé.",
-      );
-      onOpenChange(false);
-      onDeleted();
-    });
-  };
+  const isCategory = entityKindLabel === "Catégorie";
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="border-destructive">
-        <DialogHeader>
-          <DialogTitle className="text-destructive">
-            Supprimer {entityKindLabel.toLowerCase()}
-          </DialogTitle>
-          <DialogDescription asChild>
-            <div className="space-y-2 text-sm text-muted-foreground">
-              <p>
-                Vous souhaitez supprimer <strong>{entityLabel}</strong>.
-                Confirmez-vous ?
-              </p>
-              <p>
-                Toute suppression d&apos;un{entityKindLabel === "Catégorie" ? "e" : ""}{" "}
-                {entityKindLabel.toLowerCase()} est définitive.
-              </p>
-            </div>
-          </DialogDescription>
-        </DialogHeader>
-        <DialogFooter className="gap-2 sm:gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={isPending}
-          >
-            Annuler
-          </Button>
-          <Button
-            type="button"
-            variant="destructive"
-            onClick={handleConfirm}
-            disabled={isPending}
-          >
-            {isPending ? "Suppression…" : "Supprimer"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <ConfirmStatusDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title={`Supprimer ${entityKindLabel.toLowerCase()}`}
+      description={
+        <>
+          <p>
+            Vous souhaitez supprimer <strong>{entityLabel}</strong>.
+            Confirmez-vous ?
+          </p>
+          <p>
+            Toute suppression d&apos;un{isCategory ? "e" : ""}{" "}
+            {entityKindLabel.toLowerCase()} est définitive.
+          </p>
+        </>
+      }
+      confirmLabel="Supprimer"
+      pendingLabel="Suppression…"
+      successMessage={
+        isCategory ? "Catégorie supprimée." : "Type documentaire supprimé."
+      }
+      onConfirm={onConfirm}
+      onSuccess={onDeleted}
+    />
   );
 }

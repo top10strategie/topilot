@@ -1,5 +1,5 @@
-import { getSupabaseUrl } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
+import { resolveVisualPublicUrl } from "@/lib/visuels/public-url";
 import type { AppTheme, OwnProfile } from "./types";
 
 type DocumentVisualRow = {
@@ -7,16 +7,6 @@ type DocumentVisualRow = {
   file_path: string | null;
   is_visual: boolean;
 };
-
-function resolveVisualPublicUrl(
-  document: DocumentVisualRow | null,
-): string | null {
-  if (!document?.is_visual || !document.file_path) {
-    return null;
-  }
-  const base = getSupabaseUrl().replace(/\/$/, "");
-  return `${base}/storage/v1/object/public/visuels/${document.file_path}`;
-}
 
 function unwrapOne<T>(value: T | T[] | null | undefined): T | null {
   if (value == null) return null;

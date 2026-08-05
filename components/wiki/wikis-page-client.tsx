@@ -23,6 +23,7 @@ import {
 } from "@/components/layout/list-view-tabs";
 import { PageHero } from "@/components/layout/page-hero";
 import { DeleteWikiDialog } from "@/components/wiki/delete-wiki-dialog";
+import { WikiConsultationDrawer } from "@/components/wiki/wiki-consultation-drawer";
 import { WikiFormDrawer } from "@/components/wiki/wiki-form-drawer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -162,6 +163,15 @@ export function WikisPageClient({
     });
   };
 
+  const openConsultation = (item: WikiListItem) => {
+    void pushDrawer({
+      title: item.title,
+      content: (helpers) => (
+        <WikiConsultationDrawer wiki={item} helpers={helpers} />
+      ),
+    });
+  };
+
   const actionButtons = (item: WikiListItem) => (
     <div className="flex shrink-0 items-center gap-0.5">
       <IconActionButton
@@ -251,7 +261,19 @@ export function WikisPageClient({
           ) : (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {pageItems.map((item) => (
-                <Card key={item.id} className="h-full">
+                <Card
+                  key={item.id}
+                  role="button"
+                  tabIndex={0}
+                  className="h-full cursor-pointer transition-colors hover:bg-muted/40"
+                  onClick={() => openConsultation(item)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      openConsultation(item);
+                    }
+                  }}
+                >
                   <CardHeader className="space-y-2 p-4 pb-2">
                     <div className="flex items-start justify-between gap-2">
                       <CardTitle className="text-base leading-snug">
@@ -320,7 +342,8 @@ export function WikisPageClient({
                   pageItems.map((item) => (
                     <tr
                       key={item.id}
-                      className="border-b last:border-0 hover:bg-muted/30"
+                      className="cursor-pointer border-b last:border-0 hover:bg-muted/30"
+                      onClick={() => openConsultation(item)}
                     >
                       <td className="px-3 py-2 font-medium">{item.title}</td>
                       <td className="px-3 py-2 text-muted-foreground">

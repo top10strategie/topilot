@@ -3,7 +3,7 @@
 import { GlobalSearchTrigger } from "@/components/layout/global-search-trigger";
 import { LogoutDialog } from "@/components/layout/logout-dialog";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import {
   Sidebar,
@@ -151,6 +151,12 @@ export function AppSidebar({ collaborator }: AppSidebarProps) {
             >
               <Link href="/settings">
                 <Avatar className="size-8">
+                  {collaborator?.profile_picture_url ? (
+                    <AvatarImage
+                      src={collaborator.profile_picture_url}
+                      alt={displayName}
+                    />
+                  ) : null}
                   <AvatarFallback className="text-xs">{initials}</AvatarFallback>
                 </Avatar>
                 <span className="truncate font-medium">{displayName}</span>
