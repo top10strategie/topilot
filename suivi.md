@@ -1,5 +1,16 @@
 # Suivi des actions — TOPilot
 
+## **[2026-08-05] — Kanban générique missions/opportunités**
+
+**Type :** `refactor`
+**Fichiers concernés :** `components/layout/entity-kanban.tsx`, `components/missions/missions-kanban.tsx`, `components/opportunities/opportunities-kanban.tsx`, `.cursor/rules/07_ux_composants_reutilisable.mdc.md`, `suivi.md`
+
+### Description
+
+Branche `refactor/kanban-generique`. Shell DnD partagé `EntityKanban` (colonnes, drag, persist optimiste, overlay) ; wrappers domaine pour cartes, `buildBoard` (filtre archive missions ≤ 3 mois), totaux prix opportunités.
+
+---
+
 ## **[2026-08-05] — Avatar sidebar + footer consultation wiki**
 
 **Type :** `fix`
