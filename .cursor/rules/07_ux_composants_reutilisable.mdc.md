@@ -212,7 +212,7 @@ Composant : `npx shadcn@latest add sheet`
 
 ## 8. Kanban
 
-Composant : DnD kit
+Composant : `@dnd-kit` via le shell partagé `EntityKanban` (`components/layout/entity-kanban.tsx`). Wrappers domaine : `MissionsKanban`, `OpportunitiesKanban` (contenu carte, `buildBoard`, persist).
 
 - Le composant global prend l'espace entier disponible à l'écran, avec scroll horizontal si la taille de l'écran est inférieur à la taille `l` et que les éléments dépasse l'espace aloué.
 - Concerne les entités **Opportunités** et **Missions**.
@@ -225,7 +225,7 @@ Composant : DnD kit
     - En cas d'échec de la synchronisation : **rollback silencieux** de la carte à sa position d'origine + toast d'erreur.
 - Titre de colonne : en haut à gauche, même couleur que la bordure de la colonne.
 - Badge de comptage : en haut à droite de la colonne, affiché uniquement si le nombre de cartes est supérieur à zéro.
-- Sur la page Opportunités uniquement : sous le titre/badge, affichage d'un total agrégé (`opportunity.price` moyen/`average_price`) en couleur Secondary (light mode) / Highlight (night mode).
+- Sur la page Opportunités uniquement : sous le titre/badge, affichage d'un total agrégé (`opportunity.price` moyen/`average_price`) en couleur Secondary (light mode) / Highlight (night mode) — via `renderColumnMeta`.
 - La carte utilisée dans le Kanban est une **variante du composant Carte** (section 9), adaptée aux informations de l'entité affichée (opportunité ou mission).
 
 ---
