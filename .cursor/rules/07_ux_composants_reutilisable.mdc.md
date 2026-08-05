@@ -54,6 +54,7 @@ Breakpoints : standards Tailwind (`sm`, `md`, `lg`, `xl`).
 |---|---|
 |Études et Analyses|`chart-donut`|
 |Gestion Admin|`intersect`|
+|Historique|`clock-counter-clockwise` (visible **uniquement** Manager / Direction)|
 
 **Séparateur** : même `Separator` ShadCN (`max-w-[80%]`), utilisé aussi en mobile entre le groupe secondaire et les actions Header.
 

@@ -240,7 +240,7 @@ Ces trois règles sont mutualisées via un composant de stack de drawers réutil
 
 Éléments historisés en V1 (correspond exactement à la liste `04_database_schema.mdc` — `audit_log.entity_type`) :
 
-- Création / modification / suppression de : `category`, `team`, `collaborator`, `client`, `contact_client`, `opportunity`, `mission`, `document_type`, `document`, `tool`, `tool_access`, `tool_subscription`, `tool_subscription_price`, `exchange_rate`, `wiki`, `setting`.
+- Création / modification / suppression de : `category`, `team`, `collaborator`, `client`, `contact_client`, `opportunity`, `mission`, `mission_series`, `document_type`, `document`, `tool`, `tool_access`, `tool_subscription`, `tool_subscription_price`, `exchange_rate`, `wiki`, `setting`.
 - Modification d'une **note** sur `client`, `mission`, `team` ou `contact_client` (`entity_type = note`) — historisée via un trigger dédié, distinct du trigger générique par table.
 
 ### Contrainte `audit_log.entity_type`
@@ -248,7 +248,7 @@ Ces trois règles sont mutualisées via un composant de stack de drawers réutil
 ```sql
 CHECK (entity_type = ANY (ARRAY[
   'category', 'team', 'collaborator', 'client', 'contact_client',
-  'opportunity', 'mission', 'document_type', 'document',
+  'opportunity', 'mission', 'mission_series', 'document_type', 'document',
   'tool', 'tool_access', 'tool_subscription', 'tool_subscription_price',
   'exchange_rate', 'wiki', 'setting', 'note'
 ]::text[]))

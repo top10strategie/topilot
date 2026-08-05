@@ -94,6 +94,11 @@ async function MissionDetailContent({
           ? isManagerOrDirection(currentCollaborator.role)
           : false
       }
+      canViewHistory={
+        currentCollaborator
+          ? isManagerOrDirection(currentCollaborator.role)
+          : false
+      }
     />
   );
 }

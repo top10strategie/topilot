@@ -22,6 +22,7 @@ import {
   getCollaboratorDisplayName,
   getCollaboratorInitials,
 } from "@/lib/auth/collaborator-display";
+import { isManagerOrDirection } from "@/lib/auth/roles";
 import {
   isNavItemActive,
   primaryNavItems,
@@ -43,6 +44,12 @@ export function AppSidebar({ collaborator }: AppSidebarProps) {
   const initials = collaborator
     ? getCollaboratorInitials(collaborator)
     : "?";
+  const canViewHistory = collaborator
+    ? isManagerOrDirection(collaborator.role)
+    : false;
+  const visibleSecondaryNavItems = secondaryNavItems.filter(
+    (item) => !item.managerOrDirectionOnly || canViewHistory,
+  );
 
   return (
     <Sidebar collapsible="icon" variant="floating">
@@ -101,7 +108,7 @@ export function AppSidebar({ collaborator }: AppSidebarProps) {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {secondaryNavItems.map((item) => (
+              {visibleSecondaryNavItems.map((item) => (
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton
                     asChild

@@ -1,5 +1,27 @@
 # Suivi des actions — TOPilot
 
+## **[2026-08-05] — Footer pagination admin catégories/types**
+
+**Type :** `fix`
+**Fichiers concernés :** `components/categories/label-entity-grid.tsx`, `components/collaborators/administration-page-client.tsx`, `suivi.md`
+
+### Description
+
+Onglets Catégories / Types de `/administration` : compteur et pagination via `ListPaginationFooter` (même footer fixe que les listes CRM).
+
+---
+
+## **[2026-08-04] — Historique CRM (`audit_log`)**
+
+**Type :** `feature`
+**Fichiers concernés :** `supabase/migrations/20260804180000_audit_log_mission_series.sql`, `lib/audit/*`, `actions/audit-logs.ts`, `components/audit/*`, `app/(app)/history/page.tsx`, `lib/navigation/menu.ts`, `components/layout/app-sidebar.tsx`, Heroes client/opportunité/mission/outil/documents/wikis, `.cursor/rules/{01,03,04,07}_*.mdc.md`, `suivi.md`
+
+### Description
+
+Branche `feature/audit-history`. Page `/history` (Manager/Direction) + modales lecture seule INSERT/DELETE. `mission_series` ajouté au CHECK `audit_log` + trigger. Bouton Hero `clock-counter-clockwise` séparé des autres actions.
+
+---
+
 ## **[2026-08-04] — Consultation client/mission + fiche opportunité**
 
 **Type :** `fix`
