@@ -1,6 +1,6 @@
 "use client";
 
-import { AnalysisBarChart } from "@/components/analyses/analysis-bar-chart";
+import { AnalysisBarChart } from "@/components/analyses/analysis-bar-chart-lazy";
 import { AnalysisKpiGrid } from "@/components/analyses/analysis-kpi-grid";
 import type { OpportunitiesAnalysis } from "@/lib/analyses/types";
 import { formatOpportunityPrice } from "@/lib/opportunities/labels";
