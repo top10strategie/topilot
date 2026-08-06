@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { endOfCurrentIsoWeekParis } from "@/lib/dates/paris-week";
 import { resolveVisualPublicUrl } from "@/lib/visuels/public-url";
 import type {
   MissionCategoryItem,
@@ -204,68 +205,25 @@ export async function listMissionsByClientId(
 }
 
 /**
- * 10 dernières missions non archivées d'un collaborateur (consultation Top10).
+ * Missions actives (hors terminée / archivée) dont la date de fin
+ * est dans le passé ou jusqu'à la fin de la semaine ISO courante (Top10).
  */
-export async function listRecentMissionsByCollaboratorId(
-  collaboratorId: string,
-  limit = 10,
-): Promise<MissionListItem[]> {
+export async function listTop10ActiveMissions(): Promise<MissionListItem[]> {
   const supabase = await createClient();
+  const weekEnd = endOfCurrentIsoWeekParis();
   const { data, error } = await supabase
     .from("mission")
     .select(MISSION_LIST_SELECT)
-    .eq("collaborator_id", collaboratorId)
+    .neq("kanban_status", "terminee")
     .neq("kanban_status", "archivee")
-    .order("created_at", { ascending: false })
-    .limit(limit);
+    .not("end_at", "is", null)
+    .lte("end_at", weekEnd)
+    .order("end_at", { ascending: true });
 
   if (error) {
-    console.error("listRecentMissionsByCollaboratorId:", error);
+    console.error("listTop10ActiveMissions:", error);
     throw new Error(
-      `Impossible de charger les missions du collaborateur : ${error.message}`,
-    );
-  }
-
-  return ((data ?? []) as unknown as MissionListRow[]).map(mapListItem);
-}
-
-/**
- * 10 dernières missions non archivées d'un pôle (via responsable → team_id).
- */
-export async function listRecentMissionsByTeamId(
-  teamId: string,
-  limit = 10,
-): Promise<MissionListItem[]> {
-  const supabase = await createClient();
-  const { data: members, error: membersError } = await supabase
-    .from("collaborator")
-    .select("id")
-    .eq("team_id", teamId);
-
-  if (membersError) {
-    console.error("listRecentMissionsByTeamId members:", membersError);
-    throw new Error(
-      `Impossible de charger les membres du pôle : ${membersError.message}`,
-    );
-  }
-
-  const ids = (members ?? []).map((row) => row.id as string);
-  if (ids.length === 0) {
-    return [];
-  }
-
-  const { data, error } = await supabase
-    .from("mission")
-    .select(MISSION_LIST_SELECT)
-    .in("collaborator_id", ids)
-    .neq("kanban_status", "archivee")
-    .order("created_at", { ascending: false })
-    .limit(limit);
-
-  if (error) {
-    console.error("listRecentMissionsByTeamId:", error);
-    throw new Error(
-      `Impossible de charger les missions du pôle : ${error.message}`,
+      `Impossible de charger les missions Top10 : ${error.message}`,
     );
   }
 

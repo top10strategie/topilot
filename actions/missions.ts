@@ -184,7 +184,7 @@ export async function createMissionRecord(
       client_id: mission_scope === "interne" ? null : client_id,
       opportunity_id,
       start_at,
-      end_at,
+      end_at: end_at as string,
       kanban_status: "a_faire",
     })
     .select("id")
@@ -309,7 +309,7 @@ export async function updateMissionRecord(
 
   const { data, error } = await supabase
     .from("mission")
-    .update(payload)
+    .update(payload as never)
     .eq("id", id)
     .select("id")
     .maybeSingle();

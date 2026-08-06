@@ -1,8 +1,8 @@
 "use server";
 
 import { requireActiveCollaboratorAction } from "@/lib/auth/require-action";
-import { listDocumentTypes } from "@/lib/categories/queries";
-import type { DocumentTypeItem } from "@/lib/categories/types";
+import { listCategories, listDocumentTypes } from "@/lib/categories/queries";
+import type { CategoryItem, DocumentTypeItem } from "@/lib/categories/types";
 import {
   listDocumentLinkOptions,
   listDocumentsByClientId,
@@ -37,6 +37,7 @@ export type EntityDocumentationLinksPayload = {
   toolLinkOptions: Array<{ id: string; tool_name: string }>;
   linkedWikis: LinkedWikiItem[];
   wikiLinkOptions: WikiLinkOption[];
+  utilityCategories: CategoryItem[];
 };
 
 /**
@@ -74,6 +75,7 @@ export async function fetchEntityDocumentationLinks(input: {
       toolLinkOptions,
       linkedWikis,
       wikiLinkOptions,
+      utilityCategories,
     ] = await Promise.all([
       input.entity === "client"
         ? listDocumentsByClientId(entityId)
@@ -99,6 +101,7 @@ export async function fetchEntityDocumentationLinks(input: {
       (input.entity === "client" || input.entity === "mission")
         ? listWikiLinkOptions()
         : Promise.resolve([] as WikiLinkOption[]),
+      listCategories(),
     ]);
 
     return {
@@ -111,6 +114,7 @@ export async function fetchEntityDocumentationLinks(input: {
         toolLinkOptions,
         linkedWikis,
         wikiLinkOptions,
+        utilityCategories,
       },
     };
   } catch (error) {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { FolderSimplePlus, Plus } from "@phosphor-icons/react";
+import { FolderSimplePlus, StackPlus } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { createCategory, updateCategory } from "@/actions/categories";
 import { createToolRecord, updateToolRecord } from "@/actions/tools";
@@ -304,7 +304,7 @@ export function ToolFormDrawer({
                     disabled={isPending || !toolId}
                     onClick={() => void openFirstAccess()}
                   >
-                    <Plus className="size-3.5" aria-hidden />
+                    <StackPlus className="size-3.5" aria-hidden />
                     Ajouter
                   </Button>
                 ) : null}
@@ -343,7 +343,7 @@ export function ToolFormDrawer({
                     disabled={isPending || !toolId}
                     onClick={() => setShowSubscriptionForm(true)}
                   >
-                    <Plus className="size-3.5" aria-hidden />
+                    <StackPlus className="size-3.5" aria-hidden />
                     Ajouter
                   </Button>
                 ) : null}

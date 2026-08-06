@@ -7,7 +7,7 @@ import {
   LockKey,
   MagnifyingGlass,
   PencilSimple,
-  Plus,
+  StackPlus,
   Trash,
 } from "@phosphor-icons/react";
 import { useDrawerStack } from "@/components/drawers/drawer-stack-context";
@@ -270,7 +270,7 @@ export function ToolDetailPageClient({
                         variant="outline"
                         onClick={openCreateAccess}
                       >
-                        <Plus className="size-4" />
+                        <StackPlus className="size-4" />
                       </IconActionButton>
                     </div>
 
@@ -347,7 +347,7 @@ export function ToolDetailPageClient({
                         setShowSubscriptionForm(true);
                       }}
                     >
-                      <Plus className="size-4" />
+                      <StackPlus className="size-4" />
                     </IconActionButton>
                   </div>
 

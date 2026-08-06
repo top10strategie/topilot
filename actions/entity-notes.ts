@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireActiveCollaboratorAction } from "@/lib/auth/require-action";
+import { looseClient } from "@/lib/supabase/loose";
 import { createClient } from "@/lib/supabase/server";
 import { isUuid } from "@/lib/uuid";
 
@@ -55,7 +56,7 @@ export async function updateEntityNotes(input: {
   const notesRaw = input.notes.trim();
   const notes = notesRaw.length > 0 ? notesRaw : null;
 
-  const supabase = await createClient();
+  const supabase = looseClient(await createClient());
   const table = TABLE[input.entity];
 
   const { data: existing, error: readError } = await supabase

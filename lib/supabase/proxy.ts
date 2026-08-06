@@ -7,6 +7,7 @@ import {
   LOGIN_PATH,
 } from "@/lib/auth/constants";
 import type { AuthGateState } from "@/lib/auth/types";
+import type { Database } from "./database.types";
 import { getSupabaseAnonKey, getSupabaseUrl, hasEnvVars } from "./env";
 
 function isPublicAuthPath(pathname: string): boolean {
@@ -31,7 +32,7 @@ export async function updateSession(request: NextRequest) {
     return supabaseResponse;
   }
 
-  const supabase = createServerClient(getSupabaseUrl(), getSupabaseAnonKey(), {
+  const supabase = createServerClient<Database>(getSupabaseUrl(), getSupabaseAnonKey(), {
     cookies: {
       getAll() {
         return request.cookies.getAll();

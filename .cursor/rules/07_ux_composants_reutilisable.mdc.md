@@ -292,7 +292,6 @@ Toute la gestion des couleurs, tailles, états hover/disabled est déléguée au
 | ------------------------------------------------- | -------------------- |
 | Ajout contact/client/collaborateur/team           | `user-plus`          |
 | Ajout mission                                     | `circles-three-plus` |
-| Ajout opportunité                                 | `plus-circle`        |
 | Ajout catégorie                                   | `folder-simple-plus` |
 | Ajout defaut                                      | `stack-plus`         |
 | Modification / Édition                            | `pencil-simple`      |

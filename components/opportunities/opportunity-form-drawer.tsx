@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState, useTransition, type FormEvent } from "react";
-import { Buildings, FolderSimplePlus, UserPlus } from "@phosphor-icons/react";
+import { useMemo, useState, type FormEvent } from "react";
+import { FolderSimplePlus, UserPlus } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { createBusinessCategory, updateBusinessCategory } from "@/actions/categories";
 
@@ -31,6 +31,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { useTwoStepCreateForm } from "@/hooks/use-two-step-create-form";
 import type { CategoryItem } from "@/lib/categories/types";
 import { getCollaboratorFullName } from "@/lib/collaborators/labels";
 import type { CollaboratorListItem } from "@/lib/collaborators/types";
@@ -94,11 +95,6 @@ export function OpportunityFormDrawer({
           ),
         ),
     [collaborators],
-  );
-
-  const [opportunityId, setOpportunityId] = useState(opportunity?.id ?? "");
-  const [identificationSaved, setIdentificationSaved] = useState(
-    mode === "edit",
   );
 
   const [opportunityName, setOpportunityName] = useState(
@@ -181,11 +177,6 @@ export function OpportunityFormDrawer({
   >(() => [
     ...(duplicatePrefill?.categories ?? opportunity?.categories ?? []),
   ]);
-
-  const [fieldErrors, setFieldErrors] = useState<
-    Partial<Record<string, string>>
-  >({});
-  const [isPending, startTransition] = useTransition();
 
   const clientContacts = useMemo(
     () =>
@@ -313,28 +304,51 @@ export function OpportunityFormDrawer({
     setContactClientId("");
   };
 
-  const handleSaveIdentification = (event: FormEvent) => {
-    event.preventDefault();
-    setFieldErrors({});
+  const buildIdentificationFormData = (): FormData => {
+    const formData = new FormData();
+    formData.set("opportunity_name", opportunityName);
+    formData.set("client_id", clientId);
+    if (contactClientId) formData.set("contact_client_id", contactClientId);
+    formData.set("collaborator_id", responsibleId);
+    if (lastMeetingAt) formData.set("last_meeting_at", lastMeetingAt);
+    if (dueDateAt) formData.set("due_date_at", dueDateAt);
+    if (endAt) formData.set("end_at", endAt);
+    return formData;
+  };
 
-    startTransition(async () => {
-      const formData = new FormData();
-      formData.set("opportunity_name", opportunityName);
-      formData.set("client_id", clientId);
-      if (contactClientId) formData.set("contact_client_id", contactClientId);
-      formData.set("collaborator_id", responsibleId);
-      if (lastMeetingAt) formData.set("last_meeting_at", lastMeetingAt);
-      if (dueDateAt) formData.set("due_date_at", dueDateAt);
-      if (endAt) formData.set("end_at", endAt);
+  const buildFullFormData = (): FormData => {
+    const formData = buildIdentificationFormData();
+    formData.set("price", price);
+    formData.set("probability_confirmation", probability);
+    formData.set("priority", priority);
+    formData.set("kanban_status", kanbanStatus);
+    formData.set("action", action);
+    formData.set("source", source);
+    if (mode === "create") {
+      formData.set("notes", notes);
+    }
+    for (const category of selectedCategories) {
+      formData.append("category_ids", category.id);
+    }
+    return formData;
+  };
 
-      if (mode === "create" && !identificationSaved) {
-        const result = await createOpportunityRecord(formData);
-        if (!result.success) {
-          setFieldErrors(result.fieldErrors ?? {});
-          toast.error(result.error);
-          return;
-        }
-        setOpportunityId(result.id);
+  const {
+    isPending,
+    entityId: opportunityId,
+    identificationSaved,
+    showComplement,
+    fieldErrors,
+    handleSaveIdentification,
+    handleSubmit,
+  } = useTwoStepCreateForm({
+    mode,
+    initialEntityId: opportunity?.id ?? "",
+    buildIdentificationFormData,
+    buildFullFormData,
+    createRecord: async (formData) => {
+      const result = await createOpportunityRecord(formData);
+      if (result.success) {
         if (result.kanban_status) {
           setKanbanStatus(result.kanban_status);
         }
@@ -344,65 +358,22 @@ export function OpportunityFormDrawer({
         ) {
           setProbability(String(result.probability_confirmation));
         }
-        setIdentificationSaved(true);
-        toast.success("Opportunité créée. Complétez les informations.");
-        return;
       }
-
-      toast.message("Utilisez Enregistrer en bas du formulaire.");
-    });
-  };
-
-  const handleSubmit = (event: FormEvent) => {
-    event.preventDefault();
-    if (mode === "create" && !identificationSaved) {
-      void handleSaveIdentification(event);
-      return;
-    }
-
-    setFieldErrors({});
-    startTransition(async () => {
-      const formData = new FormData();
-      formData.set("opportunity_name", opportunityName);
-      formData.set("client_id", clientId);
-      if (contactClientId) formData.set("contact_client_id", contactClientId);
-      formData.set("collaborator_id", responsibleId);
-      if (lastMeetingAt) formData.set("last_meeting_at", lastMeetingAt);
-      if (dueDateAt) formData.set("due_date_at", dueDateAt);
-      if (endAt) formData.set("end_at", endAt);
-      formData.set("price", price);
-      formData.set("probability_confirmation", probability);
-      formData.set("priority", priority);
-      formData.set("kanban_status", kanbanStatus);
-      formData.set("action", action);
-      formData.set("source", source);
-      if (mode === "create") {
-        formData.set("notes", notes);
-      }
-      for (const category of selectedCategories) {
-        formData.append("category_ids", category.id);
-      }
-
-      const result = await updateOpportunityRecord(opportunityId, formData);
-      if (!result.success) {
-        setFieldErrors(result.fieldErrors ?? {});
-        toast.error(result.error);
-        return;
-      }
-
-      toast.success(
-        mode === "create"
-          ? "Opportunité enregistrée."
-          : "Opportunité mise à jour.",
-      );
+      return result;
+    },
+    updateRecord: updateOpportunityRecord,
+    messages: {
+      identificationSaved: "Opportunité créée. Complétez les informations.",
+      created: "Opportunité enregistrée.",
+      updated: "Opportunité mise à jour.",
+    },
+    onResolved: (id) => {
       helpers.resolve({
-        id: result.id,
+        id,
         opportunity_name: opportunityName.trim(),
       });
-    });
-  };
-
-  const showComplement = mode === "edit" || identificationSaved;
+    },
+  });
 
   return (
     <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
@@ -444,7 +415,7 @@ export function OpportunityFormDrawer({
                 disabled={isPending}
                 onClick={() => void openCreateClient()}
               >
-                <Buildings className="size-4" />
+                <UserPlus className="size-4" />
               </Button>
             </div>
             <Select
