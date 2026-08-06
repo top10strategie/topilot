@@ -2,6 +2,7 @@ export type AuditAction = "INSERT" | "DELETE";
 
 export type AuditEntityType =
   | "category"
+  | "category_business"
   | "team"
   | "collaborator"
   | "client"

@@ -41,6 +41,7 @@ type CollaboratorFormDrawerProps = {
   collaborator?: CollaboratorListItem;
   teams: TeamOption[];
   availableCategories?: CategoryItem[];
+  canManagePrivacy?: boolean;
   helpers: DrawerHelpers<{ id: string }>;
 };
 
@@ -52,6 +53,7 @@ export function CollaboratorFormDrawer({
   collaborator,
   teams: initialTeams,
   availableCategories = [],
+  canManagePrivacy = false,
   helpers,
 }: CollaboratorFormDrawerProps) {
   const { pushDrawer } = useDrawerStack();
@@ -83,6 +85,7 @@ export function CollaboratorFormDrawer({
           mode="create"
           helpers={nestedHelpers}
           availableCategories={availableCategories}
+          canManagePrivacy={canManagePrivacy}
         />
       ),
     });

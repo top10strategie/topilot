@@ -1,6 +1,5 @@
 import {
   getMissionKanbanStatusLabel,
-  MISSION_KANBAN_STATUSES,
 } from "@/lib/missions/labels";
 import type { MissionKanbanStatus } from "@/lib/missions/types";
 import {
@@ -9,51 +8,107 @@ import {
 } from "@/lib/opportunities/labels";
 import type { OpportunityKanbanStatus } from "@/lib/opportunities/types";
 import { createClient } from "@/lib/supabase/server";
-import {
-  isPriceActive,
-  monthlyCentsFromPrice,
-} from "@/lib/tools/pricing";
+import { monthlyCentsFromPrice } from "@/lib/tools/pricing";
 import type { ToolSubscriptionPlan } from "@/lib/tools/types";
 import type {
   AnalysesPayload,
   ChartDatum,
+  CostEvolutionPoint,
   CurrencyTotal,
   MissionKpis,
   OpportunityKpis,
+  PipelineSeriesPoint,
 } from "./types";
+import { SUBSCRIPTION_ANALYSIS_START_YEAR } from "./types";
 
-function monthKey(iso: string | null | undefined): string | null {
-  if (!iso) return null;
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) {
-    const m = iso.match(/^(\d{4}-\d{2})/);
-    return m?.[1] ?? null;
-  }
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  return `${y}-${m}`;
-}
+const PARIS_TZ = "Europe/Paris";
 
-function formatMonthLabel(key: string): string {
-  const [y, m] = key.split("-").map(Number);
-  if (!y || !m) return key;
-  const date = new Date(y, m - 1, 1);
-  return new Intl.DateTimeFormat("fr-FR", {
-    month: "short",
+/** Statuts affichés dans Comparaison par statut (missions). */
+const MISSION_STATUS_CHART: MissionKanbanStatus[] = [
+  "a_faire",
+  "en_cours",
+  "terminee",
+];
+
+const MONTH_SHORT_FR = [
+  "Janv.",
+  "Févr.",
+  "Mars",
+  "Avr.",
+  "Mai",
+  "Juin",
+  "Juil.",
+  "Août",
+  "Sept.",
+  "Oct.",
+  "Nov.",
+  "Déc.",
+] as const;
+
+type DateParts = { year: number; month: number; day: number };
+
+function getParisParts(date: Date = new Date()): DateParts {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: PARIS_TZ,
     year: "numeric",
-  }).format(date);
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const get = (type: string) =>
+    Number(parts.find((p) => p.type === type)?.value ?? NaN);
+  return { year: get("year"), month: get("month"), day: get("day") };
 }
 
-function sortMonthKeys(keys: string[]): string[] {
-  return [...keys].sort((a, b) => a.localeCompare(b));
+/** Date calendaire `YYYY-MM-DD` (colonnes `date`). */
+function partsFromDateOnly(
+  value: string | null | undefined,
+): DateParts | null {
+  if (!value) return null;
+  const m = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return null;
+  const year = Number(m[1]);
+  const month = Number(m[2]);
+  const day = Number(m[3]);
+  if (!year || !month || !day) return null;
+  return { year, month, day };
+}
+
+/** Instant timestamptz → parties calendaires Europe/Paris. */
+function partsFromInstant(
+  value: string | null | undefined,
+): DateParts | null {
+  if (!value) return null;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  return getParisParts(d);
+}
+
+function yearMonthKey(year: number, month: number): string {
+  return `${year}-${String(month).padStart(2, "0")}`;
+}
+
+function monthLabelShort(month: number): string {
+  return MONTH_SHORT_FR[month - 1] ?? String(month);
+}
+
+function emptyPipelineYear(): PipelineSeriesPoint[] {
+  return Array.from({ length: 12 }, (_, i) => ({
+    month: i + 1,
+    label: monthLabelShort(i + 1),
+    entree: 0,
+    gagnees: 0,
+    perdues: 0,
+  }));
 }
 
 type OppRow = {
   id: string;
   price: number | string | null;
   average_price: number | string | null;
+  entry_average_price: number | string | null;
   kanban_status: OpportunityKanbanStatus;
   created_at: string;
+  closed_at: string | null;
   collaborator_id: string;
   opportunity_category: Array<{
     category: { id: string; label: string } | null;
@@ -65,11 +120,9 @@ type MissionRow = {
   kanban_status: MissionKanbanStatus;
   completed_at: string | null;
   created_at: string;
-  start_at: string | null;
+  start_at: string;
+  end_at: string;
   collaborator_id: string;
-  mission_category: Array<{
-    category: { id: string; label: string } | null;
-  }> | null;
 };
 
 type CollaboratorTeamRow = {
@@ -137,53 +190,58 @@ function countByStatusOpp(rows: OppRow[]): ChartDatum[] {
   }));
 }
 
-function countByStatusMission(rows: MissionRow[]): ChartDatum[] {
+function countMissionStatusCurrentMonth(
+  rows: MissionRow[],
+  parisYear: number,
+  parisMonth: number,
+): ChartDatum[] {
   const counts = new Map<MissionKanbanStatus, number>();
-  for (const status of MISSION_KANBAN_STATUSES) counts.set(status, 0);
+  for (const status of MISSION_STATUS_CHART) counts.set(status, 0);
+
   for (const row of rows) {
+    if (
+      row.kanban_status !== "a_faire" &&
+      row.kanban_status !== "en_cours" &&
+      row.kanban_status !== "terminee"
+    ) {
+      continue;
+    }
+    const parts = partsFromDateOnly(row.end_at);
+    if (!parts) continue;
+    if (parts.year !== parisYear || parts.month !== parisMonth) continue;
     counts.set(row.kanban_status, (counts.get(row.kanban_status) ?? 0) + 1);
   }
-  return MISSION_KANBAN_STATUSES.map((status) => ({
+
+  return MISSION_STATUS_CHART.map((status) => ({
     key: status,
     label: getMissionKanbanStatusLabel(status),
     value: counts.get(status) ?? 0,
   }));
 }
 
-function countByCategory(
-  links: Array<Array<{ category: { id: string; label: string } | null } | null> | null>,
+function mapToSortedChart(
+  map: Map<string, { label: string; value: number }>,
 ): ChartDatum[] {
-  const map = new Map<string, { label: string; value: number }>();
-  for (const list of links) {
-    for (const link of list ?? []) {
-      const cat = link?.category;
-      if (!cat) continue;
-      const prev = map.get(cat.id);
-      if (prev) prev.value += 1;
-      else map.set(cat.id, { label: cat.label, value: 1 });
-    }
-  }
   return [...map.entries()]
     .map(([key, v]) => ({ key, label: v.label, value: v.value }))
     .sort((a, b) => b.value - a.value || a.label.localeCompare(b.label, "fr"));
 }
 
-function pipelineByMonth(
-  dates: Array<string | null | undefined>,
-  values?: number[],
-): ChartDatum[] {
-  const map = new Map<string, number>();
-  dates.forEach((iso, index) => {
-    const key = monthKey(iso);
-    if (!key) return;
-    const add = values ? (values[index] ?? 0) : 1;
-    map.set(key, (map.get(key) ?? 0) + add);
-  });
-  return sortMonthKeys([...map.keys()]).map((key) => ({
-    key,
-    label: formatMonthLabel(key),
-    value: map.get(key) ?? 0,
-  }));
+/** Prix actif sur au moins un jour du mois calendaire. */
+function priceCoversMonth(
+  validFrom: string,
+  validTo: string | null,
+  year: number,
+  month: number,
+): boolean {
+  const from = validFrom.slice(0, 10);
+  const to = validTo ? validTo.slice(0, 10) : null;
+  const monthStart = `${year}-${String(month).padStart(2, "0")}-01`;
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const monthEnd = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+  if (from > monthEnd) return false;
+  if (to != null && to !== "" && to < monthStart) return false;
+  return true;
 }
 
 /**
@@ -200,10 +258,14 @@ export async function loadAnalysesPayload(): Promise<AnalysesPayload> {
         id,
         price,
         average_price,
+        entry_average_price,
         kanban_status,
         created_at,
+        closed_at,
         collaborator_id,
-        opportunity_category ( category:category_id ( id, label ) )
+        opportunity_category (
+          category:category_business!category_id ( id, label, is_private )
+        )
       `,
       ),
     supabase
@@ -215,8 +277,8 @@ export async function loadAnalysesPayload(): Promise<AnalysesPayload> {
         completed_at,
         created_at,
         start_at,
-        collaborator_id,
-        mission_category ( category:category_id ( id, label ) )
+        end_at,
+        collaborator_id
       `,
       ),
     supabase.from("collaborator").select("id, team:team_id ( team_name )"),
@@ -257,21 +319,118 @@ export async function loadAnalysesPayload(): Promise<AnalysesPayload> {
   const collaborators = (collabRes.data ?? []) as unknown as CollaboratorTeamRow[];
   const tools = (toolsRes.data ?? []) as unknown as ToolCostRow[];
 
+  const paris = getParisParts();
   const teamByCollaborator = new Map<string, string>();
   for (const c of collaborators) {
     teamByCollaborator.set(c.id, c.team?.team_name ?? "Sans pôle");
   }
 
-  const oppByTeamMap = new Map<string, number>();
-  for (const row of opportunities) {
-    const team = teamByCollaborator.get(row.collaborator_id) ?? "Sans pôle";
-    const amount = toNum(row.average_price) || toNum(row.price);
-    oppByTeamMap.set(team, (oppByTeamMap.get(team) ?? 0) + amount);
-  }
-  const oppByTeam: ChartDatum[] = [...oppByTeamMap.entries()]
-    .map(([label, value]) => ({ key: label, label, value }))
-    .sort((a, b) => b.value - a.value || a.label.localeCompare(b.label, "fr"));
+  // —— Opportunités : CA par catégorie / pôle (gagne, price, closed_at) ——
+  const yearSet = new Set<number>([paris.year]);
+  const caByCategoryByYear = new Map<
+    number,
+    Map<string, { label: string; value: number }>
+  >();
+  const caByTeamByYear = new Map<number, Map<string, number>>();
+  const pipelineByYear = new Map<number, PipelineSeriesPoint[]>();
 
+  const ensurePipeline = (year: number) => {
+    if (!pipelineByYear.has(year)) {
+      pipelineByYear.set(year, emptyPipelineYear());
+    }
+    return pipelineByYear.get(year)!;
+  };
+
+  for (const row of opportunities) {
+    const created = partsFromInstant(row.created_at);
+    if (created) {
+      yearSet.add(created.year);
+      const series = ensurePipeline(created.year);
+      series[created.month - 1]!.entree += toNum(row.entry_average_price);
+    }
+
+    const closed = partsFromDateOnly(row.closed_at);
+    if (closed) {
+      yearSet.add(closed.year);
+      const series = ensurePipeline(closed.year);
+      if (row.kanban_status === "gagne") {
+        series[closed.month - 1]!.gagnees += toNum(row.price);
+      } else if (row.kanban_status === "perdue") {
+        series[closed.month - 1]!.perdues += toNum(row.price);
+      }
+    }
+
+    if (row.kanban_status !== "gagne" || !closed) continue;
+
+    const year = closed.year;
+    const price = toNum(row.price);
+
+    let catMap = caByCategoryByYear.get(year);
+    if (!catMap) {
+      catMap = new Map();
+      caByCategoryByYear.set(year, catMap);
+    }
+    const cats = (row.opportunity_category ?? [])
+      .map((l) => l.category)
+      .filter((c): c is { id: string; label: string } => Boolean(c));
+    if (cats.length === 0) {
+      const prev = catMap.get("__none__");
+      if (prev) prev.value += price;
+      else catMap.set("__none__", { label: "Sans catégorie", value: price });
+    } else {
+      const share = price / cats.length;
+      for (const cat of cats) {
+        const prev = catMap.get(cat.id);
+        if (prev) prev.value += share;
+        else catMap.set(cat.id, { label: cat.label, value: share });
+      }
+    }
+
+    let teamMap = caByTeamByYear.get(year);
+    if (!teamMap) {
+      teamMap = new Map();
+      caByTeamByYear.set(year, teamMap);
+    }
+    const team = teamByCollaborator.get(row.collaborator_id) ?? "Sans pôle";
+    teamMap.set(team, (teamMap.get(team) ?? 0) + price);
+  }
+
+  // Garantir une série pipeline vide pour l'année courante
+  ensurePipeline(paris.year);
+
+  const availableYears = [...yearSet].sort((a, b) => b - a);
+  const defaultYear = paris.year;
+
+  const caByCategoryRecord: Record<number, ChartDatum[]> = {};
+  for (const [year, map] of caByCategoryByYear) {
+    caByCategoryRecord[year] = mapToSortedChart(map).map((d) => ({
+      ...d,
+      value: Math.round(d.value * 100) / 100,
+    }));
+  }
+  for (const year of availableYears) {
+    if (!caByCategoryRecord[year]) caByCategoryRecord[year] = [];
+  }
+
+  const caByTeamRecord: Record<number, ChartDatum[]> = {};
+  for (const [year, map] of caByTeamByYear) {
+    caByTeamRecord[year] = [...map.entries()]
+      .map(([label, value]) => ({ key: label, label, value }))
+      .sort((a, b) => b.value - a.value || a.label.localeCompare(b.label, "fr"));
+  }
+  for (const year of availableYears) {
+    if (!caByTeamRecord[year]) caByTeamRecord[year] = [];
+  }
+
+  const pipelineRecord: Record<number, PipelineSeriesPoint[]> = {};
+  for (const [year, points] of pipelineByYear) {
+    pipelineRecord[year] = points;
+  }
+  for (const year of availableYears) {
+    if (!pipelineRecord[year]) pipelineRecord[year] = emptyPipelineYear();
+  }
+
+  // —— Missions ——
   const missionByTeamMap = new Map<string, number>();
   for (const row of missions) {
     const team = teamByCollaborator.get(row.collaborator_id) ?? "Sans pôle";
@@ -281,144 +440,150 @@ export async function loadAnalysesPayload(): Promise<AnalysesPayload> {
     .map(([label, value]) => ({ key: label, label, value }))
     .sort((a, b) => b.value - a.value || a.label.localeCompare(b.label, "fr"));
 
-  // Abonnements — coûts actifs du mois (proratisés mensuels), par devise / outil / catégorie
-  const currencyTotals = new Map<string, number>();
-  const toolMonth = new Map<string, { label: string; value: number }>();
-  const catMonth = new Map<string, { label: string; value: number }>();
+  // —— Abonnements ——
+  const startYear = SUBSCRIPTION_ANALYSIS_START_YEAR;
+  const years: number[] = [];
+  for (let y = startYear; y <= paris.year; y++) years.push(y);
 
-  const now = new Date();
-  const yearStart = `${now.getFullYear()}-01`;
+  const monthlyByCurrencyByMonth: Record<string, CurrencyTotal[]> = {};
+  const costByToolByMonth: Record<string, ChartDatum[]> = {};
+  const costByCategoryByMonth: Record<string, ChartDatum[]> = {};
 
-  for (const tool of tools) {
-    let toolMonthly = 0;
-    const categories = (tool.tool_category ?? [])
-      .map((l) => l.category)
-      .filter((c): c is { id: string; label: string } => Boolean(c));
+  for (const year of years) {
+    const maxMonth = year === paris.year ? paris.month : 12;
+    for (let month = 1; month <= 12; month++) {
+      const key = yearMonthKey(year, month);
+      const currencyTotals = new Map<string, number>();
+      const toolMonth = new Map<string, { label: string; value: number }>();
+      const catMonth = new Map<string, { label: string; value: number }>();
 
-    for (const sub of tool.tool_subscription ?? []) {
-      for (const price of sub.tool_subscription_price ?? []) {
-        if (!isPriceActive(price.valid_to)) continue;
-        const monthly = monthlyCentsFromPrice(
-          price.amount,
-          sub.subscription_plan,
-        );
-        const currency = price.currency.toUpperCase();
-        currencyTotals.set(
-          currency,
-          (currencyTotals.get(currency) ?? 0) + monthly,
-        );
-        toolMonthly += monthly;
+      // Mois futurs (année courante) : séries vides
+      if (month <= maxMonth) {
+        for (const tool of tools) {
+          let toolMonthly = 0;
+          const categories = (tool.tool_category ?? [])
+            .map((l) => l.category)
+            .filter((c): c is { id: string; label: string } => Boolean(c));
 
-        for (const cat of categories) {
-          catMonth.set(cat.id, {
-            label: cat.label,
-            value: (catMonth.get(cat.id)?.value ?? 0) + monthly,
-          });
-        }
-      }
-    }
+          for (const sub of tool.tool_subscription ?? []) {
+            for (const price of sub.tool_subscription_price ?? []) {
+              if (
+                !priceCoversMonth(
+                  price.valid_from,
+                  price.valid_to,
+                  year,
+                  month,
+                )
+              ) {
+                continue;
+              }
+              const monthly = monthlyCentsFromPrice(
+                price.amount,
+                sub.subscription_plan,
+              );
+              const currency = price.currency.toUpperCase();
+              currencyTotals.set(
+                currency,
+                (currencyTotals.get(currency) ?? 0) + monthly,
+              );
+              toolMonthly += monthly;
 
-    if (toolMonthly > 0) {
-      toolMonth.set(tool.id, {
-        label: tool.tool_name,
-        value: toolMonthly,
-      });
-    }
-  }
+              if (categories.length === 0) {
+                catMonth.set("__none__", {
+                  label: "Sans catégorie",
+                  value: (catMonth.get("__none__")?.value ?? 0) + monthly,
+                });
+              } else {
+                const share = monthly / categories.length;
+                for (const cat of categories) {
+                  catMonth.set(cat.id, {
+                    label: cat.label,
+                    value: (catMonth.get(cat.id)?.value ?? 0) + share,
+                  });
+                }
+              }
+            }
+          }
 
-  const monthlyByCurrency: CurrencyTotal[] = [...currencyTotals.entries()]
-    .map(([currency, amountCents]) => ({ currency, amountCents }))
-    .sort((a, b) => a.currency.localeCompare(b.currency));
-
-  const toChart = (
-    map: Map<string, { label: string; value: number }>,
-  ): ChartDatum[] =>
-    [...map.entries()]
-      .map(([key, v]) => ({ key, label: v.label, value: v.value }))
-      .sort((a, b) => b.value - a.value || a.label.localeCompare(b.label, "fr"));
-
-  // Evolution coûts catégories année : une barre par catégorie (total année)
-  // + pipeline mensuel alternatif : on expose aussi une série mois pour l'année
-  // Spec: "barres verticales dans le temps" — on groupe par mois de l'année courante
-  // en répartissant le coût mensuel actif sur les mois >= valid_from
-  const yearMonthKeys: string[] = [];
-  for (let m = 1; m <= now.getMonth() + 1; m++) {
-    yearMonthKeys.push(
-      `${now.getFullYear()}-${String(m).padStart(2, "0")}`,
-    );
-  }
-  const catYearSeries = new Map<string, number>();
-  for (const tool of tools) {
-    const categories = (tool.tool_category ?? [])
-      .map((l) => l.category)
-      .filter((c): c is { id: string; label: string } => Boolean(c));
-    if (categories.length === 0) continue;
-
-    for (const sub of tool.tool_subscription ?? []) {
-      for (const price of sub.tool_subscription_price ?? []) {
-        if (!isPriceActive(price.valid_to)) continue;
-        const monthly = monthlyCentsFromPrice(
-          price.amount,
-          sub.subscription_plan,
-        );
-        const fromKey = monthKey(price.valid_from) ?? yearStart;
-        for (const mk of yearMonthKeys) {
-          if (mk < fromKey) continue;
-          const share = monthly / categories.length;
-          for (const cat of categories) {
-            const seriesKey = `${mk}::${cat.label}`;
-            catYearSeries.set(
-              seriesKey,
-              (catYearSeries.get(seriesKey) ?? 0) + share,
-            );
+          if (toolMonthly > 0) {
+            toolMonth.set(tool.id, {
+              label: tool.tool_name,
+              value: toolMonthly,
+            });
           }
         }
       }
+
+      monthlyByCurrencyByMonth[key] = [...currencyTotals.entries()]
+        .map(([currency, amountCents]) => ({ currency, amountCents }))
+        .sort((a, b) => a.currency.localeCompare(b.currency));
+
+      costByToolByMonth[key] = mapToSortedChart(toolMonth).map((d) => ({
+        ...d,
+        value: Math.round(d.value),
+      }));
+
+      costByCategoryByMonth[key] = mapToSortedChart(catMonth).map((d) => ({
+        ...d,
+        value: Math.round(d.value),
+      }));
     }
   }
 
-  // Pour le chart "évolution année", on agrège le total mensuel toutes catégories
-  const costByCategoryYearMonthly: ChartDatum[] = yearMonthKeys.map((key) => {
-    let total = 0;
-    for (const [seriesKey, value] of catYearSeries) {
-      if (seriesKey.startsWith(`${key}::`)) total += value;
-    }
-    return { key, label: formatMonthLabel(key), value: Math.round(total) };
-  });
+  // Évolution des coûts par année : total mensuel toutes devises, une courbe / année
+  const evolutionPoints: CostEvolutionPoint[] = Array.from(
+    { length: 12 },
+    (_, i) => {
+      const month = i + 1;
+      const values: Record<string, number> = {};
+      for (const year of years) {
+        if (year === paris.year && month > paris.month) {
+          values[String(year)] = 0;
+          continue;
+        }
+        const key = yearMonthKey(year, month);
+        const totals = monthlyByCurrencyByMonth[key] ?? [];
+        values[String(year)] = totals.reduce((s, t) => s + t.amountCents, 0);
+      }
+      return {
+        month,
+        label: monthLabelShort(month),
+        values,
+      };
+    },
+  );
 
   return {
     opportunities: {
       kpis: buildOpportunityKpis(opportunities),
       byStatus: countByStatusOpp(opportunities),
-      byCategory: countByCategory(
-        opportunities.map((o) => o.opportunity_category),
-      ),
-      byTeam: oppByTeam,
-      pipeline: pipelineByMonth(
-        opportunities.map((o) => o.created_at),
-        opportunities.map((o) => toNum(o.average_price) || toNum(o.price)),
-      ),
+      availableYears,
+      defaultYear,
+      caByCategoryByYear: caByCategoryRecord,
+      caByTeamByYear: caByTeamRecord,
+      pipelineByYear: pipelineRecord,
     },
     missions: {
       kpis: buildMissionKpis(missions),
-      byStatus: countByStatusMission(missions),
-      byCategory: countByCategory(missions.map((m) => m.mission_category)),
-      byTeam: missionByTeam,
-      pipeline: pipelineByMonth(
-        missions.map((m) => m.start_at ?? m.created_at),
+      byStatus: countMissionStatusCurrentMonth(
+        missions,
+        paris.year,
+        paris.month,
       ),
+      byTeam: missionByTeam,
     },
     subscriptions: {
-      monthlyByCurrency,
-      costByToolMonth: toChart(toolMonth).map((d) => ({
-        ...d,
-        value: Math.round(d.value),
-      })),
-      costByCategoryMonth: toChart(catMonth).map((d) => ({
-        ...d,
-        value: Math.round(d.value),
-      })),
-      costByCategoryYear: costByCategoryYearMonthly,
+      currentYear: paris.year,
+      currentMonth: paris.month,
+      startYear,
+      years,
+      monthlyByCurrencyByMonth,
+      costByToolByMonth,
+      costByCategoryByMonth,
+      costEvolution: {
+        years,
+        points: evolutionPoints,
+      },
     },
   };
 }

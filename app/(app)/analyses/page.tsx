@@ -1,10 +1,18 @@
+import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { AnalysesPageClient } from "@/components/analyses/analyses-page-client";
 import { PageHero } from "@/components/layout/page-hero";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getCurrentCollaborator } from "@/lib/auth/get-current-collaborator";
+import { isManagerOrDirection } from "@/lib/auth/roles";
 import { loadAnalysesPayload } from "@/lib/analyses/queries";
 
 async function AnalysesContent() {
+  const collaborator = await getCurrentCollaborator();
+  if (!collaborator || !isManagerOrDirection(collaborator.role)) {
+    redirect("/");
+  }
+
   const data = await loadAnalysesPayload();
   return <AnalysesPageClient data={data} />;
 }

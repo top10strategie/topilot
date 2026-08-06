@@ -1,12 +1,19 @@
 "use client";
 
-import { AnalysisBarChart } from "@/components/analyses/analysis-bar-chart-lazy";
+import type { ReactNode } from "react";
+import {
+  AnalysisBarChart,
+  AnalysisLineChart,
+} from "@/components/analyses/analysis-bar-chart-lazy";
 import { AnalysisKpiGrid } from "@/components/analyses/analysis-kpi-grid";
 import { MissionsKanban } from "@/components/missions/missions-kanban";
 import { OpportunitiesKanban } from "@/components/opportunities/opportunities-kanban";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { AnalysesPayload, HomeWidgetId } from "@/lib/analyses/types";
-import { HOME_WIDGET_LABELS } from "@/lib/analyses/types";
+import {
+  HOME_WIDGET_LABELS,
+  isCollaboratorHomeWidgetId,
+} from "@/lib/analyses/types";
 import { formatOpportunityPrice } from "@/lib/opportunities/labels";
 import type { OpportunityListItem } from "@/lib/opportunities/types";
 import type { MissionListItem } from "@/lib/missions/types";
@@ -17,6 +24,7 @@ type HomeWidgetRendererProps = {
   analyses: AnalysesPayload;
   opportunities: OpportunityListItem[];
   missions: MissionListItem[];
+  role?: string;
 };
 
 function WidgetShell({
@@ -24,7 +32,7 @@ function WidgetShell({
   children,
 }: {
   title: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <section className="space-y-3">
@@ -34,13 +42,25 @@ function WidgetShell({
   );
 }
 
+function yearMonthKey(year: number, month: number): string {
+  return `${year}-${String(month).padStart(2, "0")}`;
+}
+
 export function HomeWidgetRenderer({
   widgetId,
   analyses,
   opportunities,
   missions,
+  role,
 }: HomeWidgetRendererProps) {
+  if (role === "collaborator" && !isCollaboratorHomeWidgetId(widgetId)) {
+    return null;
+  }
+
   const title = HOME_WIDGET_LABELS[widgetId];
+  const oppYear = analyses.opportunities.defaultYear;
+  const sub = analyses.subscriptions;
+  const currentKey = yearMonthKey(sub.currentYear, sub.currentMonth);
 
   switch (widgetId) {
     case "kanban_opportunities":
@@ -125,12 +145,13 @@ export function HomeWidgetRenderer({
           layout="horizontal"
         />
       );
-    case "opp_by_category":
+    case "opp_ca_by_category":
       return (
         <AnalysisBarChart
           title={title}
-          data={analyses.opportunities.byCategory}
+          data={analyses.opportunities.caByCategoryByYear[oppYear] ?? []}
           layout="horizontal"
+          valueFormatter={(v) => formatOpportunityPrice(v)}
         />
       );
     case "mission_by_status":
@@ -141,19 +162,12 @@ export function HomeWidgetRenderer({
           layout="horizontal"
         />
       );
-    case "mission_by_category":
-      return (
-        <AnalysisBarChart
-          title={title}
-          data={analyses.missions.byCategory}
-          layout="horizontal"
-        />
-      );
     case "tools_monthly_spend": {
+      const rows = sub.monthlyByCurrencyByMonth[currentKey] ?? [];
       const items =
-        analyses.subscriptions.monthlyByCurrency.length === 0
+        rows.length === 0
           ? [{ label: "Dépenses du mois", value: "—" }]
-          : analyses.subscriptions.monthlyByCurrency.map((row) => ({
+          : rows.map((row) => ({
               label: `Dépenses du mois (${row.currency})`,
               value: formatCentsWithCurrency(row.amountCents, row.currency),
             }));
@@ -163,41 +177,54 @@ export function HomeWidgetRenderer({
         </WidgetShell>
       );
     }
-    case "opp_pipeline":
+    case "opp_pipeline": {
+      const pipeline =
+        analyses.opportunities.pipelineByYear[oppYear] ?? [];
       return (
-        <AnalysisBarChart
+        <AnalysisLineChart
           title={title}
-          data={analyses.opportunities.pipeline}
-          layout="vertical"
+          data={pipeline.map((p) => ({
+            label: p.label,
+            entree: p.entree,
+            gagnees: p.gagnees,
+            perdues: p.perdues,
+          }))}
+          series={[
+            { key: "entree", label: "Entrée pipeline", color: "var(--chart-1)" },
+            { key: "gagnees", label: "Gagnées", color: "var(--chart-2)" },
+            { key: "perdues", label: "Perdues", color: "var(--chart-3)" },
+          ]}
           valueFormatter={(v) => formatOpportunityPrice(v)}
         />
       );
+    }
     case "opp_by_team":
       return (
         <AnalysisBarChart
           title={title}
-          data={analyses.opportunities.byTeam}
+          data={analyses.opportunities.caByTeamByYear[oppYear] ?? []}
           layout="horizontal"
           valueFormatter={(v) => formatOpportunityPrice(v)}
         />
       );
-    case "mission_pipeline":
+    case "tools_category_year": {
+      const evolutionSeries = sub.costEvolution.years.map((y, index) => ({
+        key: String(y),
+        label: String(y),
+        color: `var(--chart-${(index % 5) + 1})`,
+      }));
       return (
-        <AnalysisBarChart
+        <AnalysisLineChart
           title={title}
-          data={analyses.missions.pipeline}
-          layout="vertical"
-        />
-      );
-    case "tools_category_year":
-      return (
-        <AnalysisBarChart
-          title={title}
-          data={analyses.subscriptions.costByCategoryYear}
-          layout="vertical"
+          data={sub.costEvolution.points.map((p) => ({
+            label: p.label,
+            ...p.values,
+          }))}
+          series={evolutionSeries}
           valueFormatter={(v) => formatCentsWithCurrency(v, "EUR")}
         />
       );
+    }
     default:
       return (
         <Card>

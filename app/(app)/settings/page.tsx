@@ -3,13 +3,15 @@ import { redirect } from "next/navigation";
 import { SettingsPageClient } from "@/components/settings/settings-page-client";
 import { PageHero } from "@/components/layout/page-hero";
 import { Skeleton } from "@/components/ui/skeleton";
+import { listBusinessCategories } from "@/lib/categories/queries";
 import { loadPeopleDirectory } from "@/lib/collaborators/queries";
 import { getOwnProfile } from "@/lib/settings/queries";
 
 async function SettingsContent() {
-  const [profile, directory] = await Promise.all([
+  const [profile, directory, businessCategories] = await Promise.all([
     getOwnProfile(),
     loadPeopleDirectory(),
+    listBusinessCategories(),
   ]);
 
   if (!profile) {
@@ -23,6 +25,7 @@ async function SettingsContent() {
         id: t.id,
         team_name: t.team_name,
       }))}
+      businessCategories={businessCategories}
     />
   );
 }

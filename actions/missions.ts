@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireActiveCollaboratorAction } from "@/lib/auth/require-action";
+import { todayParisYmd } from "@/lib/dates/paris";
 import { formCategoryIds, formOptional, formText } from "@/lib/form-data";
 import type {
   MissionKanbanStatus,
@@ -138,6 +139,8 @@ export async function createMissionRecord(
   const collaborator_id = formText(formData, "collaborator_id");
   const client_id = formOptional(formData, "client_id");
   const opportunity_id = formOptional(formData, "opportunity_id");
+  const start_at = formOptional(formData, "start_at") ?? todayParisYmd();
+  const end_at = formOptional(formData, "end_at");
 
   const fieldErrors: NonNullable<
     Extract<MissionActionResult, { success: false }>["fieldErrors"]
@@ -159,6 +162,9 @@ export async function createMissionRecord(
     fieldErrors.client_id =
       "Une mission interne ne doit pas avoir de client.";
   }
+  if (!end_at) {
+    fieldErrors.end_at = "La date de fin est obligatoire.";
+  }
 
   if (Object.keys(fieldErrors).length > 0) {
     return {
@@ -177,6 +183,8 @@ export async function createMissionRecord(
       collaborator_id,
       client_id: mission_scope === "interne" ? null : client_id,
       opportunity_id,
+      start_at,
+      end_at,
       kanban_status: "a_faire",
     })
     .select("id")
@@ -218,7 +226,7 @@ export async function updateMissionRecord(
   const notes = formData.has("notes")
     ? formOptional(formData, "notes")
     : undefined;
-  const start_at = formOptional(formData, "start_at");
+  const start_at = formOptional(formData, "start_at") ?? todayParisYmd();
   const end_at = formOptional(formData, "end_at");
   const kanbanRaw = formText(formData, "kanban_status");
   const estimated = formOptionalNumber(formData, "estimated_charge");
@@ -242,6 +250,9 @@ export async function updateMissionRecord(
   if (mission_scope === "interne" && client_id) {
     fieldErrors.client_id =
       "Une mission interne ne doit pas avoir de client.";
+  }
+  if (!end_at) {
+    fieldErrors.end_at = "La date de fin est obligatoire.";
   }
   if (estimated === undefined || (estimated != null && estimated < 0)) {
     fieldErrors.estimated_charge = "Temps vendu invalide.";

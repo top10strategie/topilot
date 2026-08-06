@@ -32,17 +32,56 @@ function matchesQuery(haystack: string, query: string): boolean {
   return haystack.toLocaleLowerCase("fr").includes(query);
 }
 
+const PARIS_TZ = "Europe/Paris";
+
+/** Fin du dimanche de la semaine ISO courante (YYYY-MM-DD), fuseau Europe/Paris. */
+function endOfCurrentIsoWeekParis(): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: PARIS_TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const get = (type: string) =>
+    Number(parts.find((p) => p.type === type)?.value ?? NaN);
+  const year = get("year");
+  const month = get("month");
+  const day = get("day");
+  // Midi UTC approx. pour dériver le jour de la semaine sans ambiguïté DST
+  const utcNoon = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+  const weekday = utcNoon.getUTCDay(); // 0=dim … 6=sam
+  const daysUntilSunday = weekday === 0 ? 0 : 7 - weekday;
+  utcNoon.setUTCDate(utcNoon.getUTCDate() + daysUntilSunday);
+  const y = utcNoon.getUTCFullYear();
+  const m = String(utcNoon.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(utcNoon.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function isMissionOfCurrentWeek(mission: MissionListItem, weekEnd: string): boolean {
+  if (
+    mission.kanban_status === "terminee" ||
+    mission.kanban_status === "archivee"
+  ) {
+    return false;
+  }
+  if (!mission.end_at) return false;
+  const endDate = mission.end_at.slice(0, 10);
+  return endDate <= weekEnd;
+}
+
 function recentMissionsForCollaborator(
   missions: MissionListItem[],
   collaboratorId: string,
 ): MissionListItem[] {
+  const weekEnd = endOfCurrentIsoWeekParis();
   return missions
     .filter(
       (mission) =>
         mission.collaborator_id === collaboratorId &&
-        mission.kanban_status !== "archivee",
+        isMissionOfCurrentWeek(mission, weekEnd),
     )
-    .slice(0, 10);
+    .sort((a, b) => (a.end_at ?? "").localeCompare(b.end_at ?? ""));
 }
 
 function recentMissionsForTeam(
@@ -50,6 +89,7 @@ function recentMissionsForTeam(
   collaborators: CollaboratorListItem[],
   teamId: string,
 ): MissionListItem[] {
+  const weekEnd = endOfCurrentIsoWeekParis();
   const memberIds = new Set(
     collaborators
       .filter((person) => person.team_id === teamId)
@@ -59,9 +99,9 @@ function recentMissionsForTeam(
     .filter(
       (mission) =>
         memberIds.has(mission.collaborator_id) &&
-        mission.kanban_status !== "archivee",
+        isMissionOfCurrentWeek(mission, weekEnd),
     )
-    .slice(0, 10);
+    .sort((a, b) => (a.end_at ?? "").localeCompare(b.end_at ?? ""));
 }
 
 export function Top10PageClient({

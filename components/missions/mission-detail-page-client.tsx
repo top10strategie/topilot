@@ -53,6 +53,7 @@ type MissionDetailPageClientProps = {
   collaborators: CollaboratorListItem[];
   clients: ClientListItem[];
   categories: CategoryItem[];
+  utilityCategories: CategoryItem[];
   opportunityOptions: MissionOpportunityOption[];
   currentCollaboratorId: string;
   linkedClient: ClientDetail | null;
@@ -72,6 +73,7 @@ export function MissionDetailPageClient({
   collaborators,
   clients,
   categories,
+  utilityCategories,
   opportunityOptions,
   currentCollaboratorId,
   linkedClient,
@@ -121,6 +123,7 @@ export function MissionDetailPageClient({
           availableCategories={categories}
           opportunityOptions={opportunityOptions}
           currentCollaboratorId={currentCollaboratorId}
+          canManagePrivacy={canManagePrivacy}
           helpers={helpers}
         />
       ),
@@ -140,6 +143,7 @@ export function MissionDetailPageClient({
           availableCategories={categories}
           opportunityOptions={opportunityOptions}
           currentCollaboratorId={currentCollaboratorId}
+          canManagePrivacy={canManagePrivacy}
           duplicatePrefill={buildMissionDuplicatePrefill(mission)}
           helpers={helpers}
         />
@@ -271,6 +275,18 @@ export function MissionDetailPageClient({
                           {getMissionResponsibleName(mission.responsible)}
                         </p>
                       </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <p className="text-muted-foreground">Date de début</p>
+                          <p>{formatMissionDate(mission.start_at)}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Date de fin</p>
+                          <p className="font-bold text-primary-foreground">
+                            {formatMissionDate(mission.end_at)}
+                          </p>
+                        </div>
+                      </div>
                     </section>
 
                     <section className="space-y-2 text-sm">
@@ -328,18 +344,6 @@ export function MissionDetailPageClient({
                         <p>—</p>
                       )}
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <p className="text-muted-foreground">Date de début</p>
-                        <p>{formatMissionDate(mission.start_at)}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Date de fin</p>
-                        <p className="font-bold text-primary-foreground">
-                          {formatMissionDate(mission.end_at)}
-                        </p>
-                      </div>
-                    </div>
                   </section>
                 }
               />
@@ -363,7 +367,7 @@ export function MissionDetailPageClient({
                   entityId={mission.id}
                   tools={linkedTools}
                   linkOptions={toolLinkOptions}
-                  categories={categories}
+                  categories={utilityCategories}
                   collaborators={collaborators}
                   canManagePrivacy={canManagePrivacy}
                 />
@@ -374,7 +378,7 @@ export function MissionDetailPageClient({
                   entityId={mission.id}
                   wikis={linkedWikis}
                   linkOptions={wikiLinkOptions}
-                  categories={categories}
+                  categories={utilityCategories}
                 />
               }
             />

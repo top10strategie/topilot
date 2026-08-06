@@ -35,16 +35,6 @@ export function MissionsAnalysisPanel({ data }: Props) {
           layout="horizontal"
         />
         <AnalysisBarChart
-          title="Comparaison par catégories"
-          data={data.byCategory}
-          layout="horizontal"
-        />
-        <AnalysisBarChart
-          title="Évolution du pipeline Produit"
-          data={data.pipeline}
-          layout="vertical"
-        />
-        <AnalysisBarChart
           title="Comparaison par pôle"
           data={data.byTeam}
           layout="horizontal"

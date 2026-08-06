@@ -101,7 +101,8 @@ Même dans un formulaire d'ajout rapide (ex : depuis le drawer de création de m
 - `kanban_order` (int) trace la position de la carte **au sein de sa colonne**, identique au comportement de `opportunity` (cf. `07_ux_composants_reutilisable.mdc` section 8).
 - `archived_at` (timestamptz, posé automatiquement par trigger dès que `kanban_status = archivee`, remis à `NULL` sinon) : la colonne Kanban **"Archivée"** n'affiche que les missions dont `archived_at` date de **moins de 3 mois** — les archives plus anciennes restent consultables via les vues Cartes/Tableau avec filtre par statut.
 - `completed_at` (timestamptz, posé automatiquement la première fois que `kanban_status = terminee`) : **conservé même si la mission est ensuite archivée**, pour distinguer une mission "terminée puis archivée" d'une mission "abandonnée" (archivée sans avoir jamais été terminée). Remis à `NULL` uniquement si la mission est rouverte (`a_faire`/`en_cours`). Utilisé par `/analyses` (onglet Missions) : "Missions complétées" = `completed_at IS NOT NULL` ; "Missions abandonnées" = `kanban_status = archivee AND completed_at IS NULL`.
-- Une mission peut avoir plusieurs **catégories** (`mission_category`), **outils liés** (`mission_tool`), **wikis liés** (`mission_wiki`) et **documents liés** (`mission_document`).
+- Une mission peut avoir plusieurs **catégories métier** (`mission_category` → `category_business`), **outils liés** (`mission_tool`), **wikis liés** (`mission_wiki`) et **documents liés** (`mission_document`).
+- `start_at` (défaut = date du jour à la création) et `end_at` sont **obligatoires**.
     - **pas d'identifiants/mot de passe** (`tool_access` n'a pas de colonne `mission_id`).
 - Champ de texte libre : **`notes`**, couplé à `notes_updated_at`, historisé dans `audit_log`.
 - Création et édition via **drawer latéral droit** (sans URL) accessible depuis : `/missions`, en **deux temps**:
@@ -140,7 +141,8 @@ Même dans un formulaire d'ajout rapide (ex : depuis le drawer de création de m
 - **`opportunity.average_price`** (« Montant pondéré ») est une **colonne calculée** (`price × probability_confirmation / 100`), recalculée automatiquement par PostgreSQL à chaque modification de `price` ou `probability_confirmation` — **jamais saisie manuellement** (à la différence d'`estimated_charge` sur `mission`, qui reste lui manuel).
 - **`opportunity.is_active`** : passe automatiquement à `false` dès que `kanban_status` atteint un des deux statuts terminaux, **`gagne`** ou **`perdue`** (les deux archivent l'opportunité, qu'elle soit gagnée ou perdue). Elle repasse à `true` si le statut est ensuite modifié pour sortir de ces deux valeurs (déplacement arrière dans le Kanban) — comportement symétrique confirmé.
 - `action` et `source` sont des champs texte libre (pas d'enum).
-- Une opportunité peut avoir plusieurs **catégories** (`opportunity_category`), **documents liés** (`opportunity_document`) et **outils liés** (`opportunity_tool`).
+- Une opportunité peut avoir plusieurs **catégories métier** (`opportunity_category` → `category_business`), **documents liés** (`opportunity_document`) et **outils liés** (`opportunity_tool`).
+- `entry_average_price` : montant pondéré figé à la création. `closed_at` : date (Europe/Paris) du passage à `gagne`/`perdue` ; si `end_at` est vide à ce moment, il est rempli avec `closed_at`.
 - Champ de texte libre : **`notes`**, couplé à `notes_updated_at`, historisé dans `audit_log`.
 - Création et édition via **drawer latéral droit** (sans URL) accessible depuis `/opportunities` :
     1. **Bloc identification** : Titre, Client, Contact, Responsable opportunité, Date de dernière rencontre, Echéance, Date de clôture (au moins Echéance ou Date de clôture obligatoire) — sauvegardé via un bouton "Enregistrer" dédié, qui crée l'opportunité en base (nécessaire pour permettre l'ajout de documents liés qui requièrent un `opportunity_id` existant).
@@ -150,7 +152,7 @@ Même dans un formulaire d'ajout rapide (ex : depuis le drawer de création de m
 
 ## Outil (`tool`) — catalogue et accès
 
-- Le catalogue d'outils (`tool`) est partagé par toute l'entreprise : `tool_name`, `url`, `description`, catégories (`tool_category`, simple table de jonction vers `category`).
+- Le catalogue d'outils (`tool`) est partagé par toute l'entreprise : `tool_name`, `url`, `description`, catégories utilitaires (`tool_category` → `category`).
 - **Client(s) lié(s)** (`client_tool`) : simple table de jonction, affichée sur `/tools/[id]` uniquement si au moins un client est lié à l'outil (champ masqué sinon).
 - **Accès** (`tool_access`) : un outil peut avoir plusieurs accès, chacun optionnellement rattaché à un client (`client_id`, nullable). Champs : `label`, `identifier`, mot de passe **jamais stocké en clair** (Vault, cf. `05_security_rls.mdc`). Le toggle UI **"Privé"** pilote `is_private` (Oui = privé, réservé Manager/Direction ; Non = visible de tous, valeur par défaut) — matérialisé par une icône dédiée sur chaque carte "Accès" de `/tools/[id]`. Ce toggle est distinct du toggle **"Interne"** de `mission` (qui pilote `mission_scope`) — nommage volontairement différencié pour éviter toute confusion entre les deux concepts.
     - Le bloc "Premier accès (optionnel)" du tiroir Outil (création/édition) ne permet de créer **qu'un seul accès**, au moment de la création de l'outil. Les accès suivants s'ajoutent depuis `/tools/[id]` via un bouton "+ Accès" dédié, qui ouvre le même formulaire (création), indépendamment du tiroir Outil.
@@ -247,11 +249,11 @@ Ces trois règles sont mutualisées via un composant de stack de drawers réutil
 
 ```sql
 CHECK (entity_type = ANY (ARRAY[
-  'category', 'team', 'collaborator', 'client', 'contact_client',
+  'category', 'category_business', 'team', 'collaborator', 'client', 'contact_client',
   'opportunity', 'mission', 'mission_series', 'document_type', 'document',
   'tool', 'tool_access', 'tool_subscription', 'tool_subscription_price',
   'exchange_rate', 'wiki', 'setting', 'note'
 ]::text[]))
 ```
 
-> `entity_id` peut pointer vers une entité supprimée → afficher "entité supprimée". L'historique est exclu de la recherche transverse.
+> Libellé UI unique « Catégorie » pour `category` et `category_business`. `entity_id` peut pointer vers une entité supprimée → afficher "entité supprimée". L'historique est exclu de la recherche transverse.

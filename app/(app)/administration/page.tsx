@@ -5,6 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrentCollaborator } from "@/lib/auth/get-current-collaborator";
 import { canManageCollaboratorsAndTeams } from "@/lib/auth/roles";
 import {
+  listBusinessCategories,
   listCategories,
   listDocumentTypes,
 } from "@/lib/categories/queries";
@@ -17,21 +18,24 @@ async function AdministrationContent() {
     ? canManageCollaboratorsAndTeams(current.role)
     : false;
 
-  const [categories, documentTypes, people, missions] = await Promise.all([
-    listCategories(),
-    listDocumentTypes(),
-    canManagePeople
-      ? loadPeopleDirectory()
-      : Promise.resolve({ teams: [], collaborators: [] }),
-    canManagePeople ? listMissions() : Promise.resolve([]),
-  ]);
+  const [businessCategories, utilityCategories, documentTypes, people, missions] =
+    await Promise.all([
+      listBusinessCategories(),
+      listCategories(),
+      listDocumentTypes(),
+      canManagePeople
+        ? loadPeopleDirectory()
+        : Promise.resolve({ teams: [], collaborators: [] }),
+      canManagePeople ? listMissions() : Promise.resolve([]),
+    ]);
 
   return (
     <AdministrationPageClient
       canManagePeople={canManagePeople}
       teams={people.teams}
       collaborators={people.collaborators}
-      categories={categories}
+      businessCategories={businessCategories}
+      utilityCategories={utilityCategories}
       documentTypes={documentTypes}
       missions={missions}
     />

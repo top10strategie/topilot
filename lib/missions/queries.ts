@@ -57,7 +57,7 @@ const MISSION_LIST_SELECT = `
   ),
   series:series_id ( id, frequency, starts_on, ends_on ),
   mission_category (
-    category:category_id ( id, label )
+    category:category_business!category_id ( id, label, is_private )
   )
 `;
 
