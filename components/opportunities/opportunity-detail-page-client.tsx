@@ -3,6 +3,7 @@
 import { useMemo, useState, type MouseEvent } from "react";
 import { useRouter } from "next/navigation";
 import {
+  CirclesThreePlus,
   CopySimple,
   MagnifyingGlass,
   PencilSimple,
@@ -470,7 +471,7 @@ export function OpportunityDetailPageClient({
                 label="Nouvelle mission"
                 onClick={openCreateMission}
               >
-                <PencilSimple className="size-4" />
+                <CirclesThreePlus className="size-4" />
               </IconActionButton>
             </div>
             <div className="overflow-x-auto rounded-md border">

@@ -2,7 +2,7 @@
 
 import { useState, useTransition, type FormEvent } from "react";
 import dynamic from "next/dynamic";
-import { Plus } from "@phosphor-icons/react";
+import { FolderSimplePlus } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { createCategory, updateCategory } from "@/actions/categories";
 import { createWiki, updateWiki } from "@/actions/wikis";
@@ -147,7 +147,7 @@ export function WikiFormDrawer({
               onClick={openCreateCategory}
               disabled={isPending}
             >
-              <Plus className="size-3.5" />
+              <FolderSimplePlus className="size-3.5" />
               Catégorie
             </Button>
           </div>

@@ -4,11 +4,11 @@ import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  Cards,
   FunnelSimple,
   MagnifyingGlass,
-  PencilSimple,
-  SquaresFour,
   Table,
+  UserPlus,
 } from "@phosphor-icons/react";
 import { CategoryMultiCombobox } from "@/components/categories/category-multi-combobox";
 import { ClientFormDrawer } from "@/components/clients/client-form-drawer";
@@ -62,7 +62,7 @@ const CLIENT_VIEW_TABS: ListViewTab[] = [
   {
     value: "cards",
     label: "Cartes",
-    icon: <SquaresFour className="size-3.5" aria-hidden />,
+    icon: <Cards className="size-3.5" aria-hidden />,
   },
   {
     value: "table",
@@ -275,7 +275,7 @@ export function ClientsPageClient({
               <FunnelSimple className="size-4" />
             </IconActionButton>
             <IconActionButton label="Nouveau client" onClick={openCreate}>
-              <PencilSimple className="size-4" />
+              <UserPlus className="size-4" />
             </IconActionButton>
           </div>
         }

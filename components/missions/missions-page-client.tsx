@@ -5,11 +5,11 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  Cards,
+  CirclesThreePlus,
   CopySimple,
   FunnelSimple,
   Kanban,
-  PencilSimple,
-  SquaresFour,
   Table,
 } from "@phosphor-icons/react";
 import { CategoryMultiCombobox } from "@/components/categories/category-multi-combobox";
@@ -78,7 +78,7 @@ const MISSION_VIEW_TABS: ListViewTab[] = [
   {
     value: "cards",
     label: "Cartes",
-    icon: <SquaresFour className="size-3.5" aria-hidden />,
+    icon: <Cards className="size-3.5" aria-hidden />,
   },
   {
     value: "table",
@@ -402,7 +402,7 @@ export function MissionsPageClient({
             label="Nouvelle mission"
             onClick={() => openCreate()}
           >
-            <PencilSimple className="size-4" />
+            <CirclesThreePlus className="size-4" />
           </IconActionButton>
         </>
       }

@@ -5,11 +5,11 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  Cards,
   CopySimple,
   FunnelSimple,
   Kanban,
-  PencilSimple,
-  SquaresFour,
+  StackPlus,
   Table,
 } from "@phosphor-icons/react";
 import { CategoryMultiCombobox } from "@/components/categories/category-multi-combobox";
@@ -78,7 +78,7 @@ const OPPORTUNITY_VIEW_TABS: ListViewTab[] = [
   {
     value: "cards",
     label: "Cartes",
-    icon: <SquaresFour className="size-3.5" aria-hidden />,
+    icon: <Cards className="size-3.5" aria-hidden />,
   },
   {
     value: "table",
@@ -348,7 +348,7 @@ export function OpportunitiesPageClient({
             label="Nouvelle opportunité"
             onClick={() => openCreate()}
           >
-            <PencilSimple className="size-4" />
+            <StackPlus className="size-4" />
           </IconActionButton>
         </>
       }

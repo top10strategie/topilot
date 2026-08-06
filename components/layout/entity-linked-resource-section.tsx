@@ -7,7 +7,7 @@ import {
   type ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash } from "@phosphor-icons/react";
+import { StackPlus, Trash } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { ConfirmStatusDialog } from "@/components/layout/confirm-status-dialog";
 import { EntityDocumentationSection } from "@/components/layout/entity-documentation-columns";
@@ -151,7 +151,7 @@ export function EntityLinkedResourceSection<
               variant="outline"
               onClick={() => setLinkOpen(true)}
             >
-              <Plus className="size-4" />
+              <StackPlus className="size-4" />
             </IconActionButton>
           )
         }

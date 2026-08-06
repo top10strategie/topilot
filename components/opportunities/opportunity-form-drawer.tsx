@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, type FormEvent } from "react";
-import { Buildings, FolderSimplePlus, UserPlus } from "@phosphor-icons/react";
+import { FolderSimplePlus, UserPlus } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { createBusinessCategory, updateBusinessCategory } from "@/actions/categories";
 
@@ -415,7 +415,7 @@ export function OpportunityFormDrawer({
                 disabled={isPending}
                 onClick={() => void openCreateClient()}
               >
-                <Buildings className="size-4" />
+                <UserPlus className="size-4" />
               </Button>
             </div>
             <Select

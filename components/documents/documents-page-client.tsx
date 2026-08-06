@@ -3,12 +3,13 @@
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  Cards,
   DownloadSimple,
   Eye,
   FunnelSimple,
   MagnifyingGlass,
   PencilSimple,
-  SquaresFour,
+  StackPlus,
   Table,
   Trash,
 } from "@phosphor-icons/react";
@@ -56,7 +57,7 @@ const DOCUMENT_VIEW_TABS: ListViewTab[] = [
   {
     value: "cards",
     label: "Cartes",
-    icon: <SquaresFour className="size-3.5" aria-hidden />,
+    icon: <Cards className="size-3.5" aria-hidden />,
   },
   {
     value: "table",
@@ -354,7 +355,7 @@ export function DocumentsPageClient({
               <FunnelSimple className="size-4" />
             </IconActionButton>
             <IconActionButton label="Nouveau document" onClick={openCreate}>
-              <PencilSimple className="size-4" />
+              <StackPlus className="size-4" />
             </IconActionButton>
             {canViewHistory ? (
               <AuditHistoryButton

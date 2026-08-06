@@ -209,8 +209,8 @@ export async function listMissionsByClientId(
  * est dans le passé ou jusqu'à la fin de la semaine ISO courante (Top10).
  */
 export async function listTop10ActiveMissions(): Promise<MissionListItem[]> {
-  const weekEnd = endOfCurrentIsoWeekParis();
   const supabase = await createClient();
+  const weekEnd = endOfCurrentIsoWeekParis();
   const { data, error } = await supabase
     .from("mission")
     .select(MISSION_LIST_SELECT)
