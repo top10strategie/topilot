@@ -16,21 +16,16 @@ import { deactivateClient } from "@/actions/clients";
 import { AuditHistoryButton } from "@/components/audit/audit-history-button";
 import { ClientFormDrawer } from "@/components/clients/client-form-drawer";
 import { ContactFormDrawer } from "@/components/clients/contact-form-drawer";
-import { EntityLinkedDocumentsSection } from "@/components/documents/entity-linked-documents-section";
 import { useDrawerStack } from "@/components/drawers/drawer-stack-context";
 import { ConfirmStatusDialog } from "@/components/layout/confirm-status-dialog";
 import { DuplicateConfirmDialog } from "@/components/layout/duplicate-confirm-dialog";
 import { EntityDetailsColumns } from "@/components/layout/entity-details-columns";
-import {
-  EntityDocumentationColumns,
-} from "@/components/layout/entity-documentation-columns";
+import { EntityFormDocumentationBlock } from "@/components/layout/entity-form-documentation-block";
 import { IconActionButton } from "@/components/layout/icon-action-button";
 import { PageHero } from "@/components/layout/page-hero";
 import { MissionConsultationDrawer } from "@/components/missions/mission-consultation-drawer";
 import { MissionFormDrawer } from "@/components/missions/mission-form-drawer";
 import { EntityNotesEditor } from "@/components/notes/entity-notes-editor";
-import { EntityLinkedToolsSection } from "@/components/tools/entity-linked-tools-section";
-import { EntityLinkedWikisSection } from "@/components/wiki/entity-linked-wikis-section";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -40,7 +35,7 @@ import {
 } from "@/components/ui/hover-card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { CategoryItem, DocumentTypeItem } from "@/lib/categories/types";
+import type { CategoryItem } from "@/lib/categories/types";
 import { buildMissionDuplicatePrefill } from "@/lib/crm/duplicate-prefill";
 import {
   getClientResponsibleName,
@@ -49,10 +44,6 @@ import {
 } from "@/lib/clients/labels";
 import type { ClientDetail, ClientListItem, ContactClientItem } from "@/lib/clients/types";
 import type { CollaboratorListItem } from "@/lib/collaborators/types";
-import type {
-  DocumentLinkOption,
-  LinkedDocumentItem,
-} from "@/lib/documents/types";
 import {
   formatMissionCharge,
   formatMissionDate,
@@ -63,28 +54,15 @@ import type {
   MissionListItem,
   MissionOpportunityOption,
 } from "@/lib/missions/types";
-import type { LinkedToolItem } from "@/lib/tools/types";
-import type {
-  LinkedWikiItem,
-  WikiLinkOption,
-} from "@/lib/wiki/types";
 
 type ClientDetailPageClientProps = {
   client: ClientDetail;
   collaborators: CollaboratorListItem[];
   categories: CategoryItem[];
-  utilityCategories: CategoryItem[];
   clients: ClientListItem[];
   missions: MissionListItem[];
   opportunityOptions: MissionOpportunityOption[];
   currentCollaboratorId: string;
-  linkedTools: LinkedToolItem[];
-  toolLinkOptions: Array<{ id: string; tool_name: string }>;
-  linkedDocuments: LinkedDocumentItem[];
-  documentLinkOptions: DocumentLinkOption[];
-  documentTypes: DocumentTypeItem[];
-  linkedWikis: LinkedWikiItem[];
-  wikiLinkOptions: WikiLinkOption[];
   canManagePrivacy: boolean;
   canViewHistory: boolean;
 };
@@ -93,18 +71,10 @@ export function ClientDetailPageClient({
   client,
   collaborators,
   categories,
-  utilityCategories,
   clients,
   missions,
   opportunityOptions,
   currentCollaboratorId,
-  linkedTools,
-  toolLinkOptions,
-  linkedDocuments,
-  documentLinkOptions,
-  documentTypes,
-  linkedWikis,
-  wikiLinkOptions,
   canManagePrivacy,
   canViewHistory,
 }: ClientDetailPageClientProps) {
@@ -614,37 +584,15 @@ export function ClientDetailPageClient({
           </TabsContent>
 
           <TabsContent value="documentations" className="mt-4">
-            <EntityDocumentationColumns
-              documents={
-                <EntityLinkedDocumentsSection
-                  entity="client"
-                  entityId={client.id}
-                  documents={linkedDocuments}
-                  linkOptions={documentLinkOptions}
-                  documentTypes={documentTypes}
-                />
-              }
-              tools={
-                <EntityLinkedToolsSection
-                  entity="client"
-                  entityId={client.id}
-                  tools={linkedTools}
-                  linkOptions={toolLinkOptions}
-                  categories={utilityCategories}
-                  collaborators={collaborators}
-                  canManagePrivacy={canManagePrivacy}
-                />
-              }
-              wiki={
-                <EntityLinkedWikisSection
-                  entity="client"
-                  entityId={client.id}
-                  wikis={linkedWikis}
-                  linkOptions={wikiLinkOptions}
-                  categories={utilityCategories}
-                />
-              }
-            />
+            {tab === "documentations" ? (
+              <EntityFormDocumentationBlock
+                entity="client"
+                entityId={client.id}
+                includeWikis={true}
+                collaborators={collaborators}
+                canManagePrivacy={canManagePrivacy}
+              />
+            ) : null}
           </TabsContent>
         </Tabs>
       </div>

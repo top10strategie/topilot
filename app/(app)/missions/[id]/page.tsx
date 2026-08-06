@@ -3,31 +3,15 @@ import { redirect } from "next/navigation";
 import { MissionDetailPageClient } from "@/components/missions/mission-detail-page-client";
 import { PageHero } from "@/components/layout/page-hero";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  listBusinessCategories,
-  listCategories,
-  listDocumentTypes,
-} from "@/lib/categories/queries";
+import { listBusinessCategories } from "@/lib/categories/queries";
 import { getCurrentCollaborator } from "@/lib/auth/get-current-collaborator";
 import { isManagerOrDirection } from "@/lib/auth/roles";
 import { getClientById, listClients } from "@/lib/clients/queries";
 import { listCollaborators } from "@/lib/collaborators/queries";
 import {
-  listDocumentLinkOptions,
-  listDocumentsByMissionId,
-} from "@/lib/documents/queries";
-import {
   getMissionById,
   listMissionOpportunityOptions,
 } from "@/lib/missions/queries";
-import {
-  listToolLinkOptions,
-  listToolsByMissionId,
-} from "@/lib/tools/queries";
-import {
-  listWikiLinkOptions,
-  listWikisByMissionId,
-} from "@/lib/wiki/queries";
 
 type MissionDetailPageProps = {
   params: Promise<{ id: string }>;
@@ -44,31 +28,15 @@ async function MissionDetailContent({
     collaborators,
     clients,
     categories,
-    utilityCategories,
     opportunityOptions,
     currentCollaborator,
-    linkedTools,
-    toolLinkOptions,
-    linkedDocuments,
-    documentLinkOptions,
-    documentTypes,
-    linkedWikis,
-    wikiLinkOptions,
   ] = await Promise.all([
     getMissionById(id),
     listCollaborators(),
     listClients(),
     listBusinessCategories(),
-    listCategories(),
     listMissionOpportunityOptions(),
     getCurrentCollaborator(),
-    listToolsByMissionId(id),
-    listToolLinkOptions(),
-    listDocumentsByMissionId(id),
-    listDocumentLinkOptions(),
-    listDocumentTypes(),
-    listWikisByMissionId(id),
-    listWikiLinkOptions(),
   ]);
 
   if (!mission) {
@@ -85,17 +53,9 @@ async function MissionDetailContent({
       collaborators={collaborators}
       clients={clients}
       categories={categories}
-      utilityCategories={utilityCategories}
       opportunityOptions={opportunityOptions}
       currentCollaboratorId={currentCollaborator?.id ?? ""}
       linkedClient={linkedClient}
-      linkedTools={linkedTools}
-      toolLinkOptions={toolLinkOptions}
-      linkedDocuments={linkedDocuments}
-      documentLinkOptions={documentLinkOptions}
-      documentTypes={documentTypes}
-      linkedWikis={linkedWikis}
-      wikiLinkOptions={wikiLinkOptions}
       canManagePrivacy={
         currentCollaborator
           ? isManagerOrDirection(currentCollaborator.role)

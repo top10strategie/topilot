@@ -1,3 +1,4 @@
+import { looseClient } from "@/lib/supabase/loose";
 import { createClient } from "@/lib/supabase/server";
 import { isUuid } from "@/lib/uuid";
 import type {
@@ -38,7 +39,7 @@ async function fetchIds(
   column: string,
   value: string,
 ): Promise<string[]> {
-  const supabase = await createClient();
+  const supabase = looseClient(await createClient());
   const { data, error } = await supabase.from(table).select("id").eq(column, value);
   if (error) {
     console.error(`audit fetchIds ${table}:`, error);
@@ -53,7 +54,7 @@ async function fetchColumnValues(
   filterColumn: string,
   value: string,
 ): Promise<string[]> {
-  const supabase = await createClient();
+  const supabase = looseClient(await createClient());
   const { data, error } = await supabase
     .from(table)
     .select(selectColumn)
@@ -79,7 +80,7 @@ function uniqueIds(ids: string[]): string[] {
  * Liste les contacts (filtre page historique).
  */
 export async function listAuditContactOptions(): Promise<AuditContactOption[]> {
-  const supabase = await createClient();
+  const supabase = looseClient(await createClient());
   const { data, error } = await supabase
     .from("contact_client")
     .select(
@@ -112,7 +113,7 @@ export async function listAuditContactOptions(): Promise<AuditContactOption[]> {
 async function resolveClientRelatedRefs(
   clientId: string,
 ): Promise<AuditEntityRef[]> {
-  const supabase = await createClient();
+  const supabase = looseClient(await createClient());
   const [
     missionIds,
     opportunityIds,
@@ -241,7 +242,7 @@ async function resolveMissionRelatedRefs(
 }
 
 async function resolveToolRelatedRefs(toolId: string): Promise<AuditEntityRef[]> {
-  const supabase = await createClient();
+  const supabase = looseClient(await createClient());
   const refs: AuditEntityRef[] = [{ entity_type: "tool", entity_id: toolId }];
 
   const { data: accesses, error: accessError } = await supabase
@@ -318,7 +319,7 @@ async function queryAuditLogs(options: {
   dateTo?: string;
   limit?: number;
 }): Promise<AuditLogListItem[]> {
-  const supabase = await createClient();
+  const supabase = looseClient(await createClient());
   let query = supabase
     .from("audit_log")
     .select(

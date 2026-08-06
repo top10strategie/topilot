@@ -101,3 +101,45 @@ export async function uploadClientLogo(file: File) {
 export async function uploadContactProfilePicture(file: File) {
   return uploadClientVisual(file, PROFILE_PICTURE_TYPE_LABEL, "avatar");
 }
+
+/**
+ * Supprime un document visuel (ligne + fichier Storage).
+ * Best-effort : les erreurs Storage sont loguées, la ligne est quand même retirée.
+ */
+export async function deleteClientVisual(documentId: string): Promise<void> {
+  const admin = createAdminClient();
+  const { data: doc, error } = await admin
+    .from("document")
+    .select("id, file_path, is_visual")
+    .eq("id", documentId)
+    .maybeSingle();
+
+  if (error || !doc) {
+    console.error("deleteClientVisual read:", error);
+    return;
+  }
+
+  if (!doc.is_visual) {
+    console.error("deleteClientVisual: document non visuel, abandon.", documentId);
+    return;
+  }
+
+  const filePath = doc.file_path;
+  if (filePath && filePath !== "pending") {
+    const { error: storageError } = await admin.storage
+      .from(VISUELS_BUCKET)
+      .remove([filePath]);
+    if (storageError) {
+      console.error("deleteClientVisual storage:", storageError);
+    }
+  }
+
+  const { error: deleteError } = await admin
+    .from("document")
+    .delete()
+    .eq("id", documentId);
+
+  if (deleteError) {
+    console.error("deleteClientVisual delete:", deleteError);
+  }
+}

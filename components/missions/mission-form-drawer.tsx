@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import { Buildings, FolderSimplePlus } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { createBusinessCategory, updateBusinessCategory } from "@/actions/categories";
@@ -37,6 +37,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { useTwoStepCreateForm } from "@/hooks/use-two-step-create-form";
 import type { CategoryItem } from "@/lib/categories/types";
 import { getCollaboratorFullName } from "@/lib/collaborators/labels";
 import type { CollaboratorListItem } from "@/lib/collaborators/types";
@@ -112,11 +113,6 @@ export function MissionFormDrawer({
     [collaborators],
   );
 
-  const [missionId, setMissionId] = useState(mission?.id ?? "");
-  const [identificationSaved, setIdentificationSaved] = useState(
-    mode === "edit",
-  );
-
   const [missionName, setMissionName] = useState(
     duplicatePrefill?.mission_name ?? mission?.mission_name ?? "",
   );
@@ -184,11 +180,6 @@ export function MissionFormDrawer({
   const [selectedCategories, setSelectedCategories] = useState<
     MissionCategoryItem[]
   >(() => [...(duplicatePrefill?.categories ?? mission?.categories ?? [])]);
-
-  const [fieldErrors, setFieldErrors] = useState<
-    Partial<Record<string, string>>
-  >({});
-  const [isPending, startTransition] = useTransition();
 
   const missionScope: MissionScope = lockedScope
     ? lockedScope
@@ -303,76 +294,52 @@ export function MissionFormDrawer({
     return formData;
   };
 
-  const handleSaveIdentification = (event: FormEvent) => {
-    event.preventDefault();
-    setFieldErrors({});
-
-    startTransition(async () => {
-      if (mode === "create" && !identificationSaved) {
-        const result = await createMissionRecord(buildIdentificationFormData());
-        if (!result.success) {
-          setFieldErrors(result.fieldErrors ?? {});
-          toast.error(result.error);
-          return;
-        }
-        setMissionId(result.id);
-        setIdentificationSaved(true);
-        toast.success("Mission créée. Complétez les informations.");
-        return;
-      }
-
-      toast.message("Utilisez Enregistrer en bas du formulaire.");
-    });
-  };
-
-  const handleSubmit = (event: FormEvent) => {
-    event.preventDefault();
-    if (mode === "create" && !identificationSaved) {
-      void handleSaveIdentification(event);
-      return;
-    }
-
-    setFieldErrors({});
-    startTransition(async () => {
-      const result = await updateMissionRecord(
-        missionId,
-        buildFullFormData(),
-      );
-      if (!result.success) {
-        setFieldErrors(result.fieldErrors ?? {});
-        toast.error(result.error);
-        return;
-      }
-
+  const {
+    isPending,
+    entityId: missionId,
+    identificationSaved,
+    showComplement,
+    fieldErrors,
+    handleSaveIdentification,
+    handleSubmit,
+  } = useTwoStepCreateForm({
+    mode,
+    initialEntityId: mission?.id ?? "",
+    buildIdentificationFormData,
+    buildFullFormData,
+    createRecord: createMissionRecord,
+    updateRecord: updateMissionRecord,
+    afterUpdate: async (id) => {
       const wantsRecurrence = Boolean(
         recurrence.enabled && recurrence.frequency,
       );
-
-      if (wantsRecurrence) {
-        const seriesResult = await syncMissionRecurrence({
-          missionId: result.id,
-          enabled: true,
-          frequency: recurrence.frequency,
-          startsOn: recurrence.startsOn || null,
-          endsOn: recurrence.endsOn || null,
-        });
-        if (!seriesResult.success) {
-          toast.error(seriesResult.error);
-          return;
-        }
+      if (!wantsRecurrence) return true;
+      const seriesResult = await syncMissionRecurrence({
+        missionId: id,
+        enabled: true,
+        frequency: recurrence.frequency,
+        startsOn: recurrence.startsOn || null,
+        endsOn: recurrence.endsOn || null,
+      });
+      if (!seriesResult.success) {
+        toast.error(seriesResult.error);
+        return false;
       }
-
-      toast.success(
-        mode === "create" ? "Mission enregistrée." : "Mission mise à jour.",
-      );
+      return true;
+    },
+    messages: {
+      identificationSaved: "Mission créée. Complétez les informations.",
+      created: "Mission enregistrée.",
+      updated: "Mission mise à jour.",
+    },
+    onResolved: (id) => {
       helpers.resolve({
-        id: result.id,
+        id,
         mission_name: missionName.trim(),
       });
-    });
-  };
+    },
+  });
 
-  const showComplement = mode === "edit" || identificationSaved;
   const seriesStopped =
     Boolean(mission?.series?.ends_on) &&
     (mission?.series?.ends_on ?? "") <= new Date().toISOString().slice(0, 10);

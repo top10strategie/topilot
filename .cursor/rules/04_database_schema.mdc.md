@@ -150,7 +150,8 @@ CREATE INDEX idx_document_parent_document_id ON public.document(parent_document_
 > **La dernière version** de chaque document est **calculée dynamiquement** via la vue `document_latest` ci-dessous, qui regroupe par famille (`COALESCE(parent_document_id, id)`) et ne garde que le `version_number` maximum — même logique que `delete_document_version` ci-dessous.
 
 ```sql
-CREATE VIEW public.document_latest AS
+CREATE VIEW public.document_latest
+WITH (security_invoker = true) AS
 SELECT DISTINCT ON (COALESCE(parent_document_id, id)) *
 FROM public.document
 ORDER BY COALESCE(parent_document_id, id), version_number DESC;

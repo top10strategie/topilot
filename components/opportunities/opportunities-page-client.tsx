@@ -1,30 +1,25 @@
 "use client";
 
 import { useMemo, useRef, useState, type MouseEvent } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   CopySimple,
   FunnelSimple,
   Kanban,
-  MagnifyingGlass,
   PencilSimple,
   SquaresFour,
   Table,
 } from "@phosphor-icons/react";
 import { CategoryMultiCombobox } from "@/components/categories/category-multi-combobox";
 import { useDrawerStack } from "@/components/drawers/drawer-stack-context";
-import { DuplicateConfirmDialog } from "@/components/layout/duplicate-confirm-dialog";
+import { EntityListPageShell } from "@/components/layout/entity-list-page-shell";
 import { IconActionButton } from "@/components/layout/icon-action-button";
-import { ListPaginationFooter } from "@/components/layout/list-pagination-footer";
 import {
-  ListViewTabs,
   ListViewTabsContent,
-  ListViewTabsSwitcher,
   type ListViewTab,
 } from "@/components/layout/list-view-tabs";
-import { PageHero } from "@/components/layout/page-hero";
-import { OpportunitiesKanban } from "@/components/opportunities/opportunities-kanban";
 import { OpportunityFormDrawer } from "@/components/opportunities/opportunity-form-drawer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -34,14 +29,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -71,7 +58,14 @@ import type {
   OpportunityListItem,
   OpportunityPriority,
 } from "@/lib/opportunities/types";
-import { cn } from "@/lib/utils";
+
+const OpportunitiesKanban = dynamic(
+  () =>
+    import("@/components/opportunities/opportunities-kanban").then((m) => ({
+      default: m.OpportunitiesKanban,
+    })),
+  { ssr: false },
+);
 
 const PAGE_SIZE = 24;
 
@@ -325,463 +319,272 @@ export function OpportunitiesPageClient({
   };
 
   return (
-    <ListViewTabs
-      value={view}
-      onValueChange={(value) => {
+    <EntityListPageShell
+      title="Opportunités"
+      searchAriaLabel="Recherche contextuelle opportunités"
+      view={view}
+      onViewChange={(value) => {
         setView(value as "kanban" | "cards" | "table");
         setPage(1);
       }}
-    >
-      <PageHero
-        title="Opportunités"
-        actions={
-          <div className="flex w-full max-w-xl flex-wrap items-center gap-2 md:w-auto md:max-w-none md:flex-nowrap">
-            <div className="relative min-w-0 flex-1 basis-full sm:basis-auto md:w-72 md:flex-none lg:w-80">
-              <MagnifyingGlass
-                className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
-                aria-hidden
-              />
-              <Input
-                type="search"
-                placeholder="Rechercher…"
-                value={query}
-                onChange={(event) => {
-                  setQuery(event.target.value);
-                  setPage(1);
-                }}
-                className="pl-8"
-                aria-label="Recherche contextuelle opportunités"
-              />
-            </div>
-            <ListViewTabsSwitcher
-              tabs={OPPORTUNITY_VIEW_TABS}
-              showLabels={false}
-            />
-            <IconActionButton
-              label="Filtres"
-              onClick={() => {
-                setDraftFilters(filters);
-                setFilterOpen(true);
-              }}
-            >
-              <FunnelSimple className="size-4" />
-            </IconActionButton>
-            <IconActionButton
-              label="Nouvelle opportunité"
-              onClick={() => openCreate()}
-            >
-              <PencilSimple className="size-4" />
-            </IconActionButton>
-          </div>
-        }
-      />
-
-      <div
-        className={cn(
-          "min-h-0 flex-1 px-4 py-4 md:px-6",
-          view === "kanban" ? "flex flex-col overflow-hidden" : "overflow-y-auto",
-        )}
-      >
-        <ListViewTabsContent value="kanban" className="min-h-0 flex-1">
-          <OpportunitiesKanban items={filtered} />
-        </ListViewTabsContent>
-
-        <ListViewTabsContent value="cards" className="flex-none">
-          {filtered.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              {query.trim() || hasActiveFilters
-                ? "Aucune opportunité ne correspond aux critères."
-                : "Aucune opportunité pour le moment. Créez-en une pour commencer."}
-            </p>
-          ) : (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {pageItems.map((item) => (
-                <Link key={item.id} href={`/opportunities/${item.id}`}>
-                  <Card className="h-full transition-colors hover:bg-muted/40">
-                    <CardHeader className="space-y-2 p-4 pb-2">
-                      <div className="flex items-start justify-between gap-2">
-                        <CardTitle className="min-w-0 text-base leading-snug">
-                          {item.opportunity_name}
-                        </CardTitle>
-                        <IconActionButton
-                          label="Dupliquer l'opportunité"
-                          className="shrink-0"
-                          onClick={(event) => requestDuplicate(event, item)}
-                        >
-                          <CopySimple className="size-4" />
-                        </IconActionButton>
-                      </div>
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-                          {item.categories.length === 0 ? (
-                            <span className="text-xs text-muted-foreground">
-                              —
-                            </span>
-                          ) : (
-                            item.categories.slice(0, 3).map((category) => (
-                              <Badge key={category.id} variant="secondary">
-                                {category.label}
-                              </Badge>
-                            ))
-                          )}
-                        </div>
-                        <span className="shrink-0 text-xs text-muted-foreground">
-                          {getOpportunityPriorityLabel(item.priority)}
-                        </span>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-1 p-4 pt-2 text-xs text-muted-foreground">
-                      <div className="flex items-baseline justify-between gap-2">
-                        <span className="min-w-0 truncate">
-                          {item.client.client_name}
-                        </span>
-                        <span className="shrink-0 text-right">
-                          {getOpportunityResponsibleName(item.responsible)}
-                        </span>
-                      </div>
-                      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
-                        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-                          <Badge variant="outline" className="font-normal">
-                            {getOpportunityKanbanStatusLabel(
-                              item.kanban_status,
-                            )}
-                          </Badge>
-                          <span>{formatOpportunityPrice(item.price)}</span>
-                          <span>
-                            {formatOpportunityProbability(
-                              item.probability_confirmation,
-                            )}
-                          </span>
-                        </div>
-                        <span className="shrink-0 text-primary-foreground">
-                          {formatOpportunityDate(item.end_at)}
-                        </span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              ))}
-            </div>
-          )}
-        </ListViewTabsContent>
-
-        <ListViewTabsContent value="table" className="flex-none">
-          <div className="overflow-x-auto rounded-md border">
-            <table className="w-full min-w-[960px] text-left text-sm">
-              <thead className="border-b bg-muted/40 text-xs text-muted-foreground">
-                <tr>
-                  <th className="px-3 py-2 font-medium">Nom</th>
-                  <th className="px-3 py-2 font-medium">Client</th>
-                  <th className="px-3 py-2 font-medium">Responsable</th>
-                  <th className="px-3 py-2 font-medium">Statut</th>
-                  <th className="px-3 py-2 font-medium">Urgence</th>
-                  <th className="px-3 py-2 font-medium">Catégories</th>
-                  <th className="px-3 py-2 font-medium">Échéance</th>
-                  <th className="px-3 py-2 font-medium">Clôture</th>
-                  <th className="px-3 py-2 font-medium">Montant</th>
-                  <th className="px-3 py-2 font-medium">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pageItems.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={10}
-                      className="px-3 py-6 text-sm text-muted-foreground"
-                    >
-                      {query.trim() || hasActiveFilters
-                        ? "Aucune opportunité ne correspond aux critères."
-                        : "Aucune opportunité pour le moment. Créez-en une pour commencer."}
-                    </td>
-                  </tr>
-                ) : (
-                  pageItems.map((item) => (
-                    <tr
-                      key={item.id}
-                      className="cursor-pointer border-b last:border-0 hover:bg-muted/30"
-                      onClick={() =>
-                        router.push(`/opportunities/${item.id}`)
-                      }
-                    >
-                      <td className="px-3 py-2 font-medium">
-                        {item.opportunity_name}
-                      </td>
-                      <td className="px-3 py-2">{item.client.client_name}</td>
-                      <td className="px-3 py-2">
-                        {getOpportunityResponsibleName(item.responsible)}
-                      </td>
-                      <td className="px-3 py-2">
-                        {getOpportunityKanbanStatusLabel(item.kanban_status)}
-                      </td>
-                      <td className="px-3 py-2">
-                        {getOpportunityPriorityLabel(item.priority)}
-                      </td>
-                      <td className="px-3 py-2 text-muted-foreground">
-                        {item.categories.map((c) => c.label).join(", ") ||
-                          "—"}
-                      </td>
-                      <td className="px-3 py-2 text-muted-foreground">
-                        {formatOpportunityDate(item.due_date_at)}
-                      </td>
-                      <td className="px-3 py-2 text-primary-foreground">
-                        {formatOpportunityDate(item.end_at)}
-                      </td>
-                      <td className="px-3 py-2">
-                        {formatOpportunityPrice(item.price)}
-                      </td>
-                      <td className="px-3 py-2">
-                        <IconActionButton
-                          label="Dupliquer l'opportunité"
-                          onClick={(event) => requestDuplicate(event, item)}
-                        >
-                          <CopySimple className="size-4" />
-                        </IconActionButton>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </ListViewTabsContent>
-      </div>
-
-      {view !== "kanban" ? (
-        <ListPaginationFooter
-          countLabel="Nombre d'opportunités"
-          count={filtered.length}
-          page={page}
-          totalPages={totalPages}
-          pageSize={PAGE_SIZE}
-          onPageChange={setPage}
-        />
-      ) : null}
-
-      <DuplicateConfirmDialog
-        open={duplicateTarget != null}
-        onOpenChange={(open) => {
+      viewTabs={OPPORTUNITY_VIEW_TABS}
+      query={query}
+      onQueryChange={(value) => {
+        setQuery(value);
+        setPage(1);
+      }}
+      toolbarActions={
+        <>
+          <IconActionButton
+            label="Filtres"
+            onClick={() => {
+              setDraftFilters(filters);
+              setFilterOpen(true);
+            }}
+          >
+            <FunnelSimple className="size-4" />
+          </IconActionButton>
+          <IconActionButton
+            label="Nouvelle opportunité"
+            onClick={() => openCreate()}
+          >
+            <PencilSimple className="size-4" />
+          </IconActionButton>
+        </>
+      }
+      kanbanLayout={view === "kanban"}
+      pagination={
+        view !== "kanban"
+          ? {
+              countLabel: "Nombre d'opportunités",
+              count: filtered.length,
+              page,
+              totalPages,
+              pageSize: PAGE_SIZE,
+              onPageChange: setPage,
+            }
+          : null
+      }
+      duplicate={{
+        open: duplicateTarget != null,
+        onOpenChange: (open) => {
           if (!open) setDuplicateTarget(null);
-        }}
-        entityLabel="opportunité"
-        entityName={duplicateTarget?.opportunity_name ?? ""}
-        onConfirm={() => {
+        },
+        entityLabel: "opportunité",
+        entityName: duplicateTarget?.opportunity_name ?? "",
+        onConfirm: () => {
           if (duplicateTarget) openCreate(duplicateTarget);
-        }}
-      />
-
-      <Dialog open={filterOpen} onOpenChange={setFilterOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto overflow-x-visible sm:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Filtres opportunités</DialogTitle>
-          </DialogHeader>
-          <div className="relative py-2">
-            <div
-              ref={filterPortalRef}
-              data-slot="dialog-portal-container"
-              className="pointer-events-none absolute inset-0 z-[100] overflow-visible"
-            />
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="grid min-w-0 gap-2">
-                <Label>Client</Label>
-                <Select
-                  value={draftFilters.clientId || "all"}
-                  onValueChange={(value) =>
-                    setDraftFilters((prev) => ({
-                      ...prev,
-                      clientId: value === "all" ? "" : value,
-                    }))
-                  }
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Tous" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Tous</SelectItem>
-                    {clientOptions.map((client) => (
-                      <SelectItem key={client.id} value={client.id}>
-                        {client.client_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+        },
+      }}
+      filterDialog={{
+        open: filterOpen,
+        onOpenChange: setFilterOpen,
+        title: "Filtres opportunités",
+        portalRef: filterPortalRef,
+        children: (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="grid min-w-0 gap-2">
+              <Label>Client</Label>
+              <Select
+                value={draftFilters.clientId || "all"}
+                onValueChange={(value) =>
+                  setDraftFilters((prev) => ({
+                    ...prev,
+                    clientId: value === "all" ? "" : value,
+                  }))
+                }
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Tous" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tous</SelectItem>
+                  {clientOptions.map((client) => (
+                    <SelectItem key={client.id} value={client.id}>
+                      {client.client_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid min-w-0 gap-2">
+              <Label>Responsable</Label>
+              <Select
+                value={draftFilters.responsibleId || "all"}
+                onValueChange={(value) =>
+                  setDraftFilters((prev) => ({
+                    ...prev,
+                    responsibleId: value === "all" ? "" : value,
+                  }))
+                }
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Tous" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tous</SelectItem>
+                  {responsibleOptions.map((person) => (
+                    <SelectItem key={person.id} value={person.id}>
+                      {getCollaboratorFullName(person)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid min-w-0 gap-2">
+              <Label>Pôle</Label>
+              <Select
+                value={draftFilters.teamId || "all"}
+                onValueChange={(value) =>
+                  setDraftFilters((prev) => ({
+                    ...prev,
+                    teamId: value === "all" ? "" : value,
+                  }))
+                }
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Tous" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tous</SelectItem>
+                  {teamOptions.map((team) => (
+                    <SelectItem key={team.id} value={team.id}>
+                      {team.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid min-w-0 gap-2">
+              <Label>Catégories</Label>
+              <CategoryMultiCombobox
+                className="w-full"
+                items={categories}
+                value={draftSelectedCategories}
+                onValueChange={(next) =>
+                  setDraftFilters((prev) => ({
+                    ...prev,
+                    categoryIds: next.map((item) => item.id),
+                  }))
+                }
+                placeholder="Filtrer par catégories…"
+                emptyListMessage="Aucune catégorie"
+                container={filterPortalRef}
+              />
+            </div>
+            <div className="grid min-w-0 gap-2">
+              <Label>Montant</Label>
+              <Select
+                value={draftFilters.amountBucket}
+                onValueChange={(value) =>
+                  setDraftFilters((prev) => ({
+                    ...prev,
+                    amountBucket: value as Filters["amountBucket"],
+                  }))
+                }
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tous</SelectItem>
+                  <SelectItem value="lt5k">&lt; 5 000 €</SelectItem>
+                  <SelectItem value="5to20k">5 000 – 20 000 €</SelectItem>
+                  <SelectItem value="gt20k">&gt; 20 000 €</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2 sm:col-span-2">
+              <Label>Statut</Label>
+              <div className="flex flex-wrap gap-1.5">
+                {OPPORTUNITY_KANBAN_STATUSES.map((status) => {
+                  const selected = draftFilters.statuses.includes(status);
+                  return (
+                    <Button
+                      key={status}
+                      type="button"
+                      size="sm"
+                      variant={selected ? "default" : "outline"}
+                      onClick={() => toggleDraftStatus(status)}
+                    >
+                      {getOpportunityKanbanStatusLabel(status)}
+                    </Button>
+                  );
+                })}
               </div>
-              <div className="grid min-w-0 gap-2">
-                <Label>Responsable</Label>
-                <Select
-                  value={draftFilters.responsibleId || "all"}
-                  onValueChange={(value) =>
-                    setDraftFilters((prev) => ({
-                      ...prev,
-                      responsibleId: value === "all" ? "" : value,
-                    }))
-                  }
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Tous" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Tous</SelectItem>
-                    {responsibleOptions.map((person) => (
-                      <SelectItem key={person.id} value={person.id}>
-                        {getCollaboratorFullName(person)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid min-w-0 gap-2">
-                <Label>Pôle</Label>
-                <Select
-                  value={draftFilters.teamId || "all"}
-                  onValueChange={(value) =>
-                    setDraftFilters((prev) => ({
-                      ...prev,
-                      teamId: value === "all" ? "" : value,
-                    }))
-                  }
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Tous" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Tous</SelectItem>
-                    {teamOptions.map((team) => (
-                      <SelectItem key={team.id} value={team.id}>
-                        {team.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid min-w-0 gap-2">
-                <Label>Catégories</Label>
-                <CategoryMultiCombobox
-                  className="w-full"
-                  items={categories}
-                  value={draftSelectedCategories}
-                  onValueChange={(next) =>
-                    setDraftFilters((prev) => ({
-                      ...prev,
-                      categoryIds: next.map((item) => item.id),
-                    }))
-                  }
-                  placeholder="Filtrer par catégories…"
-                  emptyListMessage="Aucune catégorie"
-                  container={filterPortalRef}
-                />
-              </div>
-              <div className="grid min-w-0 gap-2">
-                <Label>Montant</Label>
-                <Select
-                  value={draftFilters.amountBucket}
-                  onValueChange={(value) =>
-                    setDraftFilters((prev) => ({
-                      ...prev,
-                      amountBucket: value as Filters["amountBucket"],
-                    }))
-                  }
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Tous</SelectItem>
-                    <SelectItem value="lt5k">&lt; 5 000 €</SelectItem>
-                    <SelectItem value="5to20k">5 000 – 20 000 €</SelectItem>
-                    <SelectItem value="gt20k">&gt; 20 000 €</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2 sm:col-span-2">
-                <Label>Statut</Label>
-                <div className="flex flex-wrap gap-1.5">
-                  {OPPORTUNITY_KANBAN_STATUSES.map((status) => {
-                    const selected = draftFilters.statuses.includes(status);
-                    return (
-                      <Button
-                        key={status}
-                        type="button"
-                        size="sm"
-                        variant={selected ? "default" : "outline"}
-                        onClick={() => toggleDraftStatus(status)}
-                      >
-                        {getOpportunityKanbanStatusLabel(status)}
-                      </Button>
-                    );
-                  })}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Sans sélection : tous les statuts (hors archivées sauf option
-                  ci-dessous).
-                </p>
-              </div>
-              <div className="grid min-w-0 gap-2">
-                <Label>Probabilité</Label>
-                <Select
-                  value={draftFilters.probabilityBucket}
-                  onValueChange={(value) =>
-                    setDraftFilters((prev) => ({
-                      ...prev,
-                      probabilityBucket: value as Filters["probabilityBucket"],
-                    }))
-                  }
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Toutes</SelectItem>
-                    <SelectItem value="lt30">&lt; 30 %</SelectItem>
-                    <SelectItem value="30to50">30 – 50 %</SelectItem>
-                    <SelectItem value="gt50">&gt; 50 %</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid min-w-0 gap-2">
-                <Label>Urgence</Label>
-                <Select
-                  value={draftFilters.priority || "all"}
-                  onValueChange={(value) =>
-                    setDraftFilters((prev) => ({
-                      ...prev,
-                      priority:
-                        value === "all" ? "" : (value as OpportunityPriority),
-                    }))
-                  }
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Toutes" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Toutes</SelectItem>
-                    {OPPORTUNITY_PRIORITIES.map((value) => (
-                      <SelectItem key={value} value={value}>
-                        {getOpportunityPriorityLabel(value)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex items-center gap-2 sm:col-span-2">
-                <input
-                  id="include_archived"
-                  type="checkbox"
-                  className="size-4 rounded border"
-                  checked={draftFilters.includeArchived}
-                  onChange={(event) =>
-                    setDraftFilters((prev) => ({
-                      ...prev,
-                      includeArchived: event.target.checked,
-                    }))
-                  }
-                />
-                <Label htmlFor="include_archived" className="font-normal">
-                  Inclure les opportunités archivées (gagné / perdue)
-                </Label>
-              </div>
+              <p className="text-xs text-muted-foreground">
+                Sans sélection : tous les statuts (hors archivées sauf option
+                ci-dessous).
+              </p>
+            </div>
+            <div className="grid min-w-0 gap-2">
+              <Label>Probabilité</Label>
+              <Select
+                value={draftFilters.probabilityBucket}
+                onValueChange={(value) =>
+                  setDraftFilters((prev) => ({
+                    ...prev,
+                    probabilityBucket: value as Filters["probabilityBucket"],
+                  }))
+                }
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Toutes</SelectItem>
+                  <SelectItem value="lt30">&lt; 30 %</SelectItem>
+                  <SelectItem value="30to50">30 – 50 %</SelectItem>
+                  <SelectItem value="gt50">&gt; 50 %</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid min-w-0 gap-2">
+              <Label>Urgence</Label>
+              <Select
+                value={draftFilters.priority || "all"}
+                onValueChange={(value) =>
+                  setDraftFilters((prev) => ({
+                    ...prev,
+                    priority:
+                      value === "all" ? "" : (value as OpportunityPriority),
+                  }))
+                }
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Toutes" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Toutes</SelectItem>
+                  {OPPORTUNITY_PRIORITIES.map((value) => (
+                    <SelectItem key={value} value={value}>
+                      {getOpportunityPriorityLabel(value)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center gap-2 sm:col-span-2">
+              <input
+                id="include_archived"
+                type="checkbox"
+                className="size-4 rounded border"
+                checked={draftFilters.includeArchived}
+                onChange={(event) =>
+                  setDraftFilters((prev) => ({
+                    ...prev,
+                    includeArchived: event.target.checked,
+                  }))
+                }
+              />
+              <Label htmlFor="include_archived" className="font-normal">
+                Inclure les opportunités archivées (gagné / perdue)
+              </Label>
             </div>
           </div>
-          <DialogFooter className="gap-2 sm:gap-2">
+        ),
+        footer: (
+          <>
             <Button
               type="button"
               variant="outline"
@@ -804,9 +607,167 @@ export function OpportunitiesPageClient({
             >
               Appliquer
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </ListViewTabs>
+          </>
+        ),
+      }}
+    >
+      <ListViewTabsContent value="kanban" className="min-h-0 flex-1">
+        <OpportunitiesKanban items={filtered} />
+      </ListViewTabsContent>
+
+      <ListViewTabsContent value="cards" className="flex-none">
+        {filtered.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            {query.trim() || hasActiveFilters
+              ? "Aucune opportunité ne correspond aux critères."
+              : "Aucune opportunité pour le moment. Créez-en une pour commencer."}
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {pageItems.map((item) => (
+              <Link key={item.id} href={`/opportunities/${item.id}`}>
+                <Card className="h-full transition-colors hover:bg-muted/40">
+                  <CardHeader className="space-y-2 p-4 pb-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <CardTitle className="min-w-0 text-base leading-snug">
+                        {item.opportunity_name}
+                      </CardTitle>
+                      <IconActionButton
+                        label="Dupliquer l'opportunité"
+                        className="shrink-0"
+                        onClick={(event) => requestDuplicate(event, item)}
+                      >
+                        <CopySimple className="size-4" />
+                      </IconActionButton>
+                    </div>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                        {item.categories.length === 0 ? (
+                          <span className="text-xs text-muted-foreground">
+                            —
+                          </span>
+                        ) : (
+                          item.categories.slice(0, 3).map((category) => (
+                            <Badge key={category.id} variant="secondary">
+                              {category.label}
+                            </Badge>
+                          ))
+                        )}
+                      </div>
+                      <span className="shrink-0 text-xs text-muted-foreground">
+                        {getOpportunityPriorityLabel(item.priority)}
+                      </span>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-1 p-4 pt-2 text-xs text-muted-foreground">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="min-w-0 truncate">
+                        {item.client.client_name}
+                      </span>
+                      <span className="shrink-0 text-right">
+                        {getOpportunityResponsibleName(item.responsible)}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+                      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                        <Badge variant="outline" className="font-normal">
+                          {getOpportunityKanbanStatusLabel(item.kanban_status)}
+                        </Badge>
+                        <span>{formatOpportunityPrice(item.price)}</span>
+                        <span>
+                          {formatOpportunityProbability(
+                            item.probability_confirmation,
+                          )}
+                        </span>
+                      </div>
+                      <span className="shrink-0 text-primary-foreground">
+                        {formatOpportunityDate(item.end_at)}
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        )}
+      </ListViewTabsContent>
+
+      <ListViewTabsContent value="table" className="flex-none">
+        <div className="overflow-x-auto rounded-md border">
+          <table className="w-full min-w-[960px] text-left text-sm">
+            <thead className="border-b bg-muted/40 text-xs text-muted-foreground">
+              <tr>
+                <th className="px-3 py-2 font-medium">Nom</th>
+                <th className="px-3 py-2 font-medium">Client</th>
+                <th className="px-3 py-2 font-medium">Responsable</th>
+                <th className="px-3 py-2 font-medium">Statut</th>
+                <th className="px-3 py-2 font-medium">Urgence</th>
+                <th className="px-3 py-2 font-medium">Catégories</th>
+                <th className="px-3 py-2 font-medium">Échéance</th>
+                <th className="px-3 py-2 font-medium">Clôture</th>
+                <th className="px-3 py-2 font-medium">Montant</th>
+                <th className="px-3 py-2 font-medium">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pageItems.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={10}
+                    className="px-3 py-6 text-sm text-muted-foreground"
+                  >
+                    {query.trim() || hasActiveFilters
+                      ? "Aucune opportunité ne correspond aux critères."
+                      : "Aucune opportunité pour le moment. Créez-en une pour commencer."}
+                  </td>
+                </tr>
+              ) : (
+                pageItems.map((item) => (
+                  <tr
+                    key={item.id}
+                    className="cursor-pointer border-b last:border-0 hover:bg-muted/30"
+                    onClick={() => router.push(`/opportunities/${item.id}`)}
+                  >
+                    <td className="px-3 py-2 font-medium">
+                      {item.opportunity_name}
+                    </td>
+                    <td className="px-3 py-2">{item.client.client_name}</td>
+                    <td className="px-3 py-2">
+                      {getOpportunityResponsibleName(item.responsible)}
+                    </td>
+                    <td className="px-3 py-2">
+                      {getOpportunityKanbanStatusLabel(item.kanban_status)}
+                    </td>
+                    <td className="px-3 py-2">
+                      {getOpportunityPriorityLabel(item.priority)}
+                    </td>
+                    <td className="px-3 py-2 text-muted-foreground">
+                      {item.categories.map((c) => c.label).join(", ") || "—"}
+                    </td>
+                    <td className="px-3 py-2 text-muted-foreground">
+                      {formatOpportunityDate(item.due_date_at)}
+                    </td>
+                    <td className="px-3 py-2 text-primary-foreground">
+                      {formatOpportunityDate(item.end_at)}
+                    </td>
+                    <td className="px-3 py-2">
+                      {formatOpportunityPrice(item.price)}
+                    </td>
+                    <td className="px-3 py-2">
+                      <IconActionButton
+                        label="Dupliquer l'opportunité"
+                        onClick={(event) => requestDuplicate(event, item)}
+                      >
+                        <CopySimple className="size-4" />
+                      </IconActionButton>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </ListViewTabsContent>
+    </EntityListPageShell>
   );
 }

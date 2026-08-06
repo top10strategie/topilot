@@ -2,13 +2,13 @@ import { Suspense } from "react";
 import { Top10PageClient } from "@/components/collaborators/top10-page-client";
 import { PageHero } from "@/components/layout/page-hero";
 import { Skeleton } from "@/components/ui/skeleton";
+import { listTop10ActiveMissions } from "@/lib/missions/queries";
 import { loadPeopleDirectory } from "@/lib/collaborators/queries";
-import { listMissions } from "@/lib/missions/queries";
 
 async function Top10Content() {
   const [{ teams, collaborators }, missions] = await Promise.all([
     loadPeopleDirectory(),
-    listMissions(),
+    listTop10ActiveMissions(),
   ]);
 
   return (

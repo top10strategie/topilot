@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireActiveCollaboratorAction } from "@/lib/auth/require-action";
-import { uploadClientLogo } from "@/lib/clients/visuals";
+import { deleteClientVisual, uploadClientLogo } from "@/lib/clients/visuals";
 import {
   formBool,
   formCategoryIds,
@@ -217,12 +217,19 @@ export async function updateClientRecord(
     ? formOptional(formData, "notes")
     : undefined;
   let logo_id = existing.logo_id as string | null;
+  const previousLogoId = logo_id;
   const logoFile = formFile(formData, "logo");
+  let shouldPurgePreviousLogo = false;
+
   if (formBool(formData, "clear_logo", false)) {
     logo_id = null;
+    shouldPurgePreviousLogo = Boolean(previousLogoId);
   } else if (logoFile) {
     try {
       logo_id = (await uploadClientLogo(logoFile)).documentId;
+      shouldPurgePreviousLogo = Boolean(
+        previousLogoId && previousLogoId !== logo_id,
+      );
     } catch (error) {
       return {
         success: false,
@@ -256,7 +263,7 @@ export async function updateClientRecord(
 
   const { data, error } = await supabase
     .from("client")
-    .update(payload)
+    .update(payload as never)
     .eq("id", id)
     .select("id")
     .maybeSingle();
@@ -269,6 +276,10 @@ export async function updateClientRecord(
         ? `Impossible de mettre à jour le client : ${error.message}`
         : "Client introuvable.",
     };
+  }
+
+  if (shouldPurgePreviousLogo && previousLogoId) {
+    await deleteClientVisual(previousLogoId);
   }
 
   const sync = await syncClientCategories(

@@ -2,6 +2,7 @@
 
 import { requireActiveCollaboratorAction } from "@/lib/auth/require-action";
 import { revalidateCrmEntity } from "@/lib/revalidate-crm-entity";
+import { looseClient } from "@/lib/supabase/loose";
 import { createClient } from "@/lib/supabase/server";
 import { getWikiById } from "@/lib/wiki/queries";
 import type { WikiLinkEntity, WikiListItem } from "@/lib/wiki/types";
@@ -54,7 +55,7 @@ export async function linkWikiToEntity(input: {
     return { success: false, error: "Identifiants invalides." };
   }
 
-  const supabase = await createClient();
+  const supabase = looseClient(await createClient());
   const table = input.entity === "client" ? "client_wiki" : "mission_wiki";
   const fk = input.entity === "client" ? "client_id" : "mission_id";
 
@@ -90,7 +91,7 @@ export async function unlinkWikiFromEntity(input: {
     return { success: false, error: "Identifiants invalides." };
   }
 
-  const supabase = await createClient();
+  const supabase = looseClient(await createClient());
   const table = input.entity === "client" ? "client_wiki" : "mission_wiki";
   const fk = input.entity === "client" ? "client_id" : "mission_id";
 

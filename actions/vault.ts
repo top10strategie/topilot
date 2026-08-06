@@ -3,6 +3,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireActiveCollaboratorAction } from "@/lib/auth/require-action";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { looseClient } from "@/lib/supabase/loose";
 import { createClient } from "@/lib/supabase/server";
 import { isUuid } from "@/lib/uuid";
 
@@ -76,7 +77,7 @@ async function classifyVaultSecretForSession(
 
   if (visible) return "linked_visible";
 
-  const admin = createAdminClient();
+  const admin = looseClient(createAdminClient());
   const { count, error } = await admin
     .from("tool_access")
     .select("id", { count: "exact", head: true })
@@ -122,7 +123,7 @@ export async function createVaultSecret(
   const secretName = buildToolAccessSecretName(tid, label);
 
   try {
-    const admin = createAdminClient();
+    const admin = looseClient(createAdminClient());
     const { error } = await admin.rpc("insert_secret", {
       secret_name: secretName,
       secret_value: password,
@@ -177,7 +178,7 @@ export async function updateVaultSecret(
   }
 
   try {
-    const admin = createAdminClient();
+    const admin = looseClient(createAdminClient());
 
     if (isLegacyVaultUuidRef(ref)) {
       const { data: meta, error: metaError } = await admin
@@ -256,7 +257,7 @@ export async function deleteVaultSecret(
   }
 
   try {
-    const admin = createAdminClient();
+    const admin = looseClient(createAdminClient());
 
     if (isLegacyVaultUuidRef(ref)) {
       const { data, error } = await admin
@@ -316,7 +317,7 @@ export async function readVaultSecret(
   }
 
   try {
-    const admin = createAdminClient();
+    const admin = looseClient(createAdminClient());
 
     if (isLegacyVaultUuidRef(ref)) {
       const { data: row, error } = await admin
