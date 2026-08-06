@@ -5,6 +5,7 @@ import { requireActiveCollaboratorAction } from "@/lib/auth/require-action";
 import { uploadCollaboratorProfilePicture } from "@/lib/collaborators/profile-picture";
 import { formText } from "@/lib/form-data";
 import {
+  isCollaboratorHomeWidgetId,
   isHomeWidgetId,
   type HomeWidgetId,
 } from "@/lib/analyses/types";
@@ -195,6 +196,12 @@ export async function updateHomeWidgets(
     if (!isHomeWidgetId(id)) {
       return { success: false, error: `Widget inconnu : ${id}` };
     }
+    if (
+      auth.collaborator.role === "collaborator" &&
+      !isCollaboratorHomeWidgetId(id)
+    ) {
+      continue;
+    }
     if (!cleaned.includes(id)) cleaned.push(id);
   }
 
@@ -211,5 +218,57 @@ export async function updateHomeWidgets(
 
   revalidatePath("/");
   revalidatePath("/settings");
+  return { success: true };
+}
+
+export async function updatePreferredMissionCategories(
+  categoryIds: string[],
+): Promise<SettingsActionResult> {
+  const auth = await requireActiveCollaboratorAction();
+  if (!auth.success) return { success: false, error: auth.error };
+
+  const cleaned: string[] = [];
+  for (const raw of categoryIds) {
+    const id = typeof raw === "string" ? raw.trim() : "";
+    if (!isUuid(id)) {
+      return { success: false, error: "Identifiant de catégorie invalide." };
+    }
+    if (!cleaned.includes(id)) cleaned.push(id);
+  }
+
+  const supabase = await createClient();
+
+  if (cleaned.length > 0) {
+    const { data: visible, error: catError } = await supabase
+      .from("category_business")
+      .select("id")
+      .in("id", cleaned);
+
+    if (catError) {
+      return { success: false, error: catError.message };
+    }
+
+    const visibleIds = new Set((visible ?? []).map((row) => row.id as string));
+    for (const id of cleaned) {
+      if (!visibleIds.has(id)) {
+        return {
+          success: false,
+          error: "Une ou plusieurs catégories sont inaccessibles.",
+        };
+      }
+    }
+  }
+
+  const { error } = await supabase
+    .from("setting")
+    .update({ preferred_mission_category_ids: cleaned })
+    .eq("collaborator_id", auth.collaborator.id);
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  revalidatePath("/settings");
+  revalidatePath("/missions");
   return { success: true };
 }

@@ -39,12 +39,14 @@ const OPPORTUNITY_LIST_SELECT = `
   price,
   probability_confirmation,
   average_price,
+  entry_average_price,
   kanban_status,
   kanban_order,
   is_active,
   priority,
   due_date_at,
   end_at,
+  closed_at,
   client:client_id ( id, client_name ),
   contact_client:contact_client_id ( id, first_name, last_name ),
   collaborator:collaborator_id (
@@ -54,7 +56,7 @@ const OPPORTUNITY_LIST_SELECT = `
     profile_picture:profile_picture_id ( id, file_path, is_visual )
   ),
   opportunity_category (
-    category:category_id ( id, label )
+    category:category_business!category_id ( id, label, is_private )
   )
 `;
 
@@ -67,12 +69,14 @@ type OpportunityListRow = {
   price: number | string | null;
   probability_confirmation: number | string;
   average_price: number | string | null;
+  entry_average_price: number | string | null;
   kanban_status: OpportunityKanbanStatus;
   kanban_order: number | null;
   is_active: boolean;
   priority: OpportunityPriority;
   due_date_at: string | null;
   end_at: string | null;
+  closed_at: string | null;
   client: { id: string; client_name: string } | null;
   contact_client: {
     id: string;
@@ -120,12 +124,14 @@ function mapListItem(row: OpportunityListRow): OpportunityListItem {
     price: toNumber(row.price),
     probability_confirmation: toNumber(row.probability_confirmation) ?? 0,
     average_price: toNumber(row.average_price),
+    entry_average_price: toNumber(row.entry_average_price),
     kanban_status: row.kanban_status,
     kanban_order: row.kanban_order,
     is_active: row.is_active,
     priority: row.priority,
     due_date_at: row.due_date_at,
     end_at: row.end_at,
+    closed_at: row.closed_at,
     client: row.client ?? {
       id: row.client_id,
       client_name: "?",

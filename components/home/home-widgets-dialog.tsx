@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { updateHomeWidgets } from "@/actions/settings";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import {
+  COLLABORATOR_HOME_WIDGET_IDS,
   HOME_WIDGET_GROUPS,
   HOME_WIDGET_LABELS,
   type HomeWidgetId,
@@ -24,6 +25,7 @@ type HomeWidgetsDialogProps = {
   onOpenChange: (open: boolean) => void;
   initialSelected: HomeWidgetId[];
   onSaved: (selected: HomeWidgetId[]) => void;
+  role: string;
 };
 
 export function HomeWidgetsDialog({
@@ -31,9 +33,19 @@ export function HomeWidgetsDialog({
   onOpenChange,
   initialSelected,
   onSaved,
+  role,
 }: HomeWidgetsDialogProps) {
   const [selected, setSelected] = useState<HomeWidgetId[]>(initialSelected);
   const [isPending, startTransition] = useTransition();
+
+  const groups = useMemo(() => {
+    if (role !== "collaborator") return HOME_WIDGET_GROUPS;
+    const allowed = new Set<string>(COLLABORATOR_HOME_WIDGET_IDS);
+    return HOME_WIDGET_GROUPS.map((group) => ({
+      ...group,
+      ids: group.ids.filter((id) => allowed.has(id)),
+    })).filter((group) => group.ids.length > 0);
+  }, [role]);
 
   const toggle = (id: HomeWidgetId, checked: boolean) => {
     setSelected((prev) => {
@@ -74,7 +86,7 @@ export function HomeWidgetsDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-5">
-          {HOME_WIDGET_GROUPS.map((group) => (
+          {groups.map((group) => (
             <section key={group.label} className="space-y-2">
               <h3 className="text-sm font-semibold">{group.label}</h3>
               <ul className="space-y-2">

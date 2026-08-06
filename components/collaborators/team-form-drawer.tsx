@@ -3,7 +3,7 @@
 import { useId, useState, useTransition, type FormEvent } from "react";
 import { FolderSimplePlus } from "@phosphor-icons/react";
 import { toast } from "sonner";
-import { createCategory, updateCategory } from "@/actions/categories";
+import { createBusinessCategory, updateBusinessCategory } from "@/actions/categories";
 import { createTeam, updateTeam } from "@/actions/teams";
 import { CategoryMultiCombobox } from "@/components/categories/category-multi-combobox";
 import { LabelEntityFormDrawer } from "@/components/categories/label-entity-form-drawer";
@@ -24,8 +24,9 @@ type TeamFormDrawerProps = {
   mode: "create" | "edit";
   team?: Pick<TeamListItem, "id" | "team_name" | "notes" | "categories">;
   helpers: DrawerHelpers<{ id: string; team_name: string }>;
-  /** Catalogue des catégories (peut être enrichi via tiroir empilé). */
+  /** Catalogue des catégories métier (peut être enrichi via tiroir empilé). */
   availableCategories?: CategoryItem[];
+  canManagePrivacy?: boolean;
 };
 
 /**
@@ -36,6 +37,7 @@ export function TeamFormDrawer({
   team,
   helpers,
   availableCategories = [],
+  canManagePrivacy = false,
 }: TeamFormDrawerProps) {
   const { pushDrawer } = useDrawerStack();
   const categoriesFieldId = useId();
@@ -88,7 +90,8 @@ export function TeamFormDrawer({
       content: (nestedHelpers) => (
         <LabelEntityFormDrawer
           mode="create"
-          entityKind="category"
+          entityKind="category_business"
+          canManagePrivacy={canManagePrivacy}
           helpers={{
             dismiss: nestedHelpers.dismiss,
             resolve: (value) => {
@@ -96,8 +99,8 @@ export function TeamFormDrawer({
               nestedHelpers.resolve(value);
             },
           }}
-          onCreate={createCategory}
-          onUpdate={updateCategory}
+          onCreate={createBusinessCategory}
+          onUpdate={updateBusinessCategory}
         />
       ),
     });

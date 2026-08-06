@@ -2,6 +2,7 @@ import type { AuditAction, AuditEntityType } from "./types";
 
 const ENTITY_TYPE_LABELS: Record<AuditEntityType, string> = {
   category: "Catégorie",
+  category_business: "Catégorie",
   team: "Pôle",
   collaborator: "Collaborateur",
   client: "Client",

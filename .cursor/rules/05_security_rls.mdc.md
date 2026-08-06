@@ -40,7 +40,8 @@ CREATE POLICY "actifs_seulement" ON collaborator
 |`collaborator`|Tous les actifs|**INSERT réservé Manager/Direction** ; UPDATE : tous les actifs (champs sensibles `role`/`status` réservés Manager/Direction, cf. trigger dédié ci-dessous)|❌ Personne (anonymisation Manager/Direction uniquement)|
 |`team`|Tous les actifs|Tous les actifs|Manager + Direction|
 |`wiki`|Tous les actifs|Tous les actifs|Tous les actifs|
-|`contact_client`, `tool`, `document`, `category`, `document_type`, `tool_subscription`, `tool_subscription_price`, `setting`|Tous les actifs|Tous les actifs|Tous les actifs|
+|`contact_client`, `tool`, `document`, `category`, `category_business` (non privé), `document_type`, `tool_subscription`, `tool_subscription_price`, `setting`|Tous les actifs|Tous les actifs|Tous les actifs|
+|`category_business` (`is_private = true`)|Manager + Direction|Manager + Direction|Manager + Direction|
 |`tool_access` (`is_private = false`)|Tous les actifs|Tous les actifs|Tous les actifs|
 |`tool_access` (`is_private = true`)|Manager + Direction|Manager + Direction|Manager + Direction|
 |`exchange_rate`|Tous les actifs|Service role uniquement|Tous les actifs|
@@ -155,6 +156,14 @@ $$ LANGUAGE sql STABLE SECURITY DEFINER;
     - De toutes les listes et vues pour le rôle Collaborateur.
     - Du filtre côté serveur — ne pas se fier au frontend seul.
 - La privatisation d'un accès est historisée dans `audit_log` (action : `UPDATE`, entity_type `tool_access`).
+
+## Catégories métier privées (`category_business.is_private`)
+
+- SELECT/UPDATE/DELETE : Collaborateur = `is_private = false` ; Manager/Direction = tout. Bascule `is_private` réservée Manager/Direction (trigger).
+- Entités `client`, `team`, `mission`, `opportunity` : Collaborateur exclu si ≥1 cat. métier privée **ou** cascade (enfant masqué si client/opportunité parente privée). Contacts et documents liés suivent la cascade.
+- Helpers SQL : `has_private_business_category`, `can_access_*`, `team_name_for_display`.
+- `search_global` applique les mêmes exclusions. `/analyses` : Manager/Direction uniquement.
+- Pôle privé : pas de membre rôle Collaborateur ; ajout d’une cat. privée bloqué tant que des Collaborateurs sont membres.
 
 > **Policy `UPDATE` alignée sur `SELECT`** : la policy `tool_access_update_active` applique le même filtre `is_private` que `tool_access_select` — sans cela, un Collaborateur ne pouvant pas _lire_ un accès privé pourrait néanmoins en modifier `label`/`identifier` par une requête `UPDATE` directe (écriture aveugle) s'il en connaît l'`id`. Seul le champ `is_private` lui-même reste protégé séparément par le trigger `enforce_tool_access_privacy_change` ci-dessous.
 

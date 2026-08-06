@@ -84,7 +84,47 @@ export async function listCollaborators(): Promise<CollaboratorListItem[]> {
     throw new Error(`Impossible de charger les collaborateurs : ${error.message}`);
   }
 
-  return ((data ?? []) as unknown as CollaboratorRow[]).map(mapCollaborator);
+  const collaborators = ((data ?? []) as unknown as CollaboratorRow[]).map(
+    mapCollaborator,
+  );
+
+  // Pôles privés : le join team échoue pour les collaborateurs (RLS),
+  // mais le libellé reste affichable via RPC security definer.
+  const missingTeamIds = [
+    ...new Set(
+      collaborators
+        .filter((c) => c.team_id && c.team_name === "—")
+        .map((c) => c.team_id),
+    ),
+  ];
+
+  if (missingTeamIds.length > 0) {
+    const nameByTeamId = new Map<string, string>();
+    await Promise.all(
+      missingTeamIds.map(async (teamId) => {
+        const { data: teamName, error: rpcError } = await supabase.rpc(
+          "team_name_for_display",
+          { p_team_id: teamId },
+        );
+        if (rpcError) {
+          console.error("team_name_for_display:", rpcError);
+          return;
+        }
+        if (typeof teamName === "string" && teamName) {
+          nameByTeamId.set(teamId, teamName);
+        }
+      }),
+    );
+
+    for (const person of collaborators) {
+      const resolved = nameByTeamId.get(person.team_id);
+      if (resolved) {
+        person.team_name = resolved;
+      }
+    }
+  }
+
+  return collaborators;
 }
 
 function buildTeamsWithMembers(
@@ -132,7 +172,7 @@ export async function loadPeopleDirectory(): Promise<{
         team_name,
         notes,
         team_category (
-          category:category_id ( id, label )
+          category:category_business!category_id ( id, label, is_private )
         )
       `,
       )

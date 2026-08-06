@@ -3,7 +3,8 @@
 import { useMemo, useState, useTransition, type FormEvent } from "react";
 import { Buildings, FolderSimplePlus, UserPlus } from "@phosphor-icons/react";
 import { toast } from "sonner";
-import { createCategory, updateCategory } from "@/actions/categories";
+import { createBusinessCategory, updateBusinessCategory } from "@/actions/categories";
+
 import {
   createOpportunityRecord,
   updateOpportunityRecord,
@@ -58,6 +59,7 @@ type OpportunityFormDrawerProps = {
   clients: ClientListItem[];
   contacts: OpportunityContactOption[];
   availableCategories: CategoryItem[];
+  canManagePrivacy?: boolean;
   helpers: DrawerHelpers<{ id: string; opportunity_name: string }>;
   /** Prefill création (duplication). */
   duplicatePrefill?: OpportunityDuplicatePrefill;
@@ -76,6 +78,7 @@ export function OpportunityFormDrawer({
   clients: initialClients,
   contacts: initialContacts,
   availableCategories = [],
+  canManagePrivacy = false,
   helpers,
   duplicatePrefill,
 }: OpportunityFormDrawerProps) {
@@ -224,7 +227,8 @@ export function OpportunityFormDrawer({
       content: (nested) => (
         <LabelEntityFormDrawer
           mode="create"
-          entityKind="category"
+          entityKind="category_business"
+          canManagePrivacy={canManagePrivacy}
           helpers={{
             dismiss: nested.dismiss,
             resolve: (value) => {
@@ -232,8 +236,8 @@ export function OpportunityFormDrawer({
               nested.resolve(value);
             },
           }}
-          onCreate={createCategory}
-          onUpdate={updateCategory}
+          onCreate={createBusinessCategory}
+          onUpdate={updateBusinessCategory}
         />
       ),
     });
@@ -248,6 +252,7 @@ export function OpportunityFormDrawer({
           mode="create"
           collaborators={collaborators}
           availableCategories={availableCategories}
+          canManagePrivacy={canManagePrivacy}
           helpers={nested}
         />
       ),

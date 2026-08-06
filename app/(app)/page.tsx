@@ -26,6 +26,7 @@ async function HomeContent() {
       opportunities={opportunities}
       missions={missions}
       initialWidgets={profile.home_widgets}
+      role={profile.role}
     />
   );
 }

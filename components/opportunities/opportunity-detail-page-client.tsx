@@ -69,6 +69,7 @@ type OpportunityDetailPageClientProps = {
   linkedClient: ClientDetail | null;
   contacts: OpportunityContactOption[];
   categories: CategoryItem[];
+  utilityCategories: CategoryItem[];
   missions: MissionListItem[];
   opportunityOptions: MissionOpportunityOption[];
   currentCollaboratorId: string;
@@ -88,6 +89,7 @@ export function OpportunityDetailPageClient({
   linkedClient,
   contacts,
   categories,
+  utilityCategories,
   missions,
   opportunityOptions,
   currentCollaboratorId,
@@ -141,6 +143,7 @@ export function OpportunityDetailPageClient({
           clients={clients}
           contacts={contacts}
           availableCategories={categories}
+          canManagePrivacy={canManagePrivacy}
           helpers={helpers}
         />
       ),
@@ -159,6 +162,7 @@ export function OpportunityDetailPageClient({
           clients={clients}
           contacts={contacts}
           availableCategories={categories}
+          canManagePrivacy={canManagePrivacy}
           duplicatePrefill={buildOpportunityDuplicatePrefill(opportunity)}
           helpers={helpers}
         />
@@ -179,6 +183,7 @@ export function OpportunityDetailPageClient({
           availableCategories={categories}
           opportunityOptions={opportunityOptions}
           currentCollaboratorId={currentCollaboratorId}
+          canManagePrivacy={canManagePrivacy}
           duplicatePrefill={buildMissionDuplicatePrefill(source)}
           helpers={helpers}
         />
@@ -218,6 +223,7 @@ export function OpportunityDetailPageClient({
           availableCategories={categories}
           opportunityOptions={opportunityOptions}
           currentCollaboratorId={currentCollaboratorId}
+          canManagePrivacy={canManagePrivacy}
           lockedFields={{
             opportunity_id: opportunity.id,
             client_id: opportunity.client_id,
@@ -566,7 +572,7 @@ export function OpportunityDetailPageClient({
                 entityId={opportunity.id}
                 tools={linkedTools}
                 linkOptions={toolLinkOptions}
-                categories={categories}
+                categories={utilityCategories}
                 collaborators={collaborators}
                 canManagePrivacy={canManagePrivacy}
               />
