@@ -7,7 +7,10 @@ import { HomeWidgetsDialog } from "@/components/home/home-widgets-dialog";
 import { IconActionButton } from "@/components/layout/icon-action-button";
 import { PageHero } from "@/components/layout/page-hero";
 import type { AnalysesPayload, HomeWidgetId } from "@/lib/analyses/types";
-import { isHomeWidgetId } from "@/lib/analyses/types";
+import {
+  isCollaboratorHomeWidgetId,
+  isHomeWidgetId,
+} from "@/lib/analyses/types";
 import type { MissionListItem } from "@/lib/missions/types";
 import type { OpportunityListItem } from "@/lib/opportunities/types";
 
@@ -16,16 +19,31 @@ type HomePageClientProps = {
   opportunities: OpportunityListItem[];
   missions: MissionListItem[];
   initialWidgets: string[];
+  role: string;
 };
+
+function filterWidgetsForRole(
+  widgets: string[],
+  role: string,
+): HomeWidgetId[] {
+  const normalized = widgets.map((id) =>
+    id === "opp_by_category" ? "opp_ca_by_category" : id,
+  );
+  if (role === "collaborator") {
+    return normalized.filter(isCollaboratorHomeWidgetId);
+  }
+  return normalized.filter(isHomeWidgetId);
+}
 
 export function HomePageClient({
   analyses,
   opportunities,
   missions,
   initialWidgets,
+  role,
 }: HomePageClientProps) {
-  const [widgets, setWidgets] = useState<HomeWidgetId[]>(
-    initialWidgets.filter(isHomeWidgetId),
+  const [widgets, setWidgets] = useState<HomeWidgetId[]>(() =>
+    filterWidgetsForRole(initialWidgets, role),
   );
   const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -57,6 +75,7 @@ export function HomePageClient({
                 analyses={analyses}
                 opportunities={opportunities}
                 missions={missions}
+                role={role}
               />
             ))}
           </div>
@@ -66,7 +85,10 @@ export function HomePageClient({
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         initialSelected={widgets}
-        onSaved={setWidgets}
+        onSaved={(selected) =>
+          setWidgets(filterWidgetsForRole(selected, role))
+        }
+        role={role}
       />
     </div>
   );

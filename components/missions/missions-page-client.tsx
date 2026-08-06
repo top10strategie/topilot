@@ -101,6 +101,7 @@ type MissionsPageClientProps = {
   currentCollaboratorId: string;
   initialTeamId?: string;
   initialResponsibleId?: string;
+  initialCategoryIds?: string[];
 };
 
 type Filters = {
@@ -162,6 +163,7 @@ export function MissionsPageClient({
   currentCollaboratorId,
   initialTeamId = "",
   initialResponsibleId = "",
+  initialCategoryIds = [],
 }: MissionsPageClientProps) {
   const router = useRouter();
   const { pushDrawer } = useDrawerStack();
@@ -172,11 +174,13 @@ export function MissionsPageClient({
     ...DEFAULT_FILTERS,
     teamId: initialTeamId,
     responsibleId: initialResponsibleId,
+    categoryIds: initialCategoryIds,
   });
   const [draftFilters, setDraftFilters] = useState<Filters>({
     ...DEFAULT_FILTERS,
     teamId: initialTeamId,
     responsibleId: initialResponsibleId,
+    categoryIds: initialCategoryIds,
   });
   const [filterOpen, setFilterOpen] = useState(false);
   const [duplicateTarget, setDuplicateTarget] =

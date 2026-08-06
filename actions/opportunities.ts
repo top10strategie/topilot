@@ -2,12 +2,39 @@
 
 import { revalidatePath } from "next/cache";
 import { requireActiveCollaboratorAction } from "@/lib/auth/require-action";
+import { todayParisYmd } from "@/lib/dates/paris";
 import { formCategoryIds, formOptional, formText } from "@/lib/form-data";
 import type {
   OpportunityKanbanStatus,
   OpportunityPriority,
 } from "@/lib/opportunities/types";
 import { createClient } from "@/lib/supabase/server";
+
+const CLOSED_KANBAN_STATUSES = new Set<OpportunityKanbanStatus>([
+  "gagne",
+  "perdue",
+]);
+
+/**
+ * Filet app à la clôture (complète le trigger DB) :
+ * - `end_at` vide → aujourd’hui Paris
+ * - `closed_at` posé si transition vers gagne/perdue
+ */
+function applyClosureDates(
+  payload: Record<string, unknown>,
+  kanbanStatus: OpportunityKanbanStatus,
+  endAt: string | null | undefined,
+  opts?: { isStatusTransitionToClosed?: boolean },
+) {
+  if (!CLOSED_KANBAN_STATUSES.has(kanbanStatus)) return;
+  const today = todayParisYmd();
+  if (!endAt) {
+    payload.end_at = today;
+  }
+  if (opts?.isStatusTransitionToClosed) {
+    payload.closed_at = today;
+  }
+}
 
 export type OpportunityActionResult =
   | {
@@ -289,7 +316,7 @@ export async function updateOpportunityRecord(
   const supabase = await createClient();
   const { data: existing, error: existingError } = await supabase
     .from("opportunity")
-    .select("id, notes")
+    .select("id, notes, kanban_status")
     .eq("id", id)
     .maybeSingle();
 
@@ -321,6 +348,12 @@ export async function updateOpportunityRecord(
     price,
     probability_confirmation: probability ?? 10,
   };
+
+  applyClosureDates(payload, kanbanRaw as OpportunityKanbanStatus, end_at, {
+    isStatusTransitionToClosed:
+      existing.kanban_status !== kanbanRaw &&
+      CLOSED_KANBAN_STATUSES.has(kanbanRaw as OpportunityKanbanStatus),
+  });
 
   if (notes !== undefined) {
     payload.notes = notes;
@@ -390,18 +423,59 @@ export async function updateOpportunitiesKanban(
   }
 
   const supabase = await createClient();
+
+  const closedIds = updates
+    .filter((u) => CLOSED_KANBAN_STATUSES.has(u.kanban_status))
+    .map((u) => u.id);
+  const existingById = new Map<
+    string,
+    { end_at: string | null; kanban_status: OpportunityKanbanStatus }
+  >();
+  if (closedIds.length > 0) {
+    const { data: rows, error: fetchError } = await supabase
+      .from("opportunity")
+      .select("id, end_at, kanban_status")
+      .in("id", closedIds);
+    if (fetchError) {
+      console.error("updateOpportunitiesKanban fetch:", fetchError);
+      return {
+        success: false,
+        error: `Impossible de lire les opportunités : ${fetchError.message}`,
+      };
+    }
+    for (const row of rows ?? []) {
+      existingById.set(row.id as string, {
+        end_at: (row.end_at as string | null) ?? null,
+        kanban_status: row.kanban_status as OpportunityKanbanStatus,
+      });
+    }
+  }
+
   const results = await Promise.all(
-    updates.map((update) =>
-      supabase
+    updates.map((update) => {
+      const payload: Record<string, unknown> = {
+        kanban_status: update.kanban_status,
+        kanban_order: update.kanban_order,
+      };
+      if (CLOSED_KANBAN_STATUSES.has(update.kanban_status)) {
+        const existing = existingById.get(update.id);
+        applyClosureDates(
+          payload,
+          update.kanban_status,
+          existing?.end_at,
+          {
+            isStatusTransitionToClosed:
+              existing?.kanban_status !== update.kanban_status,
+          },
+        );
+      }
+      return supabase
         .from("opportunity")
-        .update({
-          kanban_status: update.kanban_status,
-          kanban_order: update.kanban_order,
-        })
+        .update(payload)
         .eq("id", update.id)
         .select("id")
-        .maybeSingle(),
-    ),
+        .maybeSingle();
+    }),
   );
 
   for (const result of results) {
@@ -438,9 +512,32 @@ export async function markOpportunityAsLost(
   }
 
   const supabase = await createClient();
+  const { data: existing, error: existingError } = await supabase
+    .from("opportunity")
+    .select("id, end_at")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (existingError || !existing) {
+    return {
+      success: false,
+      error: existingError
+        ? `Impossible de lire l'opportunité : ${existingError.message}`
+        : "Opportunité introuvable.",
+    };
+  }
+
+  const payload: Record<string, unknown> = { kanban_status: "perdue" };
+  applyClosureDates(
+    payload,
+    "perdue",
+    (existing.end_at as string | null) ?? null,
+    { isStatusTransitionToClosed: true },
+  );
+
   const { data, error } = await supabase
     .from("opportunity")
-    .update({ kanban_status: "perdue" })
+    .update(payload)
     .eq("id", id)
     .select("id")
     .maybeSingle();

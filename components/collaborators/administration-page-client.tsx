@@ -9,8 +9,11 @@ import {
   UserPlus,
 } from "@phosphor-icons/react";
 import {
+  createBusinessCategory,
   createCategory,
+  deleteBusinessCategory,
   deleteCategory,
+  updateBusinessCategory,
   updateCategory,
 } from "@/actions/categories";
 import {
@@ -49,14 +52,19 @@ import type {
   CollaboratorListItem,
   TeamListItem,
 } from "@/lib/collaborators/types";
-import type { CategoryItem, DocumentTypeItem } from "@/lib/categories/types";
+import type {
+  BusinessCategoryItem,
+  CategoryItem,
+  DocumentTypeItem,
+} from "@/lib/categories/types";
 import type { MissionListItem } from "@/lib/missions/types";
 
 type AdministrationPageClientProps = {
   canManagePeople: boolean;
   teams: TeamListItem[];
   collaborators: CollaboratorListItem[];
-  categories: CategoryItem[];
+  businessCategories: BusinessCategoryItem[];
+  utilityCategories: CategoryItem[];
   documentTypes: DocumentTypeItem[];
   missions: MissionListItem[];
 };
@@ -75,10 +83,14 @@ type PendingAnonymize = {
 type PendingDeleteLabel = {
   id: string;
   label: string;
-  kind: "category" | "document_type";
+  kind: "category_business" | "category" | "document_type";
 };
 
-type AdminTab = "categories" | "types" | "people";
+type AdminTab =
+  | "categories_business"
+  | "categories_utility"
+  | "types"
+  | "people";
 
 function recentMissionsForCollaborator(
   missions: MissionListItem[],
@@ -116,13 +128,14 @@ export function AdministrationPageClient({
   canManagePeople,
   teams,
   collaborators,
-  categories,
+  businessCategories,
+  utilityCategories,
   documentTypes,
   missions,
 }: AdministrationPageClientProps) {
   const router = useRouter();
   const { pushDrawer } = useDrawerStack();
-  const [activeTab, setActiveTab] = useState<AdminTab>("categories");
+  const [activeTab, setActiveTab] = useState<AdminTab>("categories_business");
   const [query, setQuery] = useState("");
   const [pendingDeleteTeam, setPendingDeleteTeam] =
     useState<PendingDeleteTeam | null>(null);
@@ -187,7 +200,8 @@ export function AdministrationPageClient({
         <TeamFormDrawer
           mode="create"
           helpers={helpers}
-          availableCategories={categories}
+          availableCategories={businessCategories}
+          canManagePrivacy={canManagePeople}
         />
       ),
     }).then((created) => {
@@ -210,7 +224,8 @@ export function AdministrationPageClient({
             categories: team.categories,
           }}
           helpers={helpers}
-          availableCategories={categories}
+          availableCategories={businessCategories}
+          canManagePrivacy={canManagePeople}
         />
       ),
     }).then((updated) => {
@@ -227,7 +242,8 @@ export function AdministrationPageClient({
         <CollaboratorFormDrawer
           mode="create"
           teams={teamOptions}
-          availableCategories={categories}
+          availableCategories={businessCategories}
+          canManagePrivacy={canManagePeople}
           helpers={helpers}
         />
       ),
@@ -246,7 +262,8 @@ export function AdministrationPageClient({
           mode="edit"
           collaborator={collaborator}
           teams={teamOptions}
-          availableCategories={categories}
+          availableCategories={businessCategories}
+          canManagePrivacy={canManagePeople}
           helpers={helpers}
         />
       ),
@@ -257,9 +274,56 @@ export function AdministrationPageClient({
     });
   };
 
-  const openCreateCategory = () => {
+  const openCreateBusinessCategory = () => {
     void pushDrawer({
-      title: "Nouvelle catégorie",
+      title: "Nouvelle catégorie métier",
+      content: (helpers) => (
+        <LabelEntityFormDrawer
+          mode="create"
+          entityKind="category_business"
+          canManagePrivacy={canManagePeople}
+          helpers={helpers}
+          onCreate={createBusinessCategory}
+          onUpdate={updateBusinessCategory}
+        />
+      ),
+    }).then((created) => {
+      if (created) {
+        router.refresh();
+      }
+    });
+  };
+
+  const openEditBusinessCategory = (item: {
+    id: string;
+    label: string;
+    is_private?: boolean;
+  }) => {
+    void pushDrawer({
+      title: "Édition catégorie métier",
+      content: (helpers) => (
+        <LabelEntityFormDrawer
+          mode="edit"
+          entityKind="category_business"
+          entityId={item.id}
+          initialLabel={item.label}
+          initialIsPrivate={Boolean(item.is_private)}
+          canManagePrivacy={canManagePeople}
+          helpers={helpers}
+          onCreate={createBusinessCategory}
+          onUpdate={updateBusinessCategory}
+        />
+      ),
+    }).then((updated) => {
+      if (updated) {
+        router.refresh();
+      }
+    });
+  };
+
+  const openCreateUtilityCategory = () => {
+    void pushDrawer({
+      title: "Nouvelle catégorie utilitaire",
       content: (helpers) => (
         <LabelEntityFormDrawer
           mode="create"
@@ -276,9 +340,9 @@ export function AdministrationPageClient({
     });
   };
 
-  const openEditCategory = (item: { id: string; label: string }) => {
+  const openEditUtilityCategory = (item: { id: string; label: string }) => {
     void pushDrawer({
-      title: "Édition catégorie",
+      title: "Édition catégorie utilitaire",
       content: (helpers) => (
         <LabelEntityFormDrawer
           mode="edit"
@@ -338,8 +402,12 @@ export function AdministrationPageClient({
   };
 
   const handleHeroCreate = () => {
-    if (activeTab === "categories") {
-      openCreateCategory();
+    if (activeTab === "categories_business") {
+      openCreateBusinessCategory();
+      return;
+    }
+    if (activeTab === "categories_utility") {
+      openCreateUtilityCategory();
       return;
     }
     if (activeTab === "types") {
@@ -352,9 +420,11 @@ export function AdministrationPageClient({
   const heroCreateLabel =
     activeTab === "types"
       ? "Nouveau type documentaire"
-      : activeTab === "categories"
-        ? "Nouvelle catégorie"
-        : "Création via les sous-sections";
+      : activeTab === "categories_business"
+        ? "Nouvelle catégorie métier"
+        : activeTab === "categories_utility"
+          ? "Nouvelle catégorie utilitaire"
+          : "Création via les sous-sections";
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -397,7 +467,12 @@ export function AdministrationPageClient({
           className="flex min-h-0 flex-1 flex-col"
         >
           <TabsList variant="line" className="w-full justify-start">
-            <TabsTrigger value="categories">Catégories</TabsTrigger>
+            <TabsTrigger value="categories_business">
+              Catégories métier
+            </TabsTrigger>
+            <TabsTrigger value="categories_utility">
+              Catégories utilitaire
+            </TabsTrigger>
             <TabsTrigger value="types">Types</TabsTrigger>
             {canManagePeople ? (
               <TabsTrigger value="people">Collaborateurs &amp; Pôles</TabsTrigger>
@@ -405,19 +480,50 @@ export function AdministrationPageClient({
           </TabsList>
 
           <TabsContent
-            value="categories"
+            value="categories_business"
             className="mt-4 flex min-h-0 flex-1 flex-col overflow-hidden"
           >
+            <p className="mb-3 shrink-0 text-sm text-muted-foreground">
+              Ces catégories concernent les pôles, clients, missions et
+              opportunités.
+            </p>
             <LabelEntityGrid
-              items={categories}
+              items={businessCategories}
               query={query}
-              countLabel="Nombre de catégories"
+              countLabel="Nombre de catégories métier"
               emptyMessage={
                 query.trim()
-                  ? "Aucune catégorie ne correspond à la recherche."
-                  : "Aucune catégorie pour le moment."
+                  ? "Aucune catégorie métier ne correspond à la recherche."
+                  : "Aucune catégorie métier pour le moment."
               }
-              onEdit={openEditCategory}
+              onEdit={openEditBusinessCategory}
+              onDelete={(item) =>
+                setPendingDeleteLabel({
+                  id: item.id,
+                  label: item.label,
+                  kind: "category_business",
+                })
+              }
+            />
+          </TabsContent>
+
+          <TabsContent
+            value="categories_utility"
+            className="mt-4 flex min-h-0 flex-1 flex-col overflow-hidden"
+          >
+            <p className="mb-3 shrink-0 text-sm text-muted-foreground">
+              Ces catégories concernent les outils et les wikis.
+            </p>
+            <LabelEntityGrid
+              items={utilityCategories}
+              query={query}
+              countLabel="Nombre de catégories utilitaires"
+              emptyMessage={
+                query.trim()
+                  ? "Aucune catégorie utilitaire ne correspond à la recherche."
+                  : "Aucune catégorie utilitaire pour le moment."
+              }
+              onEdit={openEditUtilityCategory}
               onDelete={(item) =>
                 setPendingDeleteLabel({
                   id: item.id,
@@ -669,11 +775,14 @@ export function AdministrationPageClient({
           }}
           entityLabel={pendingDeleteLabel.label}
           entityKindLabel={
-            pendingDeleteLabel.kind === "category"
-              ? "Catégorie"
-              : "Type documentaire"
+            pendingDeleteLabel.kind === "document_type"
+              ? "Type documentaire"
+              : "Catégorie"
           }
           onConfirm={async () => {
+            if (pendingDeleteLabel.kind === "category_business") {
+              return deleteBusinessCategory(pendingDeleteLabel.id);
+            }
             if (pendingDeleteLabel.kind === "category") {
               return deleteCategory(pendingDeleteLabel.id);
             }

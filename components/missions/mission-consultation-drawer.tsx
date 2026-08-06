@@ -86,6 +86,20 @@ export function MissionConsultationDrawer({
                 </p>
               </div>
             ) : null}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-1">
+                <p className="text-muted-foreground">Date de début</p>
+                <p className="font-medium">
+                  {formatMissionDate(mission.start_at)}
+                </p>
+              </div>
+              <div className="grid gap-1">
+                <p className="text-muted-foreground">Date de fin</p>
+                <p className="font-medium">
+                  {formatMissionDate(mission.end_at)}
+                </p>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -104,14 +118,6 @@ export function MissionConsultationDrawer({
               <p className="font-medium">
                 {formatMissionCharge(mission.estimated_charge)}
               </p>
-            </div>
-            <div className="grid gap-1">
-              <p className="text-muted-foreground">Date de début</p>
-              <p className="font-medium">{formatMissionDate(mission.start_at)}</p>
-            </div>
-            <div className="grid gap-1">
-              <p className="text-muted-foreground">Date de fin</p>
-              <p className="font-medium">{formatMissionDate(mission.end_at)}</p>
             </div>
           </div>
 

@@ -73,6 +73,7 @@ type ClientDetailPageClientProps = {
   client: ClientDetail;
   collaborators: CollaboratorListItem[];
   categories: CategoryItem[];
+  utilityCategories: CategoryItem[];
   clients: ClientListItem[];
   missions: MissionListItem[];
   opportunityOptions: MissionOpportunityOption[];
@@ -92,6 +93,7 @@ export function ClientDetailPageClient({
   client,
   collaborators,
   categories,
+  utilityCategories,
   clients,
   missions,
   opportunityOptions,
@@ -144,6 +146,7 @@ export function ClientDetailPageClient({
           client={client}
           collaborators={collaborators}
           availableCategories={categories}
+          canManagePrivacy={canManagePrivacy}
           helpers={helpers}
         />
       ),
@@ -196,6 +199,7 @@ export function ClientDetailPageClient({
           availableCategories={categories}
           opportunityOptions={opportunityOptions}
           currentCollaboratorId={currentCollaboratorId}
+          canManagePrivacy={canManagePrivacy}
           lockedFields={{
             client_id: client.id,
             mission_scope: "client",
@@ -219,6 +223,7 @@ export function ClientDetailPageClient({
           availableCategories={categories}
           opportunityOptions={opportunityOptions}
           currentCollaboratorId={currentCollaboratorId}
+          canManagePrivacy={canManagePrivacy}
           duplicatePrefill={buildMissionDuplicatePrefill(source)}
           helpers={helpers}
         />
@@ -625,7 +630,7 @@ export function ClientDetailPageClient({
                   entityId={client.id}
                   tools={linkedTools}
                   linkOptions={toolLinkOptions}
-                  categories={categories}
+                  categories={utilityCategories}
                   collaborators={collaborators}
                   canManagePrivacy={canManagePrivacy}
                 />
@@ -636,7 +641,7 @@ export function ClientDetailPageClient({
                   entityId={client.id}
                   wikis={linkedWikis}
                   linkOptions={wikiLinkOptions}
-                  categories={categories}
+                  categories={utilityCategories}
                 />
               }
             />

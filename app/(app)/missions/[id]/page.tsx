@@ -1,9 +1,13 @@
 import { Suspense } from "react";
-import { notFound } from "next/navigation";
+import { redirect } from "next/navigation";
 import { MissionDetailPageClient } from "@/components/missions/mission-detail-page-client";
 import { PageHero } from "@/components/layout/page-hero";
 import { Skeleton } from "@/components/ui/skeleton";
-import { listCategories, listDocumentTypes } from "@/lib/categories/queries";
+import {
+  listBusinessCategories,
+  listCategories,
+  listDocumentTypes,
+} from "@/lib/categories/queries";
 import { getCurrentCollaborator } from "@/lib/auth/get-current-collaborator";
 import { isManagerOrDirection } from "@/lib/auth/roles";
 import { getClientById, listClients } from "@/lib/clients/queries";
@@ -40,6 +44,7 @@ async function MissionDetailContent({
     collaborators,
     clients,
     categories,
+    utilityCategories,
     opportunityOptions,
     currentCollaborator,
     linkedTools,
@@ -53,6 +58,7 @@ async function MissionDetailContent({
     getMissionById(id),
     listCollaborators(),
     listClients(),
+    listBusinessCategories(),
     listCategories(),
     listMissionOpportunityOptions(),
     getCurrentCollaborator(),
@@ -66,7 +72,7 @@ async function MissionDetailContent({
   ]);
 
   if (!mission) {
-    notFound();
+    redirect("/missions");
   }
 
   const linkedClient = mission.client_id
@@ -79,6 +85,7 @@ async function MissionDetailContent({
       collaborators={collaborators}
       clients={clients}
       categories={categories}
+      utilityCategories={utilityCategories}
       opportunityOptions={opportunityOptions}
       currentCollaboratorId={currentCollaborator?.id ?? ""}
       linkedClient={linkedClient}

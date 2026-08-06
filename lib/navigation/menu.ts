@@ -63,6 +63,7 @@ export const secondaryNavItems: NavItem[] = [
     title: "Études et Analyses",
     href: "/analyses",
     icon: ChartDonut,
+    managerOrDirectionOnly: true,
   },
   {
     title: "Gestion Admin",

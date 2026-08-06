@@ -18,7 +18,7 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 ---
 
-## `category`
+## `category` (utilitaire — outils, wikis)
 
 ```sql
 CREATE TABLE public.category (
@@ -27,6 +27,19 @@ CREATE TABLE public.category (
   created_at  timestamptz NOT NULL DEFAULT now()
 );
 ```
+
+## `category_business` (métier — pôles, clients, missions, opportunités)
+
+```sql
+CREATE TABLE public.category_business (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  label       text NOT NULL UNIQUE,
+  is_private  boolean NOT NULL DEFAULT false,
+  created_at  timestamptz NOT NULL DEFAULT now()
+);
+```
+
+> `is_private = true` : invisible au rôle Collaborateur ; les entités liées (et enfants en cascade client → opportunité/mission/contacts/documents) sont masquées via RLS. Seuls Manager/Direction peuvent poser/modifier `is_private`. Un Collaborateur ne peut pas être membre d’un pôle ayant une catégorie privée.
 
 ## `document_type`
 
@@ -384,9 +397,14 @@ CREATE TABLE public.opportunity (
   last_meeting_at           date,
   due_date_at               date,
   end_at                    date,
+  entry_average_price       numeric, -- figé à la création (price × probability / 100)
+  closed_at                 date,    -- date Paris du passage à gagne/perdue
   created_at                timestamptz NOT NULL DEFAULT now(),
   updated_at                timestamptz,
-  CONSTRAINT opportunity_due_or_end_required CHECK (due_date_at IS NOT NULL OR end_at IS NOT NULL)
+  CONSTRAINT opportunity_due_or_end_required CHECK (due_date_at IS NOT NULL OR end_at IS NOT NULL),
+  CONSTRAINT opportunity_closed_requires_end_at CHECK (
+    kanban_status NOT IN ('gagne', 'perdue') OR end_at IS NOT NULL
+  )
 );
 
 CREATE INDEX idx_opportunity_client_id ON public.opportunity(client_id);
@@ -482,8 +500,8 @@ CREATE TABLE public.mission (
   notes             text,
   notes_updated_at  timestamptz,
   estimated_charge  numeric CHECK (estimated_charge IS NULL OR estimated_charge >= 0),
-  start_at          date,
-  end_at            date,
+  start_at          date NOT NULL DEFAULT CURRENT_DATE,
+  end_at            date NOT NULL,
   created_at        timestamptz NOT NULL DEFAULT now(),
   updated_at        timestamptz,
   CONSTRAINT mission_scope_client_coherence CHECK (
@@ -619,12 +637,14 @@ FOR EACH ROW EXECUTE FUNCTION public.close_previous_subscription_price();
 
 ```sql
 CREATE TABLE public.setting (
-  id                     uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  collaborator_id        uuid NOT NULL UNIQUE REFERENCES public.collaborator(id) ON DELETE RESTRICT,
-  theme                  public.theme_enum NOT NULL DEFAULT 'systeme',
-  must_change_password   boolean NOT NULL DEFAULT true,
-  created_at             timestamptz NOT NULL DEFAULT now(),
-  updated_at             timestamptz
+  id                              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  collaborator_id                 uuid NOT NULL UNIQUE REFERENCES public.collaborator(id) ON DELETE RESTRICT,
+  theme                           public.theme_enum NOT NULL DEFAULT 'systeme',
+  must_change_password            boolean NOT NULL DEFAULT true,
+  home_widgets                    text[] NOT NULL DEFAULT '{}',
+  preferred_mission_category_ids  uuid[] NOT NULL DEFAULT '{}', -- cats métier pour préfiltre /missions
+  created_at                      timestamptz NOT NULL DEFAULT now(),
+  updated_at                      timestamptz
 );
 
 CREATE INDEX idx_setting_collaborator_id ON public.setting(collaborator_id);
@@ -745,7 +765,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 ```sql
 CREATE TABLE public.mission_category (
   mission_id   uuid NOT NULL REFERENCES public.mission(id) ON DELETE CASCADE,
-  category_id  uuid NOT NULL REFERENCES public.category(id) ON DELETE CASCADE,
+  category_id  uuid NOT NULL REFERENCES public.category_business(id) ON DELETE CASCADE,
   created_at   timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (mission_id, category_id)
 );
@@ -793,7 +813,7 @@ CREATE INDEX idx_mission_wiki_wiki_id ON public.mission_wiki(wiki_id);
 ```sql
 CREATE TABLE public.opportunity_category (
   opportunity_id  uuid NOT NULL REFERENCES public.opportunity(id) ON DELETE CASCADE,
-  category_id     uuid NOT NULL REFERENCES public.category(id) ON DELETE CASCADE,
+  category_id     uuid NOT NULL REFERENCES public.category_business(id) ON DELETE CASCADE,
   created_at      timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (opportunity_id, category_id)
 );
@@ -829,7 +849,7 @@ CREATE INDEX idx_opportunity_tool_tool_id ON public.opportunity_tool(tool_id);
 ```sql
 CREATE TABLE public.client_category (
   client_id    uuid NOT NULL REFERENCES public.client(id) ON DELETE CASCADE,
-  category_id  uuid NOT NULL REFERENCES public.category(id) ON DELETE CASCADE,
+  category_id  uuid NOT NULL REFERENCES public.category_business(id) ON DELETE CASCADE,
   created_at   timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (client_id, category_id)
 );
@@ -901,7 +921,7 @@ CREATE INDEX idx_wiki_category_category_id ON public.wiki_category(category_id);
 ```sql
 CREATE TABLE public.team_category (
   team_id      uuid NOT NULL REFERENCES public.team(id) ON DELETE CASCADE,
-  category_id  uuid NOT NULL REFERENCES public.category(id) ON DELETE CASCADE,
+  category_id  uuid NOT NULL REFERENCES public.category_business(id) ON DELETE CASCADE,
   created_at   timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (team_id, category_id)
 );

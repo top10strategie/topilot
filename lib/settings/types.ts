@@ -13,6 +13,7 @@ export type OwnProfile = {
   profile_picture_url: string | null;
   theme: AppTheme;
   home_widgets: string[];
+  preferred_mission_category_ids: string[];
 };
 
 export function themeToNext(theme: AppTheme): "light" | "dark" | "system" {

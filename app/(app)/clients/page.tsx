@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { ClientsPageClient } from "@/components/clients/clients-page-client";
 import { PageHero } from "@/components/layout/page-hero";
 import { Skeleton } from "@/components/ui/skeleton";
-import { listCategories } from "@/lib/categories/queries";
+import { listBusinessCategories } from "@/lib/categories/queries";
 import { listClients } from "@/lib/clients/queries";
 import { listCollaborators } from "@/lib/collaborators/queries";
 
@@ -10,7 +10,7 @@ async function ClientsContent() {
   const [clients, collaborators, categories] = await Promise.all([
     listClients(),
     listCollaborators(),
-    listCategories(),
+    listBusinessCategories(),
   ]);
 
   return (

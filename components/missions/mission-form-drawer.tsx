@@ -3,7 +3,8 @@
 import { useMemo, useState, useTransition, type FormEvent } from "react";
 import { Buildings, FolderSimplePlus } from "@phosphor-icons/react";
 import { toast } from "sonner";
-import { createCategory, updateCategory } from "@/actions/categories";
+import { createBusinessCategory, updateBusinessCategory } from "@/actions/categories";
+
 import {
   createMissionRecord,
   updateMissionRecord,
@@ -40,6 +41,7 @@ import type { CategoryItem } from "@/lib/categories/types";
 import { getCollaboratorFullName } from "@/lib/collaborators/labels";
 import type { CollaboratorListItem } from "@/lib/collaborators/types";
 import type { ClientListItem } from "@/lib/clients/types";
+import { todayParisYmd } from "@/lib/dates/paris";
 import {
   getMissionKanbanStatusLabel,
   MISSION_KANBAN_STATUSES,
@@ -61,6 +63,7 @@ type MissionFormDrawerProps = {
   availableCategories: CategoryItem[];
   opportunityOptions: MissionOpportunityOption[];
   currentCollaboratorId: string;
+  canManagePrivacy?: boolean;
   helpers: DrawerHelpers<{ id: string; mission_name: string }>;
   /** Prefill création (duplication). */
   duplicatePrefill?: MissionDuplicatePrefill;
@@ -85,6 +88,7 @@ export function MissionFormDrawer({
   availableCategories = [],
   opportunityOptions,
   currentCollaboratorId,
+  canManagePrivacy = false,
   helpers,
   duplicatePrefill,
   lockedFields,
@@ -147,10 +151,12 @@ export function MissionFormDrawer({
     duplicatePrefill ? "a_faire" : (mission?.kanban_status ?? "a_faire"),
   );
   const [startAt, setStartAt] = useState(
-    duplicatePrefill ? "" : (mission?.start_at ?? ""),
+    mode === "create"
+      ? todayParisYmd()
+      : (mission?.start_at ?? ""),
   );
   const [endAt, setEndAt] = useState(
-    duplicatePrefill ? "" : (mission?.end_at ?? ""),
+    mode === "create" ? "" : (mission?.end_at ?? ""),
   );
   const [notes, setNotes] = useState(
     duplicatePrefill?.notes ?? mission?.notes ?? "",
@@ -220,7 +226,8 @@ export function MissionFormDrawer({
       content: (nested) => (
         <LabelEntityFormDrawer
           mode="create"
-          entityKind="category"
+          entityKind="category_business"
+          canManagePrivacy={canManagePrivacy}
           helpers={{
             dismiss: nested.dismiss,
             resolve: (value) => {
@@ -228,8 +235,8 @@ export function MissionFormDrawer({
               nested.resolve(value);
             },
           }}
-          onCreate={createCategory}
-          onUpdate={updateCategory}
+          onCreate={createBusinessCategory}
+          onUpdate={updateBusinessCategory}
         />
       ),
     });
@@ -245,6 +252,7 @@ export function MissionFormDrawer({
           mode="create"
           collaborators={collaborators}
           availableCategories={availableCategories}
+          canManagePrivacy={canManagePrivacy}
           helpers={nested}
         />
       ),
@@ -271,6 +279,8 @@ export function MissionFormDrawer({
     }
     const oppId = lockedOpportunityId ?? opportunityId;
     if (oppId) formData.set("opportunity_id", oppId);
+    if (startAt) formData.set("start_at", startAt);
+    formData.set("end_at", endAt);
     return formData;
   };
 
@@ -278,8 +288,6 @@ export function MissionFormDrawer({
     const formData = buildIdentificationFormData();
     formData.set("estimated_charge", estimatedCharge);
     formData.set("kanban_status", kanbanStatus);
-    if (startAt) formData.set("start_at", startAt);
-    if (endAt) formData.set("end_at", endAt);
     if (mode === "create") {
       formData.set("notes", notes);
     }
@@ -522,6 +530,42 @@ export function MissionFormDrawer({
             </div>
           ) : null}
 
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="grid gap-2">
+              <Label htmlFor="start_at">Date de début</Label>
+              <Input
+                id="start_at"
+                type="date"
+                value={startAt}
+                onChange={(event) => setStartAt(event.target.value)}
+                disabled={isPending}
+                aria-invalid={Boolean(fieldErrors.start_at)}
+              />
+              {fieldErrors.start_at ? (
+                <p className="text-sm text-destructive">
+                  {fieldErrors.start_at}
+                </p>
+              ) : null}
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="end_at">
+                Date de fin <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="end_at"
+                type="date"
+                value={endAt}
+                onChange={(event) => setEndAt(event.target.value)}
+                disabled={isPending}
+                required
+                aria-invalid={Boolean(fieldErrors.end_at)}
+              />
+              {fieldErrors.end_at ? (
+                <p className="text-sm text-destructive">{fieldErrors.end_at}</p>
+              ) : null}
+            </div>
+          </div>
+
           {mode === "create" && !identificationSaved ? (
             <div className="flex justify-end">
               <Button
@@ -606,29 +650,6 @@ export function MissionFormDrawer({
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="grid gap-2">
-                <Label htmlFor="start_at">Date de début</Label>
-                <Input
-                  id="start_at"
-                  type="date"
-                  value={startAt}
-                  onChange={(event) => setStartAt(event.target.value)}
-                  disabled={isPending}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="end_at">Date de fin</Label>
-                <Input
-                  id="end_at"
-                  type="date"
-                  value={endAt}
-                  onChange={(event) => setEndAt(event.target.value)}
-                  disabled={isPending}
-                />
               </div>
             </div>
 

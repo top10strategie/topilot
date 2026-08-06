@@ -53,12 +53,14 @@ export type OpportunityListItem = {
   price: number | null;
   probability_confirmation: number;
   average_price: number | null;
+  entry_average_price: number | null;
   kanban_status: OpportunityKanbanStatus;
   kanban_order: number | null;
   is_active: boolean;
   priority: OpportunityPriority;
   due_date_at: string | null;
   end_at: string | null;
+  closed_at: string | null;
   client: OpportunityClientRef;
   contact: OpportunityContactRef | null;
   responsible: OpportunityResponsibleItem;

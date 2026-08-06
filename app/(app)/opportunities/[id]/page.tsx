@@ -1,11 +1,15 @@
 import { Suspense } from "react";
-import { notFound } from "next/navigation";
+import { redirect } from "next/navigation";
 import { OpportunityDetailPageClient } from "@/components/opportunities/opportunity-detail-page-client";
 import { PageHero } from "@/components/layout/page-hero";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrentCollaborator } from "@/lib/auth/get-current-collaborator";
 import { isManagerOrDirection } from "@/lib/auth/roles";
-import { listCategories, listDocumentTypes } from "@/lib/categories/queries";
+import {
+  listBusinessCategories,
+  listCategories,
+  listDocumentTypes,
+} from "@/lib/categories/queries";
 import { getClientById, listClients } from "@/lib/clients/queries";
 import { listCollaborators } from "@/lib/collaborators/queries";
 import {
@@ -38,6 +42,7 @@ async function OpportunityDetailContent({
     clients,
     contacts,
     categories,
+    utilityCategories,
     missions,
     currentCollaborator,
     linkedTools,
@@ -50,6 +55,7 @@ async function OpportunityDetailContent({
     listCollaborators(),
     listClients(),
     listOpportunityContactOptions(),
+    listBusinessCategories(),
     listCategories(),
     listMissionsByOpportunityId(id),
     getCurrentCollaborator(),
@@ -61,7 +67,7 @@ async function OpportunityDetailContent({
   ]);
 
   if (!opportunity) {
-    notFound();
+    redirect("/opportunities");
   }
 
   const linkedClient = await getClientById(opportunity.client_id);
@@ -82,6 +88,7 @@ async function OpportunityDetailContent({
       linkedClient={linkedClient}
       contacts={contacts}
       categories={categories}
+      utilityCategories={utilityCategories}
       missions={missions}
       opportunityOptions={opportunityOptions}
       currentCollaboratorId={currentCollaborator?.id ?? ""}

@@ -3,7 +3,8 @@
 import { useMemo, useState, useTransition, type FormEvent } from "react";
 import { FolderSimplePlus, UserPlus } from "@phosphor-icons/react";
 import { toast } from "sonner";
-import { createCategory, updateCategory } from "@/actions/categories";
+import { createBusinessCategory, updateBusinessCategory } from "@/actions/categories";
+
 import {
   createClientRecord,
   updateClientRecord,
@@ -45,6 +46,7 @@ type ClientFormDrawerProps = {
   client?: ClientDetail;
   collaborators: CollaboratorListItem[];
   availableCategories: CategoryItem[];
+  canManagePrivacy?: boolean;
   helpers: DrawerHelpers<{ id: string; client_name: string }>;
 };
 
@@ -61,6 +63,7 @@ export function ClientFormDrawer({
   client,
   collaborators,
   availableCategories = [],
+  canManagePrivacy = false,
   helpers,
 }: ClientFormDrawerProps) {
   const { pushDrawer } = useDrawerStack();
@@ -143,7 +146,8 @@ export function ClientFormDrawer({
       content: (nested) => (
         <LabelEntityFormDrawer
           mode="create"
-          entityKind="category"
+          entityKind="category_business"
+          canManagePrivacy={canManagePrivacy}
           helpers={{
             dismiss: nested.dismiss,
             resolve: (value) => {
@@ -151,8 +155,8 @@ export function ClientFormDrawer({
               nested.resolve(value);
             },
           }}
-          onCreate={createCategory}
-          onUpdate={updateCategory}
+          onCreate={createBusinessCategory}
+          onUpdate={updateBusinessCategory}
         />
       ),
     });

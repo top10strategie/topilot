@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import {
   Bar,
   BarChart,
@@ -18,6 +19,8 @@ type AnalysisBarChartProps = {
   layout?: "horizontal" | "vertical";
   valueFormatter?: (value: number) => string;
   emptyMessage?: string;
+  headerAction?: ReactNode;
+  className?: string;
 };
 
 const defaultFormat = (value: number) =>
@@ -29,14 +32,21 @@ export function AnalysisBarChart({
   layout = "horizontal",
   valueFormatter = defaultFormat,
   emptyMessage = "Aucune donnée.",
+  headerAction,
+  className,
 }: AnalysisBarChartProps) {
   const chartData = data.filter((d) => d.value > 0);
   const isHorizontalBars = layout === "horizontal";
 
   return (
-    <Card>
-      <CardHeader className="pb-2">
+    <Card className={className}>
+      <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0 pb-2">
         <CardTitle className="text-base">{title}</CardTitle>
+        {headerAction ? (
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            {headerAction}
+          </div>
+        ) : null}
       </CardHeader>
       <CardContent>
         {chartData.length === 0 ? (

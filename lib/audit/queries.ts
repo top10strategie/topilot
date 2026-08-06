@@ -435,6 +435,7 @@ async function buildPageFilterTarget(
       refs.push({ entity_type: "contact_client", entity_id: contactId });
     }
     if (categoryId) {
+      refs.push({ entity_type: "category_business", entity_id: categoryId });
       refs.push({ entity_type: "category", entity_id: categoryId });
     }
     if (toolId) {
@@ -452,6 +453,10 @@ async function buildPageFilterTarget(
     exactRefs.push({ entity_type: "contact_client", entity_id: contactId });
   }
   if (categoryId) {
+    exactRefs.push({
+      entity_type: "category_business",
+      entity_id: categoryId,
+    });
     exactRefs.push({ entity_type: "category", entity_id: categoryId });
   }
   if (toolId) {

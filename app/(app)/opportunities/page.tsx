@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { OpportunitiesPageClient } from "@/components/opportunities/opportunities-page-client";
 import { PageHero } from "@/components/layout/page-hero";
 import { Skeleton } from "@/components/ui/skeleton";
-import { listCategories } from "@/lib/categories/queries";
+import { listBusinessCategories } from "@/lib/categories/queries";
 import { listClients } from "@/lib/clients/queries";
 import { listCollaborators } from "@/lib/collaborators/queries";
 import {
@@ -17,7 +17,7 @@ async function OpportunitiesContent() {
       listCollaborators(),
       listClients(),
       listOpportunityContactOptions(),
-      listCategories(),
+      listBusinessCategories(),
     ]);
 
   return (

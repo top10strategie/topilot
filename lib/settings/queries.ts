@@ -34,7 +34,7 @@ export async function getOwnProfile(): Promise<OwnProfile | null> {
       team_id,
       team:team_id ( team_name ),
       profile_picture:profile_picture_id ( id, file_path, is_visual ),
-      setting ( theme, home_widgets )
+      setting ( theme, home_widgets, preferred_mission_category_ids )
     `,
     )
     .eq("auth_user_id", user.id)
@@ -57,10 +57,24 @@ export async function getOwnProfile(): Promise<OwnProfile | null> {
   );
   const setting = unwrapOne(
     data.setting as
-      | { theme: AppTheme; home_widgets: string[] | null }
-      | { theme: AppTheme; home_widgets: string[] | null }[]
+      | {
+          theme: AppTheme;
+          home_widgets: string[] | null;
+          preferred_mission_category_ids: string[] | null;
+        }
+      | {
+          theme: AppTheme;
+          home_widgets: string[] | null;
+          preferred_mission_category_ids: string[] | null;
+        }[]
       | null,
   );
+
+  const preferredIds = Array.isArray(setting?.preferred_mission_category_ids)
+    ? setting.preferred_mission_category_ids.filter(
+        (id): id is string => typeof id === "string",
+      )
+    : [];
 
   return {
     id: data.id,
@@ -77,5 +91,6 @@ export async function getOwnProfile(): Promise<OwnProfile | null> {
     home_widgets: Array.isArray(setting?.home_widgets)
       ? setting.home_widgets
       : [],
+    preferred_mission_category_ids: preferredIds,
   };
 }

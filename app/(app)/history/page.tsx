@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrentCollaborator } from "@/lib/auth/get-current-collaborator";
 import { isManagerOrDirection } from "@/lib/auth/roles";
 import { listAuditContactOptions, listAuditLogsForPage } from "@/lib/audit/queries";
-import { listCategories } from "@/lib/categories/queries";
+import { listBusinessCategories } from "@/lib/categories/queries";
 import { listClients } from "@/lib/clients/queries";
 import { listToolLinkOptions } from "@/lib/tools/queries";
 
@@ -20,7 +20,7 @@ async function HistoryContent() {
     listAuditLogsForPage(),
     listClients(),
     listAuditContactOptions(),
-    listCategories(),
+    listBusinessCategories(),
     listToolLinkOptions(),
   ]);
 

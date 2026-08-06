@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { MissionsPageClient } from "@/components/missions/missions-page-client";
 import { PageHero } from "@/components/layout/page-hero";
 import { Skeleton } from "@/components/ui/skeleton";
-import { listCategories } from "@/lib/categories/queries";
+import { listBusinessCategories } from "@/lib/categories/queries";
 import { getCurrentCollaborator } from "@/lib/auth/get-current-collaborator";
 import { listClients } from "@/lib/clients/queries";
 import { listCollaborators } from "@/lib/collaborators/queries";
@@ -10,6 +10,7 @@ import {
   listMissionOpportunityOptions,
   listMissions,
 } from "@/lib/missions/queries";
+import { getOwnProfile } from "@/lib/settings/queries";
 
 async function MissionsContent({
   searchParams,
@@ -17,6 +18,10 @@ async function MissionsContent({
   searchParams: Promise<{ teamId?: string; responsibleId?: string }>;
 }) {
   const params = await searchParams;
+  const initialTeamId = params.teamId?.trim() || "";
+  const initialResponsibleId = params.responsibleId?.trim() || "";
+  const fromTop10 = Boolean(initialTeamId || initialResponsibleId);
+
   const [
     missions,
     collaborators,
@@ -24,14 +29,22 @@ async function MissionsContent({
     categories,
     opportunityOptions,
     currentCollaborator,
+    profile,
   ] = await Promise.all([
     listMissions(),
     listCollaborators(),
     listClients(),
-    listCategories(),
+    listBusinessCategories(),
     listMissionOpportunityOptions(),
     getCurrentCollaborator(),
+    getOwnProfile(),
   ]);
+
+  const preferredCategoryIds = fromTop10
+    ? []
+    : (profile?.preferred_mission_category_ids ?? []).filter((id) =>
+        categories.some((category) => category.id === id),
+      );
 
   return (
     <MissionsPageClient
@@ -41,8 +54,9 @@ async function MissionsContent({
       categories={categories}
       opportunityOptions={opportunityOptions}
       currentCollaboratorId={currentCollaborator?.id ?? ""}
-      initialTeamId={params.teamId?.trim() || ""}
-      initialResponsibleId={params.responsibleId?.trim() || ""}
+      initialTeamId={initialTeamId}
+      initialResponsibleId={initialResponsibleId}
+      initialCategoryIds={preferredCategoryIds}
     />
   );
 }

@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Eye,
-  LockSimple,
+  LockKey,
   MagnifyingGlass,
   PencilSimple,
   Plus,
@@ -288,28 +288,23 @@ export function ToolDetailPageClient({
                             className="flex items-start justify-between gap-2 p-3"
                           >
                             <div className="min-w-0 space-y-1">
-                              <div className="flex min-w-0 items-center gap-1.5">
-                                <p className="truncate font-medium">
-                                  {access.label}
-                                </p>
-                                {access.is_private ? (
-                                  <span
-                                    className="inline-flex shrink-0 text-muted-foreground"
-                                    title="Accès privé (Manager / Direction)"
-                                    aria-label="Accès privé"
-                                  >
-                                    <LockSimple
-                                      className="size-4"
-                                      aria-hidden
-                                    />
-                                  </span>
-                                ) : null}
-                              </div>
+                              <p className="truncate font-medium">
+                                {access.label}
+                              </p>
                               <p className="text-xs text-muted-foreground">
                                 {access.client?.client_name ?? "Interne"}
                               </p>
                             </div>
-                            <div className="flex shrink-0 flex-wrap gap-1">
+                            <div className="flex shrink-0 flex-wrap items-center gap-1">
+                              {access.is_private ? (
+                                <span
+                                  className="inline-flex size-9 shrink-0 items-center justify-center rounded-md bg-secondary text-secondary-foreground"
+                                  title="Accès privé (Manager / Direction)"
+                                  aria-label="Accès privé"
+                                >
+                                  <LockKey className="size-4" aria-hidden />
+                                </span>
+                              ) : null}
                               <IconActionButton
                                 label="Révéler le mot de passe"
                                 onClick={() => setRevealAccess(access)}

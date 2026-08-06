@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { PencilSimple, Trash } from "@phosphor-icons/react";
+import { LockKey, PencilSimple, Trash } from "@phosphor-icons/react";
 import { IconActionButton } from "@/components/layout/icon-action-button";
 import { ListPaginationFooter } from "@/components/layout/list-pagination-footer";
 import {
@@ -15,6 +15,7 @@ const PAGE_SIZE = 25;
 type LabelEntity = {
   id: string;
   label: string;
+  is_private?: boolean;
 };
 
 type LabelEntityGridProps = {
@@ -72,10 +73,19 @@ export function LabelEntityGrid({
             {pageItems.map((item) => (
               <Card key={item.id}>
                 <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0 p-4">
-                  <CardTitle className="text-base leading-snug">
+                  <CardTitle className="min-w-0 text-base leading-snug">
                     {item.label}
                   </CardTitle>
-                  <div className="flex shrink-0 gap-1">
+                  <div className="flex shrink-0 items-center gap-1">
+                    {item.is_private ? (
+                      <span
+                        className="inline-flex size-9 shrink-0 items-center justify-center rounded-md bg-secondary text-secondary-foreground"
+                        title="Catégorie privée"
+                        aria-label="Catégorie privée"
+                      >
+                        <LockKey className="size-4" aria-hidden />
+                      </span>
+                    ) : null}
                     <IconActionButton
                       label={`Modifier ${item.label}`}
                       onClick={() => onEdit(item)}

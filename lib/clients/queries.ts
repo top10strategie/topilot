@@ -76,7 +76,7 @@ const CLIENT_LIST_SELECT = `
     profile_picture:profile_picture_id ( id, file_path, is_visual )
   ),
   client_category (
-    category:category_id ( id, label )
+    category:category_business!category_id ( id, label, is_private )
   ),
   contact_client (
     id,
@@ -255,7 +255,7 @@ export async function getClientById(id: string): Promise<ClientDetail | null> {
         profile_picture:profile_picture_id ( id, file_path, is_visual )
       ),
       client_category (
-        category:category_id ( id, label )
+        category:category_business!category_id ( id, label, is_private )
       ),
       contact_client (
         id,

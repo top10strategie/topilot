@@ -1,11 +1,15 @@
 import { Suspense } from "react";
-import { notFound } from "next/navigation";
+import { redirect } from "next/navigation";
 import { ClientDetailPageClient } from "@/components/clients/client-detail-page-client";
 import { PageHero } from "@/components/layout/page-hero";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrentCollaborator } from "@/lib/auth/get-current-collaborator";
 import { isManagerOrDirection } from "@/lib/auth/roles";
-import { listCategories, listDocumentTypes } from "@/lib/categories/queries";
+import {
+  listBusinessCategories,
+  listCategories,
+  listDocumentTypes,
+} from "@/lib/categories/queries";
 import { getClientById, listClients } from "@/lib/clients/queries";
 import { listCollaborators } from "@/lib/collaborators/queries";
 import {
@@ -39,6 +43,7 @@ async function ClientDetailContent({
     client,
     collaborators,
     categories,
+    utilityCategories,
     clients,
     missions,
     opportunityOptions,
@@ -53,6 +58,7 @@ async function ClientDetailContent({
   ] = await Promise.all([
     getClientById(id),
     listCollaborators(),
+    listBusinessCategories(),
     listCategories(),
     listClients(),
     listMissionsByClientId(id),
@@ -68,7 +74,7 @@ async function ClientDetailContent({
   ]);
 
   if (!client) {
-    notFound();
+    redirect("/clients");
   }
 
   return (
@@ -76,6 +82,7 @@ async function ClientDetailContent({
       client={client}
       collaborators={collaborators}
       categories={categories}
+      utilityCategories={utilityCategories}
       clients={clients}
       missions={missions}
       opportunityOptions={opportunityOptions}

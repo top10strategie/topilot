@@ -1,5 +1,21 @@
 # Suivi des actions — TOPilot
 
+## **[2026-08-06] — Analyses, catégories métier/utilitaire, dates et Top10**
+
+**Type :** `feature`
+**Fichiers concernés :** `supabase/migrations/20260806120000_analyses_categories_business.sql`, `lib/categories/*`, `actions/categories.ts`, `lib/analyses/*`, `components/analyses/*`, `components/home/*`, `components/settings/*`, `components/collaborators/top10-page-client.tsx`, `components/missions/*`, `actions/{missions,opportunities,settings}.ts`, `lib/navigation/menu.ts`, `app/(app)/{analyses,missions,settings,page}.tsx`, `.cursor/rules/{03,04,05}_*.mdc.md`, `suivi.md`
+
+### Description
+
+Branche `feat/analyses-categories-business`. Migration unique : dates missions obligatoires, snapshots opportunités (`entry_average_price`, `closed_at`), table `category_business` (+ RLS `is_private` + cascade parent), `setting.preferred_mission_category_ids`. `/analyses` et widgets Home analyses réservés Manager/Direction. Graphiques analyses refondus (CA gagné, pipeline 3 courbes, abonnements multi-années). Top10 : missions de la semaine ISO. Settings : préfiltre catégories `/missions`.
+
+### Détails techniques
+
+- `category` = utilitaire (outils/wikis) ; `category_business` = métier (pôles/clients/missions/opps) avec privatisation.
+- Collaborateur : entités à cat. privée (ou parent privé) invisibles ; redirect fiche → liste ; pas de membre Collaborateur sur pôle privé.
+- Préfiltre missions : checkboxes settings ; ignoré si URL Top10 (`teamId`/`responsibleId`).
+
+---
 ## **[2026-08-05] — Kanban générique missions/opportunités**
 
 **Type :** `refactor`

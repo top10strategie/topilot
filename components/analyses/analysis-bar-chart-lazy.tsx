@@ -16,3 +16,14 @@ export const AnalysisBarChart = dynamic(
     loading: () => <Skeleton className="h-64 w-full rounded-xl" />,
   },
 );
+
+export const AnalysisLineChart = dynamic(
+  () =>
+    import("@/components/analyses/analysis-line-chart").then(
+      (mod) => mod.AnalysisLineChart,
+    ),
+  {
+    ssr: false,
+    loading: () => <Skeleton className="h-64 w-full rounded-xl" />,
+  },
+);
