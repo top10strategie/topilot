@@ -10,7 +10,7 @@ import {
   listMissionOpportunityOptions,
   listMissions,
 } from "@/lib/missions/queries";
-import { getOwnProfile } from "@/lib/settings/queries";
+import { getPreferredMissionCategoryIds } from "@/lib/settings/queries";
 
 async function MissionsContent({
   searchParams,
@@ -29,7 +29,7 @@ async function MissionsContent({
     categories,
     opportunityOptions,
     currentCollaborator,
-    profile,
+    storedPreferredCategoryIds,
   ] = await Promise.all([
     listMissions(),
     listCollaborators(),
@@ -37,17 +37,22 @@ async function MissionsContent({
     listBusinessCategories(),
     listMissionOpportunityOptions(),
     getCurrentCollaborator(),
-    getOwnProfile(),
+    getPreferredMissionCategoryIds(),
   ]);
 
+  const categoryIdSet = new Set(categories.map((category) => category.id));
   const preferredCategoryIds = fromTop10
     ? []
-    : (profile?.preferred_mission_category_ids ?? []).filter((id) =>
-        categories.some((category) => category.id === id),
-      );
+    : storedPreferredCategoryIds.filter((id) => categoryIdSet.has(id));
 
   return (
     <MissionsPageClient
+      key={[
+        "missions",
+        initialTeamId,
+        initialResponsibleId,
+        ...preferredCategoryIds,
+      ].join(":")}
       missions={missions}
       collaborators={collaborators}
       clients={clients}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, type MouseEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -186,6 +186,26 @@ export function MissionsPageClient({
   const [duplicateTarget, setDuplicateTarget] =
     useState<MissionListItem | null>(null);
   const filterPortalRef = useRef<HTMLDivElement>(null);
+
+  const initialCategoryKey = initialCategoryIds.join(",");
+
+  useEffect(() => {
+    setFilters({
+      ...DEFAULT_FILTERS,
+      teamId: initialTeamId,
+      responsibleId: initialResponsibleId,
+      categoryIds: initialCategoryIds,
+    });
+    setDraftFilters({
+      ...DEFAULT_FILTERS,
+      teamId: initialTeamId,
+      responsibleId: initialResponsibleId,
+      categoryIds: initialCategoryIds,
+    });
+    setPage(1);
+    // initialCategoryIds is represented by initialCategoryKey for stable deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sync from server prefs / URL
+  }, [initialTeamId, initialResponsibleId, initialCategoryKey]);
 
   const draftSelectedCategories = useMemo(
     () =>
@@ -380,13 +400,18 @@ export function MissionsPageClient({
             </div>
             <ListViewTabsSwitcher tabs={MISSION_VIEW_TABS} showLabels={false} />
             <IconActionButton
-              label="Filtres"
+              label={
+                hasActiveFilters
+                  ? `Filtres (${filters.categoryIds.length > 0 ? `${filters.categoryIds.length} catégorie${filters.categoryIds.length > 1 ? "s" : ""}` : "actifs"})`
+                  : "Filtres"
+              }
+              variant={hasActiveFilters ? "default" : "outline"}
               onClick={() => {
                 setDraftFilters(filters);
                 setFilterOpen(true);
               }}
             >
-              <FunnelSimple className="size-4" />
+              <FunnelSimple className="size-4" weight={hasActiveFilters ? "fill" : "regular"} />
             </IconActionButton>
             <IconActionButton
               label="Nouvelle mission"

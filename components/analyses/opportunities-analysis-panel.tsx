@@ -56,12 +56,20 @@ export function OpportunitiesAnalysisPanel({ data }: Props) {
           },
         ]}
       />
+      <AnalysisLineChart
+        title="Évolution du pipeline Commercial"
+        data={pipelineChartData}
+        series={[...PIPELINE_SERIES]}
+        valueFormatter={(v) => formatOpportunityPrice(v)}
+        headerAction={
+          <AnalysisYearSelect
+            years={years}
+            value={pipelineYear}
+            onChange={setPipelineYear}
+          />
+        }
+      />
       <div className="grid gap-4 lg:grid-cols-2">
-        <AnalysisBarChart
-          title="Comparaison par statut"
-          data={data.byStatus}
-          layout="horizontal"
-        />
         <AnalysisBarChart
           title="Comparaison CA par catégorie"
           data={caByCategory}
@@ -88,20 +96,12 @@ export function OpportunitiesAnalysisPanel({ data }: Props) {
             />
           }
         />
+        <AnalysisBarChart
+          title="Comparaison par statut"
+          data={data.byStatus}
+          layout="horizontal"
+        />
       </div>
-      <AnalysisLineChart
-        title="Évolution du pipeline Commercial"
-        data={pipelineChartData}
-        series={[...PIPELINE_SERIES]}
-        valueFormatter={(v) => formatOpportunityPrice(v)}
-        headerAction={
-          <AnalysisYearSelect
-            years={years}
-            value={pipelineYear}
-            onChange={setPipelineYear}
-          />
-        }
-      />
     </div>
   );
 }

@@ -13,6 +13,58 @@ function unwrapOne<T>(value: T | T[] | null | undefined): T | null {
   return Array.isArray(value) ? (value[0] ?? null) : value;
 }
 
+function parseUuidArray(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.filter(
+      (id): id is string => typeof id === "string" && id.length > 0,
+    );
+  }
+  if (typeof value === "string" && value.trim()) {
+    return value
+      .replace(/^{|}$/g, "")
+      .split(",")
+      .map((id) => id.trim().replace(/^"|"$/g, ""))
+      .filter(Boolean);
+  }
+  return [];
+}
+
+/** Préférences catégories missions du collaborateur connecté. */
+export async function getPreferredMissionCategoryIds(): Promise<string[]> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data: collaborator, error: collabError } = await supabase
+    .from("collaborator")
+    .select("id")
+    .eq("auth_user_id", user.id)
+    .eq("status", "actif")
+    .maybeSingle();
+
+  if (collabError || !collaborator) {
+    if (collabError) {
+      console.error("getPreferredMissionCategoryIds collaborator:", collabError);
+    }
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from("setting")
+    .select("preferred_mission_category_ids")
+    .eq("collaborator_id", collaborator.id)
+    .maybeSingle();
+
+  if (error) {
+    console.error("getPreferredMissionCategoryIds:", error);
+    return [];
+  }
+
+  return parseUuidArray(data?.preferred_mission_category_ids);
+}
+
 export async function getOwnProfile(): Promise<OwnProfile | null> {
   const supabase = await createClient();
   const {
@@ -60,21 +112,15 @@ export async function getOwnProfile(): Promise<OwnProfile | null> {
       | {
           theme: AppTheme;
           home_widgets: string[] | null;
-          preferred_mission_category_ids: string[] | null;
+          preferred_mission_category_ids: unknown;
         }
       | {
           theme: AppTheme;
           home_widgets: string[] | null;
-          preferred_mission_category_ids: string[] | null;
+          preferred_mission_category_ids: unknown;
         }[]
       | null,
   );
-
-  const preferredIds = Array.isArray(setting?.preferred_mission_category_ids)
-    ? setting.preferred_mission_category_ids.filter(
-        (id): id is string => typeof id === "string",
-      )
-    : [];
 
   return {
     id: data.id,
@@ -91,6 +137,8 @@ export async function getOwnProfile(): Promise<OwnProfile | null> {
     home_widgets: Array.isArray(setting?.home_widgets)
       ? setting.home_widgets
       : [],
-    preferred_mission_category_ids: preferredIds,
+    preferred_mission_category_ids: parseUuidArray(
+      setting?.preferred_mission_category_ids,
+    ),
   };
 }
