@@ -277,7 +277,7 @@ export function MissionsPageClient({
 
       if (filters.categoryIds.length > 0) {
         const ids = new Set(item.categories.map((c) => c.id));
-        if (!filters.categoryIds.every((id) => ids.has(id))) return false;
+        if (!filters.categoryIds.some((id) => ids.has(id))) return false;
       }
 
       if (filters.scope && item.mission_scope !== filters.scope) {
