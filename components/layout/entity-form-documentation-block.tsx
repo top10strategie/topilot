@@ -66,27 +66,39 @@ export function EntityFormDocumentationBlock({
     categories.length > 0 ? categories : fetchedCategories;
 
   const reloadLinks = useCallback(() => {
-    if (!entityId) return;
-    void (async () => {
-      const result = await fetchEntityDocumentationLinks({
-        entity,
-        entityId,
-        includeWikis,
-      });
-      if (!result.success) {
-        toast.error(result.error);
-        setLoading(false);
-        return;
-      }
-      setLinkedDocuments(result.data.linkedDocuments);
-      setDocumentLinkOptions(result.data.documentLinkOptions);
-      setDocumentTypes(result.data.documentTypes);
-      setLinkedTools(result.data.linkedTools);
-      setToolLinkOptions(result.data.toolLinkOptions);
-      setLinkedWikis(result.data.linkedWikis);
-      setWikiLinkOptions(result.data.wikiLinkOptions);
-      setFetchedCategories(result.data.utilityCategories);
+    if (!entityId) {
       setLoading(false);
+      return;
+    }
+    void (async () => {
+      try {
+        const result = await fetchEntityDocumentationLinks({
+          entity,
+          entityId,
+          includeWikis,
+        });
+        if (!result.success) {
+          toast.error(result.error);
+          return;
+        }
+        setLinkedDocuments(result.data.linkedDocuments);
+        setDocumentLinkOptions(result.data.documentLinkOptions);
+        setDocumentTypes(result.data.documentTypes);
+        setLinkedTools(result.data.linkedTools);
+        setToolLinkOptions(result.data.toolLinkOptions);
+        setLinkedWikis(result.data.linkedWikis);
+        setWikiLinkOptions(result.data.wikiLinkOptions);
+        setFetchedCategories(result.data.utilityCategories);
+      } catch (error) {
+        console.error("EntityFormDocumentationBlock:", error);
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Impossible de charger les documentations.",
+        );
+      } finally {
+        setLoading(false);
+      }
     })();
   }, [entity, entityId, includeWikis]);
 

@@ -1,5 +1,15 @@
 # Suivi des actions — TOPilot
 
+## **[2026-08-07] — Fix jsdom/DOMPurify sur Vercel (wiki)**
+
+**Type :** `fix`
+**Fichiers concernés :** `package.json`, `next.config.ts`, `lib/wiki/sanitize-{config,html,html-client}.ts`, `components/wiki/wiki-consultation-drawer.tsx`, `suivi.md`
+
+### Description
+
+Sur Vercel, l’affichage wiki plantait (`ERR_REQUIRE_ESM` via `jsdom` → `@exodus/bytes`). Pin `jsdom@25.0.1`, sanitisation serveur (`server-only` + isomorphic-dompurify) séparée de l’affichage client (`dompurify` navigateur).
+
+---
 ## **[2026-08-07] — Fix RLS mission/opportunity (INSERT RETURNING)**
 
 **Type :** `fix`
