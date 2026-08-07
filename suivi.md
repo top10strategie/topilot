@@ -1,6 +1,49 @@
 # Suivi des actions — TOPilot
 
+## **[2026-08-07] — Fix RLS mission/opportunity (INSERT RETURNING)**
+
+**Type :** `fix`
+**Fichiers concernés :** `supabase/migrations/20260807123000_fix_mission_opportunity_rls_returning.sql`, `suivi.md`
+
+### Description
+
+`createMissionRecord` échouait en 42501 pour les Collaborateurs : la policy SELECT `can_access_mission(id)` re-interrogeait `mission` pendant `INSERT…RETURNING`, rendant la nouvelle ligne invisible. Policies mission/opportunity réécrites en contrôlant les colonnes de la ligne ; `can_access_*` conservés pour les jonctions.
+
+---
+## **[2026-08-07] — Fix EXECUTE triggers (écritures Collaborateur)**
+
+
+**Type :** `fix`
+**Fichiers concernés :** `supabase/migrations/20260807120000_restore_trigger_execute_grants.sql`, `suivi.md`
+
+### Description
+
+Après `security_hardening`, les INSERT/UPDATE (accès outil, missions, etc.) échouaient pour les rôles `authenticated` : `permission denied for function audit_trigger_fn`. Restauration du `GRANT EXECUTE` sur les fonctions de triggers (audit + enforce*), tout en gardant les RPC Vault réservées à `service_role`.
+
+### Détails techniques
+
+- PostgreSQL exige `EXECUTE` pour le rôle qui déclenche un trigger, même si la fonction est `SECURITY DEFINER`.
+- Migration appliquée via MCP sur le projet TOPilot.
+
+---
+## **[2026-08-07] — Ré-auth MDP + versionning documentaire avancé**
+
+
+**Type :** `feature`
+**Fichiers concernés :** `actions/settings.ts`, `components/settings/password-change-form.tsx`, `actions/documents.ts`, `lib/documents/{storage,queries}.ts`, `components/documents/{document-version-history-drawer,document-version-compare,documents-page-client}.tsx`, `.cursor/rules/{01,03,05,10}_*.mdc.md`, `suivi.md`
+
+### Description
+
+Branche `feat/reauth-document-versioning`. Point roadmap 10 renommé et clos : ré-authentification (`signInWithPassword`) avant changement de mot de passe volontaire sur `/settings` (session conservée). Versionning avancé : tiroir historique des versions, comparaison métadonnées + aperçu côte à côte, restauration = nouvelle version (copie Storage/URL).
+
+### Détails techniques
+
+- `updateOwnPassword` : champ `currentPassword` obligatoire ; preuve Auth avant `updateUser` ; hors scope `/auth/update-password`.
+- `restoreDocumentVersion` + `copyStorageObject` ; jonctions migrées depuis la latest ; 5ᵉ icône `clock-counter-clockwise` sur `/documents`.
+
+---
 ## **[2026-08-06] — Analyses, catégories métier/utilitaire, dates et Top10**
+
 
 **Type :** `feature`
 **Fichiers concernés :** `supabase/migrations/20260806120000_analyses_categories_business.sql`, `lib/categories/*`, `actions/categories.ts`, `lib/analyses/*`, `components/analyses/*`, `components/home/*`, `components/settings/*`, `components/collaborators/top10-page-client.tsx`, `components/missions/*`, `actions/{missions,opportunities,settings}.ts`, `lib/navigation/menu.ts`, `app/(app)/{analyses,missions,settings,page}.tsx`, `.cursor/rules/{03,04,05}_*.mdc.md`, `suivi.md`

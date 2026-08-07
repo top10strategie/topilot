@@ -49,14 +49,24 @@ export async function updateOwnTheme(
 }
 
 export async function updateOwnPassword(input: {
+  currentPassword: string;
   password: string;
   confirm: string;
 }): Promise<SettingsActionResult> {
   const auth = await requireActiveCollaboratorAction();
   if (!auth.success) return { success: false, error: auth.error };
 
+  const currentPassword = input.currentPassword.trim();
   const password = input.password.trim();
   const confirm = input.confirm.trim();
+
+  if (!currentPassword) {
+    return {
+      success: false,
+      error: "Le mot de passe actuel est obligatoire.",
+      fieldErrors: { currentPassword: "Obligatoire." },
+    };
+  }
   if (password.length < 8) {
     return {
       success: false,
@@ -73,6 +83,29 @@ export async function updateOwnPassword(input: {
   }
 
   const supabase = await createClient();
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+  if (userError || !user?.email) {
+    return {
+      success: false,
+      error: "Impossible de vérifier l'identité.",
+    };
+  }
+
+  const { error: reauthError } = await supabase.auth.signInWithPassword({
+    email: user.email,
+    password: currentPassword,
+  });
+  if (reauthError) {
+    return {
+      success: false,
+      error: "Mot de passe actuel incorrect.",
+      fieldErrors: { currentPassword: "Mot de passe actuel incorrect." },
+    };
+  }
+
   const { error } = await supabase.auth.updateUser({ password });
   if (error) {
     return { success: false, error: error.message };

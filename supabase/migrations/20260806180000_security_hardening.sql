@@ -24,16 +24,28 @@ ALTER FUNCTION public.anonymize_contact_client(uuid) SET search_path = public;
 ALTER FUNCTION public.fts_french(text) SET search_path = public;
 ALTER FUNCTION public.fts_french_tags(text[]) SET search_path = public;
 
--- 3a. Triggers / helpers internes : pas d'appel RPC client
-REVOKE ALL ON FUNCTION public.audit_trigger_fn() FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON FUNCTION public.audit_notes_trigger_fn() FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON FUNCTION public.create_default_setting_for_collaborator() FROM PUBLIC, anon, authenticated;
+-- 3a. Triggers / helpers internes : pas d'appel RPC client volontaire
+-- IMPORTANT : ne pas REVOKE EXECUTE FROM authenticated sur les fonctions
+-- attachées à des triggers — PostgreSQL exige EXECUTE pour le rôle qui
+-- déclenche le trigger, même si la fonction est SECURITY DEFINER.
+-- (anon reste révoqué ; authenticated conserve EXECUTE pour le firing.)
+REVOKE ALL ON FUNCTION public.audit_trigger_fn() FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.audit_notes_trigger_fn() FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.create_default_setting_for_collaborator() FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.rls_auto_enable() FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON FUNCTION public.enforce_category_business_privacy_change() FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON FUNCTION public.enforce_collaborator_not_on_private_team() FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON FUNCTION public.enforce_collaborator_sensitive_fields() FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON FUNCTION public.enforce_team_private_category_members() FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON FUNCTION public.enforce_tool_access_privacy_change() FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.enforce_category_business_privacy_change() FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.enforce_collaborator_not_on_private_team() FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.enforce_collaborator_sensitive_fields() FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.enforce_team_private_category_members() FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.enforce_tool_access_privacy_change() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.audit_trigger_fn() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.audit_notes_trigger_fn() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.create_default_setting_for_collaborator() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.enforce_category_business_privacy_change() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.enforce_collaborator_not_on_private_team() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.enforce_collaborator_sensitive_fields() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.enforce_team_private_category_members() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.enforce_tool_access_privacy_change() TO authenticated;
 
 -- 3b. Vault : service_role uniquement (déjà GRANTé en migration vault)
 REVOKE ALL ON FUNCTION public.insert_secret(text, text) FROM PUBLIC, anon, authenticated;

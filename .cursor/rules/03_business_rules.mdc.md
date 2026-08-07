@@ -180,6 +180,9 @@ Quand un nouveau fichier est uploadé sur un document existant :
 1. Une nouvelle entrée est créée avec `version_number = ancien + 1` et `parent_document_id` pointant vers la première version.
 2. L'interface affiche par défaut la **dernière version** de chaque document, calculée **dynamiquement** (aucune colonne `is_latest` en base) : pour chaque famille de documents regroupée par `COALESCE(parent_document_id, id)`, c'est la ligne avec le `version_number` le plus élevé. Voir la vue `document_latest` dans `04_database_schema.mdc`.
 3. Le filtre "Version" de `/documents` permet de faire remonter les versions antérieures, normalement masquées.
+4. **Historique / comparaison / restauration** (tiroir depuis `/documents`) :
+    - Liste de toute la lignée ; sélection de 2 versions pour **comparer** (métadonnées côte à côte + aperçu image/PDF si prévisualisable ; sinon message + lien téléchargement).
+    - **Restaurer** une version antérieure crée une **nouvelle** version (`version_number` max + 1) en copiant le contenu (fichier Storage via `copy`, ou même URL) — jamais d'écrasement in-place. Désactivé si la version est déjà la latest. Les jonctions sont migrées depuis la latest actuelle vers la nouvelle latest (`copyLinksToNewVersion`).
 
 > `parent_document_id` est nul sur la première version, et pointe vers la v1 pour toutes les versions suivantes (jamais vers la version immédiatement précédente) — c'est pourquoi le regroupement par famille utilise `COALESCE(parent_document_id, id)` plutôt qu'un chaînage version par version.
 
