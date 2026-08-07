@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export function PasswordChangeForm() {
+  const [currentPassword, setCurrentPassword] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [fieldErrors, setFieldErrors] = useState<
@@ -18,13 +19,18 @@ export function PasswordChangeForm() {
   const onSubmit = (event: FormEvent) => {
     event.preventDefault();
     startTransition(async () => {
-      const result = await updateOwnPassword({ password, confirm });
+      const result = await updateOwnPassword({
+        currentPassword,
+        password,
+        confirm,
+      });
       if (!result.success) {
         setFieldErrors(result.fieldErrors ?? {});
         toast.error(result.error);
         return;
       }
       setFieldErrors({});
+      setCurrentPassword("");
       setPassword("");
       setConfirm("");
       toast.success("Mot de passe mis à jour.");
@@ -36,6 +42,23 @@ export function PasswordChangeForm() {
       <p className="text-sm text-muted-foreground">
         Modifiez votre mot de passe de connexion
       </p>
+      <div className="grid gap-2">
+        <Label htmlFor="current_password">Mot de passe actuel</Label>
+        <Input
+          id="current_password"
+          type="password"
+          autoComplete="current-password"
+          value={currentPassword}
+          onChange={(e) => setCurrentPassword(e.target.value)}
+          disabled={isPending}
+          aria-invalid={Boolean(fieldErrors.currentPassword)}
+        />
+        {fieldErrors.currentPassword ? (
+          <p className="text-sm text-destructive">
+            {fieldErrors.currentPassword}
+          </p>
+        ) : null}
+      </div>
       <div className="grid gap-2">
         <Label htmlFor="new_password">Nouveau mot de passe</Label>
         <Input

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireActiveCollaboratorAction } from "@/lib/auth/require-action";
 import {
+  copyStorageObject,
   removeStoragePaths,
   uploadDocumentFile,
 } from "@/lib/documents/storage";
@@ -540,6 +541,148 @@ export async function createDocumentVersion(
   }
 
   await copyLinksToNewVersion(supabase, source, created.id);
+  revalidateDocuments();
+  return { success: true, id: created.id };
+}
+
+/**
+ * Restaure une version antérieure en créant une nouvelle version (copie contenu).
+ * Les jonctions sont migrées depuis la latest actuelle vers la nouvelle latest.
+ */
+export async function restoreDocumentVersion(
+  sourceVersionId: string,
+): Promise<DocumentActionResult> {
+  const auth = await requireActiveCollaboratorAction();
+  if (!auth.success) {
+    return { success: false, error: auth.error };
+  }
+  if (!isUuid(sourceVersionId)) {
+    return { success: false, error: "Identifiant invalide." };
+  }
+
+  const supabase = await createClient();
+  const { data: source, error: sourceError } = await supabase
+    .from("document")
+    .select(
+      "id, document_name, document_type_id, storage_type, file_path, url, is_visual, version_number, parent_document_id",
+    )
+    .eq("id", sourceVersionId)
+    .maybeSingle();
+
+  if (sourceError || !source) {
+    return { success: false, error: "Version source introuvable." };
+  }
+
+  const rootId = source.parent_document_id ?? source.id;
+
+  const { data: lineageRows, error: lineageError } = await supabase
+    .from("document")
+    .select(
+      "id, version_number, parent_document_id, client_document(client_id), opportunity_document(opportunity_id), mission_document(mission_id)",
+    )
+    .or(`id.eq.${rootId},parent_document_id.eq.${rootId}`)
+    .order("version_number", { ascending: false });
+
+  if (lineageError || !lineageRows?.length) {
+    return {
+      success: false,
+      error: `Impossible de lire la lignée : ${lineageError?.message ?? "vide"}`,
+    };
+  }
+
+  const latest = lineageRows[0]!;
+  if (latest.id === source.id) {
+    return {
+      success: false,
+      error: "Cette version est déjà la plus récente.",
+    };
+  }
+
+  const nextVersion = latest.version_number + 1;
+  const admin = createAdminClient();
+
+  if (source.storage_type === "url") {
+    if (!source.url) {
+      return { success: false, error: "URL source manquante." };
+    }
+
+    const { data: created, error } = await admin
+      .from("document")
+      .insert({
+        document_name: source.document_name,
+        document_type_id: source.document_type_id,
+        storage_type: "url",
+        url: source.url,
+        file_path: null,
+        is_visual: source.is_visual,
+        version_number: nextVersion,
+        parent_document_id: rootId,
+      })
+      .select("id")
+      .single();
+
+    if (error || !created) {
+      return {
+        success: false,
+        error: `Impossible de restaurer : ${error?.message ?? "inconnu"}`,
+      };
+    }
+
+    await copyLinksToNewVersion(supabase, latest, created.id);
+    revalidateDocuments();
+    return { success: true, id: created.id };
+  }
+
+  if (!source.file_path || source.file_path === "pending") {
+    return { success: false, error: "Fichier source introuvable." };
+  }
+
+  const { data: created, error: insertError } = await admin
+    .from("document")
+    .insert({
+      document_name: source.document_name,
+      document_type_id: source.document_type_id,
+      storage_type: "supabase",
+      file_path: "pending",
+      url: null,
+      is_visual: source.is_visual,
+      version_number: nextVersion,
+      parent_document_id: rootId,
+    })
+    .select("id")
+    .single();
+
+  if (insertError || !created) {
+    return {
+      success: false,
+      error: `Impossible de restaurer : ${insertError?.message ?? "inconnu"}`,
+    };
+  }
+
+  try {
+    const { filePath } = await copyStorageObject({
+      fromPath: source.file_path,
+      toDocumentId: created.id,
+      isVisual: source.is_visual,
+    });
+    const { error: pathError } = await admin
+      .from("document")
+      .update({ file_path: filePath })
+      .eq("id", created.id);
+    if (pathError) {
+      await removeStoragePaths([
+        { filePath, isVisual: source.is_visual },
+      ]);
+      await admin.from("document").delete().eq("id", created.id);
+      return { success: false, error: pathError.message };
+    }
+  } catch (err) {
+    await admin.from("document").delete().eq("id", created.id);
+    const message = err instanceof Error ? err.message : "Copie échouée.";
+    return { success: false, error: message };
+  }
+
+  await copyLinksToNewVersion(supabase, latest, created.id);
   revalidateDocuments();
   return { success: true, id: created.id };
 }

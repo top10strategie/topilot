@@ -72,6 +72,36 @@ export async function uploadDocumentFile(input: {
 }
 
 /**
+ * Copie un objet Storage vers un nouveau chemin `{toDocumentId}/{filename}`.
+ * Utilisé pour la restauration de version (sans re-upload utilisateur).
+ */
+export async function copyStorageObject(input: {
+  fromPath: string;
+  toDocumentId: string;
+  isVisual: boolean;
+}): Promise<{ filePath: string }> {
+  if (!input.fromPath || input.fromPath === "pending") {
+    throw new Error("Fichier source introuvable.");
+  }
+
+  const fileName =
+    sanitizeFileName(input.fromPath.split("/").pop() ?? "fichier") || "fichier";
+  const toPath = `${input.toDocumentId}/${fileName}`;
+  const bucket = bucketForVisual(input.isVisual);
+  const admin = createAdminClient();
+
+  const { error } = await admin.storage
+    .from(bucket)
+    .copy(input.fromPath, toPath);
+
+  if (error) {
+    throw new Error(`Copie Storage échouée : ${error.message}`);
+  }
+
+  return { filePath: toPath };
+}
+
+/**
  * Supprime des objets Storage. Échec non bloquant (fichiers orphelins).
  */
 export async function removeStoragePaths(

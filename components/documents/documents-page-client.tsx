@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Cards,
+  ClockCounterClockwise,
   DownloadSimple,
   Eye,
   FunnelSimple,
@@ -21,6 +22,7 @@ import { DeleteDocumentDialog } from "@/components/documents/delete-document-dia
 import { DocumentFormDrawer } from "@/components/documents/document-form-drawer";
 import { DocumentFormatThumb } from "@/components/documents/document-format-thumb";
 import { DocumentPreviewDialog } from "@/components/documents/document-preview-dialog";
+import { DocumentVersionHistoryDrawer } from "@/components/documents/document-version-history-drawer";
 import { IconActionButton } from "@/components/layout/icon-action-button";
 import { ListPaginationFooter } from "@/components/layout/list-pagination-footer";
 import {
@@ -246,6 +248,20 @@ export function DocumentsPageClient({
     });
   };
 
+  const openVersionHistory = (item: DocumentListItem) => {
+    const lineage = documents
+      .filter((doc) => doc.lineage_root_id === item.lineage_root_id)
+      .sort((a, b) => b.version_number - a.version_number);
+    void pushDrawer({
+      title: "Historique des versions",
+      content: (helpers) => (
+        <DocumentVersionHistoryDrawer versions={lineage} helpers={helpers} />
+      ),
+    }).then((restored) => {
+      if (restored) router.refresh();
+    });
+  };
+
   const downloadDocument = async (item: DocumentListItem) => {
     try {
       const response = await fetch(
@@ -280,6 +296,16 @@ export function DocumentsPageClient({
         }}
       >
         <PencilSimple className="size-4" />
+      </IconActionButton>
+      <IconActionButton
+        label="Historique des versions"
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          openVersionHistory(item);
+        }}
+      >
+        <ClockCounterClockwise className="size-4" />
       </IconActionButton>
       <IconActionButton
         label="Aperçu"
