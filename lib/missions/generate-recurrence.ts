@@ -165,10 +165,13 @@ export async function generateDueMissionOccurrences(): Promise<MissionRecurrence
           opportunity_id: null,
           series_id: series.id,
           kanban_status: "a_faire",
-          estimated_charge: last.estimated_charge,
+          estimated_charge:
+            last.estimated_charge == null
+              ? null
+              : Number(last.estimated_charge),
           notes: last.notes,
           start_at: nextStart,
-          end_at: nextEnd,
+          end_at: nextEnd as string,
         })
         .select("id")
         .single();

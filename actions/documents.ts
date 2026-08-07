@@ -8,6 +8,7 @@ import {
 } from "@/lib/documents/storage";
 import { formBool, formFile, formText } from "@/lib/form-data";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { looseClient } from "@/lib/supabase/loose";
 import { createClient } from "@/lib/supabase/server";
 import { isUuid } from "@/lib/uuid";
 import type { DocumentLinkEntity } from "@/lib/documents/types";
@@ -65,7 +66,7 @@ async function linkDocument(
         ? "mission_id"
         : "opportunity_id";
 
-  const { error } = await supabase.from(table).upsert(
+  const { error } = await looseClient(supabase).from(table).upsert(
     { [fk]: entityId, document_id: documentId },
     { onConflict: `${fk},document_id`, ignoreDuplicates: true },
   );
@@ -358,7 +359,7 @@ export async function updateDocument(
 
   const { data, error } = await supabase
     .from("document")
-    .update(payload)
+    .update(payload as never)
     .eq("id", documentId)
     .select("id")
     .maybeSingle();

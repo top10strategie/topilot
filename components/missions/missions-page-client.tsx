@@ -1,31 +1,26 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  Cards,
+  CirclesThreePlus,
   CopySimple,
   FunnelSimple,
   Kanban,
-  MagnifyingGlass,
-  PencilSimple,
-  SquaresFour,
   Table,
 } from "@phosphor-icons/react";
 import { CategoryMultiCombobox } from "@/components/categories/category-multi-combobox";
 import { useDrawerStack } from "@/components/drawers/drawer-stack-context";
-import { DuplicateConfirmDialog } from "@/components/layout/duplicate-confirm-dialog";
+import { EntityListPageShell } from "@/components/layout/entity-list-page-shell";
 import { IconActionButton } from "@/components/layout/icon-action-button";
-import { ListPaginationFooter } from "@/components/layout/list-pagination-footer";
 import {
-  ListViewTabs,
   ListViewTabsContent,
-  ListViewTabsSwitcher,
   type ListViewTab,
 } from "@/components/layout/list-view-tabs";
-import { PageHero } from "@/components/layout/page-hero";
 import { MissionFormDrawer } from "@/components/missions/mission-form-drawer";
-import { MissionsKanban } from "@/components/missions/missions-kanban";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,13 +29,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -70,7 +58,14 @@ import type {
   MissionOpportunityOption,
   MissionScope,
 } from "@/lib/missions/types";
-import { cn } from "@/lib/utils";
+
+const MissionsKanban = dynamic(
+  () =>
+    import("@/components/missions/missions-kanban").then((m) => ({
+      default: m.MissionsKanban,
+    })),
+  { ssr: false },
+);
 
 const PAGE_SIZE = 24;
 
@@ -83,7 +78,7 @@ const MISSION_VIEW_TABS: ListViewTab[] = [
   {
     value: "cards",
     label: "Cartes",
-    icon: <SquaresFour className="size-3.5" aria-hidden />,
+    icon: <Cards className="size-3.5" aria-hidden />,
   },
   {
     value: "table",
@@ -370,448 +365,264 @@ export function MissionsPageClient({
   };
 
   return (
-    <ListViewTabs
-      value={view}
-      onValueChange={(value) => {
+    <EntityListPageShell
+      title="Missions"
+      searchAriaLabel="Recherche contextuelle missions"
+      view={view}
+      onViewChange={(value) => {
         setView(value as "kanban" | "cards" | "table");
         setPage(1);
       }}
-    >
-      <PageHero
-        title="Missions"
-        actions={
-          <div className="flex w-full max-w-xl flex-wrap items-center gap-2 md:w-auto md:max-w-none md:flex-nowrap">
-            <div className="relative min-w-0 flex-1 basis-full sm:basis-auto md:w-72 md:flex-none lg:w-80">
-              <MagnifyingGlass
-                className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
-                aria-hidden
-              />
-              <Input
-                type="search"
-                placeholder="Rechercher…"
-                value={query}
-                onChange={(event) => {
-                  setQuery(event.target.value);
-                  setPage(1);
-                }}
-                className="pl-8"
-                aria-label="Recherche contextuelle missions"
-              />
-            </div>
-            <ListViewTabsSwitcher tabs={MISSION_VIEW_TABS} showLabels={false} />
-            <IconActionButton
-              label={
-                hasActiveFilters
-                  ? `Filtres (${filters.categoryIds.length > 0 ? `${filters.categoryIds.length} catégorie${filters.categoryIds.length > 1 ? "s" : ""}` : "actifs"})`
-                  : "Filtres"
-              }
-              variant={hasActiveFilters ? "default" : "outline"}
-              onClick={() => {
-                setDraftFilters(filters);
-                setFilterOpen(true);
-              }}
-            >
-              <FunnelSimple className="size-4" weight={hasActiveFilters ? "fill" : "regular"} />
-            </IconActionButton>
-            <IconActionButton
-              label="Nouvelle mission"
-              onClick={() => openCreate()}
-            >
-              <PencilSimple className="size-4" />
-            </IconActionButton>
-          </div>
-        }
-      />
-
-      <div
-        className={cn(
-          "min-h-0 flex-1 px-4 py-4 md:px-6",
-          view === "kanban" ? "flex flex-col overflow-hidden" : "overflow-y-auto",
-        )}
-      >
-        <ListViewTabsContent value="kanban" className="min-h-0 flex-1">
-          <MissionsKanban items={filtered} />
-        </ListViewTabsContent>
-
-        <ListViewTabsContent value="cards" className="flex-none">
-          {filtered.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              {query.trim() || hasActiveFilters
-                ? "Aucune mission ne correspond aux critères."
-                : "Aucune mission pour le moment. Créez-en une pour commencer."}
-            </p>
-          ) : (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {pageItems.map((item) => (
-                <Link key={item.id} href={`/missions/${item.id}`}>
-                  <Card className="h-full transition-colors hover:bg-muted/40">
-                    <CardHeader className="space-y-2 p-4 pb-2">
-                      <div className="flex items-start justify-between gap-2">
-                        <CardTitle className="min-w-0 text-base leading-snug">
-                          {item.mission_name}
-                        </CardTitle>
-                        <IconActionButton
-                          label="Dupliquer la mission"
-                          className="shrink-0"
-                          onClick={(event) => requestDuplicate(event, item)}
-                        >
-                          <CopySimple className="size-4" />
-                        </IconActionButton>
-                      </div>
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-                          {item.categories.length === 0 ? (
-                            <span className="text-xs text-muted-foreground">
-                              —
-                            </span>
-                          ) : (
-                            item.categories.slice(0, 3).map((category) => (
-                              <Badge key={category.id} variant="secondary">
-                                {category.label}
-                              </Badge>
-                            ))
-                          )}
-                        </div>
-                        {item.mission_scope === "interne" ? (
-                          <Badge variant="secondary" className="shrink-0">
-                            Interne
-                          </Badge>
-                        ) : null}
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-1 p-4 pt-2 text-xs text-muted-foreground">
-                      <div className="flex items-baseline justify-between gap-2">
-                        <span className="min-w-0 truncate">
-                          {item.mission_scope === "interne"
-                            ? "Interne"
-                            : (item.client?.client_name ?? "—")}
-                        </span>
-                        <span className="shrink-0 text-right">
-                          {getMissionResponsibleName(item.responsible)}
-                        </span>
-                      </div>
-                      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
-                        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-                          <Badge variant="outline" className="font-normal">
-                            {getMissionKanbanStatusLabel(item.kanban_status)}
-                          </Badge>
-                          <span>{formatMissionCharge(item.estimated_charge)}</span>
-                        </div>
-                        <span className="shrink-0 text-primary-foreground">
-                          {formatMissionDate(item.end_at)}
-                        </span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              ))}
-            </div>
-          )}
-        </ListViewTabsContent>
-
-        <ListViewTabsContent value="table" className="flex-none">
-          <div className="overflow-x-auto rounded-md border">
-            <table className="w-full min-w-[960px] text-left text-sm">
-              <thead className="border-b bg-muted/40 text-xs text-muted-foreground">
-                <tr>
-                  <th className="px-3 py-2 font-medium">Nom</th>
-                  <th className="px-3 py-2 font-medium">Client</th>
-                  <th className="px-3 py-2 font-medium">Responsable</th>
-                  <th className="px-3 py-2 font-medium">Statut</th>
-                  <th className="px-3 py-2 font-medium">Périmètre</th>
-                  <th className="px-3 py-2 font-medium">Catégories</th>
-                  <th className="px-3 py-2 font-medium">Début</th>
-                  <th className="px-3 py-2 font-medium">Fin</th>
-                  <th className="px-3 py-2 font-medium">Temps vendu</th>
-                  <th className="px-3 py-2 font-medium">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pageItems.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={10}
-                      className="px-3 py-6 text-sm text-muted-foreground"
-                    >
-                      {query.trim() || hasActiveFilters
-                        ? "Aucune mission ne correspond aux critères."
-                        : "Aucune mission pour le moment. Créez-en une pour commencer."}
-                    </td>
-                  </tr>
-                ) : (
-                  pageItems.map((item) => (
-                    <tr
-                      key={item.id}
-                      className="cursor-pointer border-b last:border-0 hover:bg-muted/30"
-                      onClick={() => router.push(`/missions/${item.id}`)}
-                    >
-                      <td className="px-3 py-2 font-medium">
-                        {item.mission_name}
-                      </td>
-                      <td className="px-3 py-2">
-                        {item.mission_scope === "interne"
-                          ? "Interne"
-                          : (item.client?.client_name ?? "—")}
-                      </td>
-                      <td className="px-3 py-2">
-                        {getMissionResponsibleName(item.responsible)}
-                      </td>
-                      <td className="px-3 py-2">
-                        {getMissionKanbanStatusLabel(item.kanban_status)}
-                      </td>
-                      <td className="px-3 py-2">
-                        {getMissionScopeLabel(item.mission_scope)}
-                      </td>
-                      <td className="px-3 py-2 text-muted-foreground">
-                        {item.categories.map((c) => c.label).join(", ") ||
-                          "—"}
-                      </td>
-                      <td className="px-3 py-2 text-muted-foreground">
-                        {formatMissionDate(item.start_at)}
-                      </td>
-                      <td className="px-3 py-2 text-primary-foreground">
-                        {formatMissionDate(item.end_at)}
-                      </td>
-                      <td className="px-3 py-2">
-                        {formatMissionCharge(item.estimated_charge)}
-                      </td>
-                      <td className="px-3 py-2">
-                        <IconActionButton
-                          label="Dupliquer la mission"
-                          onClick={(event) => requestDuplicate(event, item)}
-                        >
-                          <CopySimple className="size-4" />
-                        </IconActionButton>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </ListViewTabsContent>
-      </div>
-
-      {view !== "kanban" ? (
-        <ListPaginationFooter
-          countLabel="Nombre de missions"
-          count={filtered.length}
-          page={page}
-          totalPages={totalPages}
-          pageSize={PAGE_SIZE}
-          onPageChange={setPage}
-        />
-      ) : null}
-
-      <DuplicateConfirmDialog
-        open={duplicateTarget != null}
-        onOpenChange={(open) => {
-          if (!open) setDuplicateTarget(null);
-        }}
-        entityLabel="mission"
-        entityName={duplicateTarget?.mission_name ?? ""}
-        onConfirm={() => {
-          if (duplicateTarget) openCreate(duplicateTarget);
-        }}
-      />
-
-      <Dialog open={filterOpen} onOpenChange={setFilterOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto overflow-x-visible sm:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Filtres missions</DialogTitle>
-          </DialogHeader>
-          <div className="relative py-2">
-            <div
-              ref={filterPortalRef}
-              data-slot="dialog-portal-container"
-              className="pointer-events-none absolute inset-0 z-[100] overflow-visible"
+      viewTabs={MISSION_VIEW_TABS}
+      query={query}
+      onQueryChange={(value) => {
+        setQuery(value);
+        setPage(1);
+      }}
+      toolbarActions={
+        <>
+          <IconActionButton
+            label={
+              hasActiveFilters
+                ? `Filtres (${filters.categoryIds.length > 0 ? `${filters.categoryIds.length} catégorie${filters.categoryIds.length > 1 ? "s" : ""}` : "actifs"})`
+                : "Filtres"
+            }
+            variant={hasActiveFilters ? "default" : "outline"}
+            onClick={() => {
+              setDraftFilters(filters);
+              setFilterOpen(true);
+            }}
+          >
+            <FunnelSimple
+              className="size-4"
+              weight={hasActiveFilters ? "fill" : "regular"}
             />
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="grid min-w-0 gap-2">
-                <Label>Client</Label>
-                <Select
-                  value={draftFilters.clientId || "all"}
-                  onValueChange={(value) =>
-                    setDraftFilters((prev) => ({
-                      ...prev,
-                      clientId: value === "all" ? "" : value,
-                    }))
-                  }
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Tous" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Tous</SelectItem>
-                    {clientOptions.map((client) => (
-                      <SelectItem key={client.id} value={client.id}>
-                        {client.client_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+          </IconActionButton>
+          <IconActionButton
+            label="Nouvelle mission"
+            onClick={() => openCreate()}
+          >
+            <CirclesThreePlus className="size-4" />
+          </IconActionButton>
+        </>
+      }
+      kanbanLayout={view === "kanban"}
+      pagination={
+        view !== "kanban"
+          ? {
+              countLabel: "Nombre de missions",
+              count: filtered.length,
+              page,
+              totalPages,
+              pageSize: PAGE_SIZE,
+              onPageChange: setPage,
+            }
+          : null
+      }
+      duplicate={{
+        open: duplicateTarget != null,
+        onOpenChange: (open) => {
+          if (!open) setDuplicateTarget(null);
+        },
+        entityLabel: "mission",
+        entityName: duplicateTarget?.mission_name ?? "",
+        onConfirm: () => {
+          if (duplicateTarget) openCreate(duplicateTarget);
+        },
+      }}
+      filterDialog={{
+        open: filterOpen,
+        onOpenChange: setFilterOpen,
+        title: "Filtres missions",
+        portalRef: filterPortalRef,
+        children: (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="grid min-w-0 gap-2">
+              <Label>Client</Label>
+              <Select
+                value={draftFilters.clientId || "all"}
+                onValueChange={(value) =>
+                  setDraftFilters((prev) => ({
+                    ...prev,
+                    clientId: value === "all" ? "" : value,
+                  }))
+                }
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Tous" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tous</SelectItem>
+                  {clientOptions.map((client) => (
+                    <SelectItem key={client.id} value={client.id}>
+                      {client.client_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid min-w-0 gap-2">
+              <Label>Responsable</Label>
+              <Select
+                value={draftFilters.responsibleId || "all"}
+                onValueChange={(value) =>
+                  setDraftFilters((prev) => ({
+                    ...prev,
+                    responsibleId: value === "all" ? "" : value,
+                  }))
+                }
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Tous" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tous</SelectItem>
+                  {responsibleOptions.map((person) => (
+                    <SelectItem key={person.id} value={person.id}>
+                      {getCollaboratorFullName(person)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid min-w-0 gap-2">
+              <Label>Pôle</Label>
+              <Select
+                value={draftFilters.teamId || "all"}
+                onValueChange={(value) =>
+                  setDraftFilters((prev) => ({
+                    ...prev,
+                    teamId: value === "all" ? "" : value,
+                  }))
+                }
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Tous" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tous</SelectItem>
+                  {teamOptions.map((team) => (
+                    <SelectItem key={team.id} value={team.id}>
+                      {team.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid min-w-0 gap-2">
+              <Label>Catégories</Label>
+              <CategoryMultiCombobox
+                className="w-full"
+                items={categories}
+                value={draftSelectedCategories}
+                onValueChange={(next) =>
+                  setDraftFilters((prev) => ({
+                    ...prev,
+                    categoryIds: next.map((item) => item.id),
+                  }))
+                }
+                placeholder="Filtrer par catégories…"
+                emptyListMessage="Aucune catégorie"
+                container={filterPortalRef}
+              />
+            </div>
+            <div className="grid min-w-0 gap-2">
+              <Label>Périmètre</Label>
+              <Select
+                value={draftFilters.scope || "all"}
+                onValueChange={(value) =>
+                  setDraftFilters((prev) => ({
+                    ...prev,
+                    scope: value === "all" ? "" : (value as MissionScope),
+                  }))
+                }
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Tous" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tous</SelectItem>
+                  {MISSION_SCOPES.map((scope) => (
+                    <SelectItem key={scope} value={scope}>
+                      {getMissionScopeLabel(scope)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2 sm:col-span-2">
+              <Label>Statut</Label>
+              <div className="flex flex-wrap gap-1.5">
+                {MISSION_KANBAN_STATUSES.map((status) => {
+                  const selected = draftFilters.statuses.includes(status);
+                  return (
+                    <Button
+                      key={status}
+                      type="button"
+                      size="sm"
+                      variant={selected ? "default" : "outline"}
+                      onClick={() => toggleDraftStatus(status)}
+                    >
+                      {getMissionKanbanStatusLabel(status)}
+                    </Button>
+                  );
+                })}
               </div>
-              <div className="grid min-w-0 gap-2">
-                <Label>Responsable</Label>
-                <Select
-                  value={draftFilters.responsibleId || "all"}
-                  onValueChange={(value) =>
+            </div>
+            <div className="grid gap-2">
+              <Label>Plage de filtre pour les date de début</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <Input
+                  type="date"
+                  value={draftFilters.startFrom}
+                  onChange={(event) =>
                     setDraftFilters((prev) => ({
                       ...prev,
-                      responsibleId: value === "all" ? "" : value,
+                      startFrom: event.target.value,
                     }))
                   }
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Tous" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Tous</SelectItem>
-                    {responsibleOptions.map((person) => (
-                      <SelectItem key={person.id} value={person.id}>
-                        {getCollaboratorFullName(person)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid min-w-0 gap-2">
-                <Label>Pôle</Label>
-                <Select
-                  value={draftFilters.teamId || "all"}
-                  onValueChange={(value) =>
+                />
+                <Input
+                  type="date"
+                  value={draftFilters.startTo}
+                  onChange={(event) =>
                     setDraftFilters((prev) => ({
                       ...prev,
-                      teamId: value === "all" ? "" : value,
+                      startTo: event.target.value,
                     }))
                   }
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Tous" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Tous</SelectItem>
-                    {teamOptions.map((team) => (
-                      <SelectItem key={team.id} value={team.id}>
-                        {team.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid min-w-0 gap-2">
-                <Label>Catégories</Label>
-                <CategoryMultiCombobox
-                  className="w-full"
-                  items={categories}
-                  value={draftSelectedCategories}
-                  onValueChange={(next) =>
-                    setDraftFilters((prev) => ({
-                      ...prev,
-                      categoryIds: next.map((item) => item.id),
-                    }))
-                  }
-                  placeholder="Filtrer par catégories…"
-                  emptyListMessage="Aucune catégorie"
-                  container={filterPortalRef}
                 />
               </div>
-              <div className="grid min-w-0 gap-2">
-                <Label>Périmètre</Label>
-                <Select
-                  value={draftFilters.scope || "all"}
-                  onValueChange={(value) =>
+            </div>
+            <div className="grid gap-2">
+              <Label>Plage de filtre pour les date de fin</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <Input
+                  type="date"
+                  value={draftFilters.endFrom}
+                  onChange={(event) =>
                     setDraftFilters((prev) => ({
                       ...prev,
-                      scope: value === "all" ? "" : (value as MissionScope),
+                      endFrom: event.target.value,
                     }))
                   }
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Tous" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Tous</SelectItem>
-                    {MISSION_SCOPES.map((scope) => (
-                      <SelectItem key={scope} value={scope}>
-                        {getMissionScopeLabel(scope)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2 sm:col-span-2">
-                <Label>Statut</Label>
-                <div className="flex flex-wrap gap-1.5">
-                  {MISSION_KANBAN_STATUSES.map((status) => {
-                    const selected = draftFilters.statuses.includes(status);
-                    return (
-                      <Button
-                        key={status}
-                        type="button"
-                        size="sm"
-                        variant={selected ? "default" : "outline"}
-                        onClick={() => toggleDraftStatus(status)}
-                      >
-                        {getMissionKanbanStatusLabel(status)}
-                      </Button>
-                    );
-                  })}
-                </div>
-              </div>
-              <div className="grid gap-2">
-                <Label>Plage de filtre pour les date de début</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  <Input
-                    type="date"
-                    value={draftFilters.startFrom}
-                    onChange={(event) =>
-                      setDraftFilters((prev) => ({
-                        ...prev,
-                        startFrom: event.target.value,
-                      }))
-                    }
-                  />
-                  <Input
-                    type="date"
-                    value={draftFilters.startTo}
-                    onChange={(event) =>
-                      setDraftFilters((prev) => ({
-                        ...prev,
-                        startTo: event.target.value,
-                      }))
-                    }
-                  />
-                </div>
-              </div>
-              <div className="grid gap-2">
-                <Label>Plage de filtre pour les date de fin</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  <Input
-                    type="date"
-                    value={draftFilters.endFrom}
-                    onChange={(event) =>
-                      setDraftFilters((prev) => ({
-                        ...prev,
-                        endFrom: event.target.value,
-                      }))
-                    }
-                  />
-                  <Input
-                    type="date"
-                    value={draftFilters.endTo}
-                    onChange={(event) =>
-                      setDraftFilters((prev) => ({
-                        ...prev,
-                        endTo: event.target.value,
-                      }))
-                    }
-                  />
-                </div>
+                />
+                <Input
+                  type="date"
+                  value={draftFilters.endTo}
+                  onChange={(event) =>
+                    setDraftFilters((prev) => ({
+                      ...prev,
+                      endTo: event.target.value,
+                    }))
+                  }
+                />
               </div>
             </div>
           </div>
-          <DialogFooter className="gap-2 sm:gap-2">
+        ),
+        footer: (
+          <>
             <Button
               type="button"
               variant="outline"
@@ -834,9 +645,170 @@ export function MissionsPageClient({
             >
               Appliquer
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </ListViewTabs>
+          </>
+        ),
+      }}
+    >
+      <ListViewTabsContent value="kanban" className="min-h-0 flex-1">
+        <MissionsKanban items={filtered} />
+      </ListViewTabsContent>
+
+      <ListViewTabsContent value="cards" className="flex-none">
+        {filtered.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            {query.trim() || hasActiveFilters
+              ? "Aucune mission ne correspond aux critères."
+              : "Aucune mission pour le moment. Créez-en une pour commencer."}
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {pageItems.map((item) => (
+              <Link key={item.id} href={`/missions/${item.id}`}>
+                <Card className="h-full transition-colors hover:bg-muted/40">
+                  <CardHeader className="space-y-2 p-4 pb-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <CardTitle className="min-w-0 text-base leading-snug">
+                        {item.mission_name}
+                      </CardTitle>
+                      <IconActionButton
+                        label="Dupliquer la mission"
+                        className="shrink-0"
+                        onClick={(event) => requestDuplicate(event, item)}
+                      >
+                        <CopySimple className="size-4" />
+                      </IconActionButton>
+                    </div>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                        {item.categories.length === 0 ? (
+                          <span className="text-xs text-muted-foreground">
+                            —
+                          </span>
+                        ) : (
+                          item.categories.slice(0, 3).map((category) => (
+                            <Badge key={category.id} variant="secondary">
+                              {category.label}
+                            </Badge>
+                          ))
+                        )}
+                      </div>
+                      {item.mission_scope === "interne" ? (
+                        <Badge variant="secondary" className="shrink-0">
+                          Interne
+                        </Badge>
+                      ) : null}
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-1 p-4 pt-2 text-xs text-muted-foreground">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="min-w-0 truncate">
+                        {item.mission_scope === "interne"
+                          ? "Interne"
+                          : (item.client?.client_name ?? "—")}
+                      </span>
+                      <span className="shrink-0 text-right">
+                        {getMissionResponsibleName(item.responsible)}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+                      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                        <Badge variant="outline" className="font-normal">
+                          {getMissionKanbanStatusLabel(item.kanban_status)}
+                        </Badge>
+                        <span>{formatMissionCharge(item.estimated_charge)}</span>
+                      </div>
+                      <span className="shrink-0 text-primary-foreground">
+                        {formatMissionDate(item.end_at)}
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        )}
+      </ListViewTabsContent>
+
+      <ListViewTabsContent value="table" className="flex-none">
+        <div className="overflow-x-auto rounded-md border">
+          <table className="w-full min-w-[960px] text-left text-sm">
+            <thead className="border-b bg-muted/40 text-xs text-muted-foreground">
+              <tr>
+                <th className="px-3 py-2 font-medium">Nom</th>
+                <th className="px-3 py-2 font-medium">Client</th>
+                <th className="px-3 py-2 font-medium">Responsable</th>
+                <th className="px-3 py-2 font-medium">Statut</th>
+                <th className="px-3 py-2 font-medium">Périmètre</th>
+                <th className="px-3 py-2 font-medium">Catégories</th>
+                <th className="px-3 py-2 font-medium">Début</th>
+                <th className="px-3 py-2 font-medium">Fin</th>
+                <th className="px-3 py-2 font-medium">Temps vendu</th>
+                <th className="px-3 py-2 font-medium">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pageItems.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={10}
+                    className="px-3 py-6 text-sm text-muted-foreground"
+                  >
+                    {query.trim() || hasActiveFilters
+                      ? "Aucune mission ne correspond aux critères."
+                      : "Aucune mission pour le moment. Créez-en une pour commencer."}
+                  </td>
+                </tr>
+              ) : (
+                pageItems.map((item) => (
+                  <tr
+                    key={item.id}
+                    className="cursor-pointer border-b last:border-0 hover:bg-muted/30"
+                    onClick={() => router.push(`/missions/${item.id}`)}
+                  >
+                    <td className="px-3 py-2 font-medium">
+                      {item.mission_name}
+                    </td>
+                    <td className="px-3 py-2">
+                      {item.mission_scope === "interne"
+                        ? "Interne"
+                        : (item.client?.client_name ?? "—")}
+                    </td>
+                    <td className="px-3 py-2">
+                      {getMissionResponsibleName(item.responsible)}
+                    </td>
+                    <td className="px-3 py-2">
+                      {getMissionKanbanStatusLabel(item.kanban_status)}
+                    </td>
+                    <td className="px-3 py-2">
+                      {getMissionScopeLabel(item.mission_scope)}
+                    </td>
+                    <td className="px-3 py-2 text-muted-foreground">
+                      {item.categories.map((c) => c.label).join(", ") || "—"}
+                    </td>
+                    <td className="px-3 py-2 text-muted-foreground">
+                      {formatMissionDate(item.start_at)}
+                    </td>
+                    <td className="px-3 py-2 text-primary-foreground">
+                      {formatMissionDate(item.end_at)}
+                    </td>
+                    <td className="px-3 py-2">
+                      {formatMissionCharge(item.estimated_charge)}
+                    </td>
+                    <td className="px-3 py-2">
+                      <IconActionButton
+                        label="Dupliquer la mission"
+                        onClick={(event) => requestDuplicate(event, item)}
+                      >
+                        <CopySimple className="size-4" />
+                      </IconActionButton>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </ListViewTabsContent>
+    </EntityListPageShell>
   );
 }

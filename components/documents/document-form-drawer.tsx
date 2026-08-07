@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition, type FormEvent } from "react";
-import { File as FileIcon, Plus, X } from "@phosphor-icons/react";
+import { File as FileIcon, StackPlus, X } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import {
   createDocumentType,
@@ -205,7 +205,7 @@ export function DocumentFormDrawer({
               onClick={openCreateType}
               disabled={isPending}
             >
-              <Plus className="size-3.5" />
+              <StackPlus className="size-3.5" />
               Type
             </Button>
           </div>

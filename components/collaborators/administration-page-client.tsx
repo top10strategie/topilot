@@ -3,8 +3,10 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  FolderSimplePlus,
   MagnifyingGlass,
   PencilSimple,
+  StackPlus,
   Trash,
   UserPlus,
 } from "@phosphor-icons/react";
@@ -425,6 +427,8 @@ export function AdministrationPageClient({
         : activeTab === "categories_utility"
           ? "Nouvelle catégorie utilitaire"
           : "Création via les sous-sections";
+  const HeroCreateIcon =
+    activeTab === "types" ? StackPlus : FolderSimplePlus;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -451,7 +455,7 @@ export function AdministrationPageClient({
               disabled={heroCreateDisabled}
               onClick={handleHeroCreate}
             >
-              <PencilSimple className="size-4" />
+              <HeroCreateIcon className="size-4" />
             </IconActionButton>
           </div>
         }

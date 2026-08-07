@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import type { Database } from "./database.types";
 import { getSupabaseServiceRoleKey, getSupabaseUrl } from "./env";
 
 /**
@@ -6,7 +7,7 @@ import { getSupabaseServiceRoleKey, getSupabaseUrl } from "./env";
  * Contourne la RLS ; à n'utiliser que dans des server actions / route handlers.
  */
 export function createAdminClient() {
-  return createClient(getSupabaseUrl(), getSupabaseServiceRoleKey(), {
+  return createClient<Database>(getSupabaseUrl(), getSupabaseServiceRoleKey(), {
     auth: {
       autoRefreshToken: false,
       persistSession: false,

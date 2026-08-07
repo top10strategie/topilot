@@ -3,6 +3,7 @@
 import { useMemo, useState, type MouseEvent } from "react";
 import { useRouter } from "next/navigation";
 import {
+  CirclesThreePlus,
   CopySimple,
   MagnifyingGlass,
   PencilSimple,
@@ -11,22 +12,21 @@ import {
 import { markOpportunityAsLost } from "@/actions/opportunities";
 import { AuditHistoryButton } from "@/components/audit/audit-history-button";
 import { ClientConsultationDrawer } from "@/components/clients/client-consultation-drawer";
-import { EntityLinkedDocumentsSection } from "@/components/documents/entity-linked-documents-section";
 import { useDrawerStack } from "@/components/drawers/drawer-stack-context";
 import { ConfirmStatusDialog } from "@/components/layout/confirm-status-dialog";
 import { DuplicateConfirmDialog } from "@/components/layout/duplicate-confirm-dialog";
 import { EntityDetailsColumns } from "@/components/layout/entity-details-columns";
+import { EntityFormDocumentationBlock } from "@/components/layout/entity-form-documentation-block";
 import { IconActionButton } from "@/components/layout/icon-action-button";
 import { PageHero } from "@/components/layout/page-hero";
 import { MissionConsultationDrawer } from "@/components/missions/mission-consultation-drawer";
 import { MissionFormDrawer } from "@/components/missions/mission-form-drawer";
 import { OpportunityFormDrawer } from "@/components/opportunities/opportunity-form-drawer";
 import { EntityNotesEditor } from "@/components/notes/entity-notes-editor";
-import { EntityLinkedToolsSection } from "@/components/tools/entity-linked-tools-section";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { CategoryItem, DocumentTypeItem } from "@/lib/categories/types";
+import type { CategoryItem } from "@/lib/categories/types";
 import type { ClientDetail, ClientListItem } from "@/lib/clients/types";
 import { getContactFullName } from "@/lib/clients/labels";
 import type { CollaboratorListItem } from "@/lib/collaborators/types";
@@ -34,10 +34,6 @@ import {
   buildMissionDuplicatePrefill,
   buildOpportunityDuplicatePrefill,
 } from "@/lib/crm/duplicate-prefill";
-import type {
-  DocumentLinkOption,
-  LinkedDocumentItem,
-} from "@/lib/documents/types";
 import {
   formatOpportunityDate,
   formatOpportunityPrice,
@@ -60,7 +56,6 @@ import type {
   OpportunityContactOption,
   OpportunityDetail,
 } from "@/lib/opportunities/types";
-import type { LinkedToolItem } from "@/lib/tools/types";
 
 type OpportunityDetailPageClientProps = {
   opportunity: OpportunityDetail;
@@ -69,15 +64,9 @@ type OpportunityDetailPageClientProps = {
   linkedClient: ClientDetail | null;
   contacts: OpportunityContactOption[];
   categories: CategoryItem[];
-  utilityCategories: CategoryItem[];
   missions: MissionListItem[];
   opportunityOptions: MissionOpportunityOption[];
   currentCollaboratorId: string;
-  linkedTools: LinkedToolItem[];
-  toolLinkOptions: Array<{ id: string; tool_name: string }>;
-  linkedDocuments: LinkedDocumentItem[];
-  documentLinkOptions: DocumentLinkOption[];
-  documentTypes: DocumentTypeItem[];
   canManagePrivacy: boolean;
   canViewHistory: boolean;
 };
@@ -89,15 +78,9 @@ export function OpportunityDetailPageClient({
   linkedClient,
   contacts,
   categories,
-  utilityCategories,
   missions,
   opportunityOptions,
   currentCollaboratorId,
-  linkedTools,
-  toolLinkOptions,
-  linkedDocuments,
-  documentLinkOptions,
-  documentTypes,
   canManagePrivacy,
   canViewHistory,
 }: OpportunityDetailPageClientProps) {
@@ -488,7 +471,7 @@ export function OpportunityDetailPageClient({
                 label="Nouvelle mission"
                 onClick={openCreateMission}
               >
-                <PencilSimple className="size-4" />
+                <CirclesThreePlus className="size-4" />
               </IconActionButton>
             </div>
             <div className="overflow-x-auto rounded-md border">
@@ -559,24 +542,15 @@ export function OpportunityDetailPageClient({
           </TabsContent>
 
           <TabsContent value="documentations" className="mt-4">
-            <div className="grid gap-6 md:grid-cols-2">
-              <EntityLinkedDocumentsSection
+            {tab === "documentations" ? (
+              <EntityFormDocumentationBlock
                 entity="opportunity"
                 entityId={opportunity.id}
-                documents={linkedDocuments}
-                linkOptions={documentLinkOptions}
-                documentTypes={documentTypes}
-              />
-              <EntityLinkedToolsSection
-                entity="opportunity"
-                entityId={opportunity.id}
-                tools={linkedTools}
-                linkOptions={toolLinkOptions}
-                categories={utilityCategories}
+                includeWikis={false}
                 collaborators={collaborators}
                 canManagePrivacy={canManagePrivacy}
               />
-            </div>
+            ) : null}
           </TabsContent>
         </Tabs>
       </div>

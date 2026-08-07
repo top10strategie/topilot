@@ -4,10 +4,10 @@ import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  Cards,
   FunnelSimple,
   MagnifyingGlass,
-  PencilSimple,
-  SquaresFour,
+  StackPlus,
   Table,
   Trash,
 } from "@phosphor-icons/react";
@@ -67,7 +67,7 @@ const TOOL_VIEW_TABS: ListViewTab[] = [
   {
     value: "cards",
     label: "Cartes",
-    icon: <SquaresFour className="size-3.5" aria-hidden />,
+    icon: <Cards className="size-3.5" aria-hidden />,
   },
   {
     value: "table",
@@ -318,7 +318,7 @@ export function ToolsPageClient({
               <FunnelSimple className="size-4" />
             </IconActionButton>
             <IconActionButton label="Nouvel outil" onClick={openCreate}>
-              <PencilSimple className="size-4" />
+              <StackPlus className="size-4" />
             </IconActionButton>
           </div>
         }

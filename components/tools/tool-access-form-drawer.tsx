@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition, type FormEvent } from "react";
-import { Buildings } from "@phosphor-icons/react";
+import { UserPlus } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import {
   createToolAccessRecord,
@@ -205,7 +205,7 @@ export function ToolAccessFormDrawer({
                 disabled={isPending}
                 onClick={() => void openCreateClient()}
               >
-                <Buildings className="size-4" />
+                <UserPlus className="size-4" />
               </Button>
             ) : null}
             {canManagePrivacy ? (

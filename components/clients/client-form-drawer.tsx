@@ -91,6 +91,8 @@ export function ClientFormDrawer({
     client?.main_collaborator_id ?? "",
   );
   const [logoFile, setLogoFile] = useState<File | null>(null);
+  /** Évite un 2e upload au save final après upload à l’identification. */
+  const [logoUploadedOnCreate, setLogoUploadedOnCreate] = useState(false);
 
   const [addressStreet, setAddressStreet] = useState(
     client?.address_street ?? "",
@@ -218,6 +220,9 @@ export function ClientFormDrawer({
         }
         setClientId(result.id);
         setIdentificationSaved(true);
+        if (logoFile) {
+          setLogoUploadedOnCreate(true);
+        }
         toast.success("Client créé. Complétez les informations.");
         return;
       }
@@ -251,7 +256,9 @@ export function ClientFormDrawer({
       for (const category of selectedCategories) {
         formData.append("category_ids", category.id);
       }
-      if (logoFile) formData.set("logo", logoFile);
+      if (logoFile && !logoUploadedOnCreate) {
+        formData.set("logo", logoFile);
+      }
 
       const result = await updateClientRecord(clientId, formData);
       if (!result.success) {
@@ -280,7 +287,10 @@ export function ClientFormDrawer({
             label="Logo"
             value={logoFile}
             existingUrl={client?.logo_url}
-            onChange={setLogoFile}
+            onChange={(file) => {
+              setLogoFile(file);
+              setLogoUploadedOnCreate(false);
+            }}
             disabled={isPending}
             error={fieldErrors.logo}
           />

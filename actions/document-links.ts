@@ -7,6 +7,7 @@ import {
   documentJunctionTable,
   revalidateCrmEntity,
 } from "@/lib/revalidate-crm-entity";
+import { looseClient } from "@/lib/supabase/loose";
 import { createClient } from "@/lib/supabase/server";
 import { isUuid } from "@/lib/uuid";
 
@@ -30,7 +31,7 @@ export async function linkDocumentToEntity(input: {
     return { success: false, error: "Identifiants invalides." };
   }
 
-  const supabase = await createClient();
+  const supabase = looseClient(await createClient());
   const table = documentJunctionTable(input.entity);
   const fk = crmEntityFk(input.entity);
 
@@ -66,7 +67,7 @@ export async function unlinkDocumentFromEntity(input: {
     return { success: false, error: "Identifiants invalides." };
   }
 
-  const supabase = await createClient();
+  const supabase = looseClient(await createClient());
   const table = documentJunctionTable(input.entity);
   const fk = crmEntityFk(input.entity);
 

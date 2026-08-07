@@ -57,8 +57,13 @@ export function EntityFormDocumentationBlock({
   const [toolLinkOptions, setToolLinkOptions] = useState<ToolLinkOption[]>([]);
   const [linkedWikis, setLinkedWikis] = useState<LinkedWikiItem[]>([]);
   const [wikiLinkOptions, setWikiLinkOptions] = useState<WikiLinkOption[]>([]);
+  const [fetchedCategories, setFetchedCategories] = useState<CategoryItem[]>(
+    [],
+  );
 
   const showWikis = includeWikis && (entity === "client" || entity === "mission");
+  const resolvedCategories =
+    categories.length > 0 ? categories : fetchedCategories;
 
   const reloadLinks = useCallback(() => {
     if (!entityId) return;
@@ -80,6 +85,7 @@ export function EntityFormDocumentationBlock({
       setToolLinkOptions(result.data.toolLinkOptions);
       setLinkedWikis(result.data.linkedWikis);
       setWikiLinkOptions(result.data.wikiLinkOptions);
+      setFetchedCategories(result.data.utilityCategories);
       setLoading(false);
     })();
   }, [entity, entityId, includeWikis]);
@@ -128,7 +134,7 @@ export function EntityFormDocumentationBlock({
         entityId={entityId}
         tools={linkedTools}
         linkOptions={toolLinkOptions}
-        categories={categories}
+        categories={resolvedCategories}
         collaborators={collaborators}
         canManagePrivacy={canManagePrivacy}
         onLinksChange={readOnly ? undefined : reloadLinks}
@@ -140,7 +146,7 @@ export function EntityFormDocumentationBlock({
           entityId={entityId}
           wikis={linkedWikis}
           linkOptions={wikiLinkOptions}
-          categories={categories}
+          categories={resolvedCategories}
           onLinksChange={readOnly ? undefined : reloadLinks}
           readOnly={readOnly}
         />

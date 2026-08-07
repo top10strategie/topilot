@@ -192,7 +192,7 @@ export async function updateContactClient(
 
   const { data, error } = await supabase
     .from("contact_client")
-    .update(payload)
+    .update(payload as never)
     .eq("id", id)
     .select("id, client_id, is_main")
     .maybeSingle();

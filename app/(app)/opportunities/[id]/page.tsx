@@ -5,26 +5,14 @@ import { PageHero } from "@/components/layout/page-hero";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrentCollaborator } from "@/lib/auth/get-current-collaborator";
 import { isManagerOrDirection } from "@/lib/auth/roles";
-import {
-  listBusinessCategories,
-  listCategories,
-  listDocumentTypes,
-} from "@/lib/categories/queries";
+import { listBusinessCategories } from "@/lib/categories/queries";
 import { getClientById, listClients } from "@/lib/clients/queries";
 import { listCollaborators } from "@/lib/collaborators/queries";
-import {
-  listDocumentLinkOptions,
-  listDocumentsByOpportunityId,
-} from "@/lib/documents/queries";
 import { listMissionsByOpportunityId } from "@/lib/missions/queries";
 import {
   getOpportunityById,
   listOpportunityContactOptions,
 } from "@/lib/opportunities/queries";
-import {
-  listToolLinkOptions,
-  listToolsByOpportunityId,
-} from "@/lib/tools/queries";
 
 type OpportunityDetailPageProps = {
   params: Promise<{ id: string }>;
@@ -42,28 +30,16 @@ async function OpportunityDetailContent({
     clients,
     contacts,
     categories,
-    utilityCategories,
     missions,
     currentCollaborator,
-    linkedTools,
-    toolLinkOptions,
-    linkedDocuments,
-    documentLinkOptions,
-    documentTypes,
   ] = await Promise.all([
     getOpportunityById(id),
     listCollaborators(),
     listClients(),
     listOpportunityContactOptions(),
     listBusinessCategories(),
-    listCategories(),
     listMissionsByOpportunityId(id),
     getCurrentCollaborator(),
-    listToolsByOpportunityId(id),
-    listToolLinkOptions(),
-    listDocumentsByOpportunityId(id),
-    listDocumentLinkOptions(),
-    listDocumentTypes(),
   ]);
 
   if (!opportunity) {
@@ -88,15 +64,9 @@ async function OpportunityDetailContent({
       linkedClient={linkedClient}
       contacts={contacts}
       categories={categories}
-      utilityCategories={utilityCategories}
       missions={missions}
       opportunityOptions={opportunityOptions}
       currentCollaboratorId={currentCollaborator?.id ?? ""}
-      linkedTools={linkedTools}
-      toolLinkOptions={toolLinkOptions}
-      linkedDocuments={linkedDocuments}
-      documentLinkOptions={documentLinkOptions}
-      documentTypes={documentTypes}
       canManagePrivacy={
         currentCollaborator
           ? isManagerOrDirection(currentCollaborator.role)

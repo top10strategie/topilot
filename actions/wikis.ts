@@ -3,7 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { requireActiveCollaboratorAction } from "@/lib/auth/require-action";
 import { formCategoryIds as formCategoryIdsRaw, formText } from "@/lib/form-data";
+import { looseClient } from "@/lib/supabase/loose";
 import { createClient } from "@/lib/supabase/server";
+import { sanitizeWikiHtml } from "@/lib/wiki/sanitize-html";
 import type { WikiLinkEntity } from "@/lib/wiki/types";
 import { isUuid } from "@/lib/uuid";
 
@@ -85,7 +87,7 @@ async function linkWiki(
 ): Promise<string | null> {
   const table = entity === "client" ? "client_wiki" : "mission_wiki";
   const fk = entity === "client" ? "client_id" : "mission_id";
-  const { error } = await supabase.from(table).upsert(
+  const { error } = await looseClient(supabase).from(table).upsert(
     { [fk]: entityId, wiki_id: wikiId },
     { onConflict: `${fk},wiki_id`, ignoreDuplicates: true },
   );
@@ -101,7 +103,9 @@ export async function createWiki(
   }
 
   const title = formText(formData, "title");
-  const contentHtml = formText(formData, "content_html") || "<p></p>";
+  const contentHtml = sanitizeWikiHtml(
+    formText(formData, "content_html") || "<p></p>",
+  );
   const tags = parseTags(formText(formData, "tags"));
   const categoryIds = formCategoryIds(formData);
   const linkEntityRaw = formText(formData, "link_entity");
@@ -195,7 +199,9 @@ export async function updateWiki(
   }
 
   const title = formText(formData, "title");
-  const contentHtml = formText(formData, "content_html") || "<p></p>";
+  const contentHtml = sanitizeWikiHtml(
+    formText(formData, "content_html") || "<p></p>",
+  );
   const tags = parseTags(formText(formData, "tags"));
   const categoryIds = formCategoryIds(formData);
 

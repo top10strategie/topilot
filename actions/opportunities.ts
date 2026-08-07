@@ -364,7 +364,7 @@ export async function updateOpportunityRecord(
 
   const { data, error } = await supabase
     .from("opportunity")
-    .update(payload)
+    .update(payload as never)
     .eq("id", id)
     .select("id")
     .maybeSingle();
@@ -471,7 +471,7 @@ export async function updateOpportunitiesKanban(
       }
       return supabase
         .from("opportunity")
-        .update(payload)
+        .update(payload as never)
         .eq("id", update.id)
         .select("id")
         .maybeSingle();
@@ -537,7 +537,7 @@ export async function markOpportunityAsLost(
 
   const { data, error } = await supabase
     .from("opportunity")
-    .update(payload)
+    .update(payload as never)
     .eq("id", id)
     .select("id")
     .maybeSingle();
