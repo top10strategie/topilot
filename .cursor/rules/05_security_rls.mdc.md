@@ -300,11 +300,20 @@ CREATE POLICY "team_delete_manager_direction" ON public.team
 - Si `true` au moment du login : bloquer l'accès aux routes métier jusqu'au changement effectif.
 - Après changement réussi : remettre à `false` via server action.
 
+## Ré-authentification avant changement de mot de passe (`/settings`)
+
+- Sur le changement **volontaire** depuis `/settings` uniquement (pas le parcours forcé `/auth/update-password` ni `/reset-password`).
+- La server action `updateOwnPassword` exige le **mot de passe actuel** : preuve via `signInWithPassword({ email, password: currentPassword })` **avant** `updateUser({ password })`.
+- En cas d'échec de preuve : erreur champ `currentPassword` (« Mot de passe actuel incorrect ») — pas de `updateUser`.
+- Après succès : **session conservée** (pas de `signOut`) ; **ne pas** toucher `must_change_password`.
+
 ---
 
 ## `audit_log` — sécurité en écriture
 
 - Table en écriture **uniquement** via triggers PostgreSQL (`audit_trigger_fn`, `audit_notes_trigger_fn`) — jamais depuis un composant client ou une route publique.
+- Les fonctions de triggers `SECURITY DEFINER` doivent conserver `GRANT EXECUTE TO authenticated` : PostgreSQL vérifie ce droit pour le rôle qui déclenche le trigger. Ne pas les révoquer pour `authenticated` (sinon toute écriture métier échoue avec `permission denied for function …`).
+- **Policies SELECT sur `mission` / `opportunity`** : ne pas appeler `can_access_mission(id)` / `can_access_opportunity(id)` (re-SELECT de la même table). Inliner le contrôle sur les colonnes de la ligne (`client_id`, etc.) — sinon `INSERT…RETURNING` échoue en 42501 pour les Collaborateurs. Les helpers `can_access_*` restent pour les tables de jonction.
 - **Jamais** de suppression, pour aucun rôle — aucune policy `DELETE`.
 - Les lectures sont autorisées selon RLS (lecture seule, compacte, sur le dashboard).
 

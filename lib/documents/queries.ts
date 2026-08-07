@@ -318,6 +318,44 @@ export async function getDocumentById(
   return mapListItem(row, latestMap);
 }
 
+/**
+ * Toutes les versions d'une lignée (racine = parent ou self), triées par version desc.
+ */
+export async function listDocumentLineage(
+  documentId: string,
+): Promise<DocumentListItem[]> {
+  const supabase = await createClient();
+  const { data: seed, error: seedError } = await supabase
+    .from("document")
+    .select("id, parent_document_id")
+    .eq("id", documentId)
+    .maybeSingle();
+
+  if (seedError) {
+    console.error("listDocumentLineage:", seedError);
+    throw new Error(
+      `Impossible de charger la lignée : ${seedError.message}`,
+    );
+  }
+  if (!seed) return [];
+
+  const rootId = seed.parent_document_id ?? seed.id;
+  const { data, error } = await supabase
+    .from("document")
+    .select(DOCUMENT_SELECT)
+    .or(`id.eq.${rootId},parent_document_id.eq.${rootId}`)
+    .order("version_number", { ascending: false });
+
+  if (error) {
+    console.error("listDocumentLineage:", error);
+    throw new Error(`Impossible de charger la lignée : ${error.message}`);
+  }
+
+  const rows = (data ?? []) as unknown as DocumentRow[];
+  const latestMap = await fetchLatestVersionMap(rows);
+  return rows.map((row) => mapListItem(row, latestMap));
+}
+
 async function listDocumentsByIds(ids: string[]): Promise<LinkedDocumentItem[]> {
   const unique = [...new Set(ids.filter(Boolean))];
   if (unique.length === 0) return [];

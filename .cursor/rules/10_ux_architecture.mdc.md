@@ -378,9 +378,9 @@ Page à **plat, sans onglets** (contrairement à Client/Opportunité/Mission) :
 - Pas de page `[id]` dédiée pour `document` — toutes les actions se font depuis les icônes de la carte/ligne (voir ci-dessous), il n'y a pas de fiche à consulter séparément.
 - **Vue Cartes** (cf. section 5.1 et 9.2 de `07_ux_composants_reutilisable.mdc`) : **carte avec image** → **4 colonnes desktop** / 2 tablette / 1 téléphone.
     - Haut : image à gauche (aperçu visuel ou placeholder fichier) ; à droite Titre (`document_name`) + version (`version_number`) ; Type (`document_type`) / Visuel (`is_visual`) ; Lié : Client/Opportunité/Mission (via jonctions ou FK logo/avatar).
-    - Footer : date d'ajout à gauche ; 4 icônes d'action à droite (éditer, aperçu, télécharger, supprimer).
-    - **4 icônes d'action** (pas de page dédiée) : crayon (édition), œil (aperçu modale), téléchargement, poubelle (suppression — choix version / lignée).
-- **Vue Tableau** (cf. section 5.2) : colonnes Nom document, Type, **Lié à** (nom de l'entité liée, même logique que la carte), Date d'ajout, Version, Actions (mêmes 4 icônes que la vue Cartes).
+    - Footer : date d'ajout à gauche ; 5 icônes d'action à droite (éditer, historique, aperçu, télécharger, supprimer).
+    - **5 icônes d'action** (pas de page dédiée) : crayon (édition), `clock-counter-clockwise` (tiroir historique des versions), œil (aperçu modale), téléchargement, poubelle (suppression — choix version / lignée).
+- **Vue Tableau** (cf. section 5.2) : colonnes Nom document, Type, **Lié à** (nom de l'entité liée, même logique que la carte), Date d'ajout, Version, Actions (mêmes 5 icônes que la vue Cartes).
 - **Pagination et compteur** (cf. section 5.3) : "Nombre de documents" (total, en bas à gauche) + pagination 25/page avec "Page : x/y" et navigation précédent/suivant (en bas à droite).
 - **Filtre** (modale, cf. section 5.4) :
     - Filtre par type (`document_type`, multi-sélection)
@@ -398,6 +398,7 @@ Page à **plat, sans onglets** (contrairement à Client/Opportunité/Mission) :
     - Lorsque ce tiroir est ouvert **en empilé** depuis un bouton d'ajout de document (Client/Opportunité/Mission), la liaison à l'entité parente (`client_document`/`opportunity_document`/`mission_document`) est créée automatiquement à la validation (cf. matrice des boutons d'ajout, `03_business_rules.mdc`) — pas de champ "Lié à" visible dans ce formulaire.
 - **Tiroir "Edition document"** : mêmes champs que la création, en sauvegarde unique (Annuler/Enregistrer). Uploader un nouveau fichier sur un document existant déclenche le mécanisme de versionning (nouvelle entrée `version_number + 1`, cf. `03_business_rules.mdc`) plutôt que d'écraser la version actuelle.
     - **Toggle "Document visuel" (`is_visual`)** : grisé/masqué en mode édition **tant qu'aucun nouveau fichier n'est sélectionné** — il ne redevient actif que dans le sous-flux de remplacement de fichier (upload d'une nouvelle version), puisque `is_visual` n'est jamais modifiable sur une ligne existante sans nouvel upload (cf. `09_integrations.mdc`). La nouvelle version ainsi créée peut porter une valeur `is_visual` différente de la précédente sans aucun souci technique, chaque version ayant son propre `id` et donc son propre chemin de stockage, potentiellement dans un bucket différent (cf. `08_database_rules.mdc`).
+- **Tiroir "Historique des versions"** : liste de la lignée (V1…Vn, date, type, format, badge « Actuelle »). Sélection de 2 versions → **Comparer** (métadonnées + aperçu côte à côte image/PDF si possible). **Restaurer** (désactivé sur la latest) → confirmation puis création d'une nouvelle version à partir de l'ancienne (`restoreDocumentVersion`, cf. `03_business_rules.mdc`).
 
 ### Wiki (`/wikis`)
 
@@ -523,5 +524,5 @@ Page à **plat, sans onglets** (contrairement à Client/Opportunité/Mission) :
 - **Colonne gauche** (lecture seule) : Avatar (`profile_picture_id`), Nom (`last_name`), Prénom (`first_name`) ; en dessous : Email (`email`), Rôle (`role`), Statut (`status`), Pôle (`team_id`), Poste (`job_title`).
 - **Colonne droite** :
     - **Thème favori** (`setting.theme`) : 3 boutons (Clair / Sombre / Système), sélection directe et immédiate sur la page (pas besoin d'ouvrir le tiroir ni de cliquer "Enregistrer" — appliqué tout de suite, cohérent avec le comportement global décrit en section 3.2 de `07_ux_composants_reutilisable.mdc`).
-    - **Sécurité** : encart "Modifiez votre mot de passe de connexion" — Nouveau mot de passe, Confirmation, bouton "Modifier le mot de passe". Action **directe et indépendante** du tiroir "Modification profil" (appelle `updateUser` de Supabase Auth) ; ne touche pas `must_change_password` sauf dans le parcours de première connexion déjà décrit (`05_security_rls.mdc`).
+    - **Sécurité** : encart "Modifiez votre mot de passe de connexion" — Mot de passe actuel, Nouveau mot de passe, Confirmation, bouton "Modifier le mot de passe". Action **directe et indépendante** du tiroir "Modification profil" ; la server action `updateOwnPassword` exige une ré-authentification (`signInWithPassword` avec le mot de passe actuel) avant `updateUser` (cf. `05_security_rls.mdc`) ; session conservée après succès ; ne touche pas `must_change_password` (sauf parcours de première connexion).
 - **Tiroir "Modification profil"** : Avatar (upload), Nom, Prénom, Email, Pôle (`team_id`, dropdown), Poste (`job_title`), Thème favori (mêmes 3 boutons que la page). Footer : Annuler / Enregistrer.
