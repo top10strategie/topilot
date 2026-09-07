@@ -16,6 +16,7 @@ import { deleteContactClient } from "@/actions/contact-clients";
 import { deactivateClient } from "@/actions/clients";
 import { AuditHistoryButton } from "@/components/audit/audit-history-button";
 import { ClientFormDrawer } from "@/components/clients/client-form-drawer";
+import { ClientLogo } from "@/components/clients/client-logo";
 import { ContactFormDrawer } from "@/components/clients/contact-form-drawer";
 import { useDrawerStack } from "@/components/drawers/drawer-stack-context";
 import { ConfirmStatusDialog } from "@/components/layout/confirm-status-dialog";
@@ -292,17 +293,11 @@ export function ClientDetailPageClient({
               left={
                 <>
                   <section className="flex gap-4">
-                    <div className="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted text-lg font-semibold">
-                      {client.logo_url ? (
-                        <img
-                          src={client.logo_url}
-                          alt=""
-                          className="size-full object-cover"
-                        />
-                      ) : (
-                        client.client_name.slice(0, 2).toUpperCase()
-                      )}
-                    </div>
+                    <ClientLogo
+                      src={client.logo_url}
+                      name={client.client_name}
+                      size="lg"
+                    />
                     <div className="min-w-0 space-y-2 text-sm">
                       <div>
                         <p className="text-muted-foreground">Nom</p>

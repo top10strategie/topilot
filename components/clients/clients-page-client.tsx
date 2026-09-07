@@ -12,6 +12,7 @@ import {
 } from "@phosphor-icons/react";
 import { CategoryMultiCombobox } from "@/components/categories/category-multi-combobox";
 import { ClientFormDrawer } from "@/components/clients/client-form-drawer";
+import { ClientLogo } from "@/components/clients/client-logo";
 import { useDrawerStack } from "@/components/drawers/drawer-stack-context";
 import { IconActionButton } from "@/components/layout/icon-action-button";
 import { ListPaginationFooter } from "@/components/layout/list-pagination-footer";
@@ -302,17 +303,11 @@ export function ClientsPageClient({
                   <Card className="h-full transition-colors hover:bg-muted/40">
                     <CardHeader className="space-y-3 p-4 pb-2">
                       <div className="flex items-start gap-3">
-                        <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted text-sm font-semibold">
-                          {client.logo_url ? (
-                            <img
-                              src={client.logo_url}
-                              alt=""
-                              className="size-full object-cover"
-                            />
-                          ) : (
-                            client.client_name.slice(0, 2).toUpperCase()
-                          )}
-                        </div>
+                        <ClientLogo
+                          src={client.logo_url}
+                          name={client.client_name}
+                          size="md"
+                        />
                         <div className="min-w-0 flex-1">
                           <CardTitle className="text-base leading-snug">
                             {client.client_name}
@@ -387,17 +382,11 @@ export function ClientsPageClient({
                     >
                       <td className="px-3 py-2 font-medium">
                         <span className="inline-flex items-center gap-2">
-                          <span className="flex size-8 items-center justify-center overflow-hidden rounded bg-muted text-[10px] font-semibold">
-                            {client.logo_url ? (
-                              <img
-                                src={client.logo_url}
-                                alt=""
-                                className="size-full object-cover"
-                              />
-                            ) : (
-                              client.client_name.slice(0, 2).toUpperCase()
-                            )}
-                          </span>
+                          <ClientLogo
+                            src={client.logo_url}
+                            name={client.client_name}
+                            size="sm"
+                          />
                           {client.client_name}
                         </span>
                       </td>
