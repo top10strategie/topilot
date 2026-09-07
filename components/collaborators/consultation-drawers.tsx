@@ -120,7 +120,6 @@ export function CollaboratorConsultationContent({
           <CollaboratorAvatar
             collaborator={collaborator}
             size="xl"
-            className="size-24"
           />
           <div className="space-y-1">
             <p className="text-lg font-semibold">

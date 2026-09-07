@@ -199,14 +199,14 @@ export function DocumentFormDrawer({
             </Label>
             <Button
               type="button"
-              variant="ghost"
-              size="sm"
-              className="h-7 gap-1 px-2"
+              variant="outline"
+              size="icon"
+              aria-label="Nouveau type"
+              title="Nouveau type"
               onClick={openCreateType}
               disabled={isPending}
             >
-              <StackPlus className="size-3.5" />
-              Type
+              <StackPlus className="size-4" />
             </Button>
           </div>
           <Select
