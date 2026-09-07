@@ -5,7 +5,7 @@ import { DrawerBody, DrawerFooterActions } from "@/components/drawers/drawer-sec
 import type { DrawerHelpers } from "@/components/drawers/drawer-stack-context";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { sanitizeWikiHtml } from "@/lib/wiki/sanitize-html";
+import { useSanitizedWikiHtml } from "@/lib/wiki/sanitize-html-client";
 import type { WikiListItem } from "@/lib/wiki/types";
 
 type WikiConsultationDrawerProps = {
@@ -23,6 +23,7 @@ export function WikiConsultationDrawer({
   const router = useRouter();
   const pathname = usePathname();
   const showGoToWikis = pathname !== "/wikis";
+  const contentHtml = useSanitizedWikiHtml(wiki.content_html);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -65,7 +66,7 @@ export function WikiConsultationDrawer({
         <div
           className="max-w-none text-sm leading-relaxed [&_h1]:mb-2 [&_h1]:text-xl [&_h1]:font-semibold [&_h2]:mb-2 [&_h2]:text-lg [&_h2]:font-semibold [&_h3]:mb-1.5 [&_h3]:text-base [&_h3]:font-semibold [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_a]:underline [&_img]:my-2 [&_img]:max-w-full [&_img]:rounded-md"
           dangerouslySetInnerHTML={{
-            __html: sanitizeWikiHtml(wiki.content_html),
+            __html: contentHtml,
           }}
         />
       </DrawerBody>
