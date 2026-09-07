@@ -219,7 +219,7 @@ export function ToolDetailPageClient({
                         href={tool.url}
                         target="_blank"
                         rel="noreferrer"
-                        className="font-bold text-accent underline-offset-4 hover:underline"
+                        className="font-semibold text-muted-foreground underline-offset-4 hover:underline"
                       >
                         {tool.url}
                       </a>
