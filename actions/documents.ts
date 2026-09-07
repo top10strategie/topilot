@@ -386,7 +386,7 @@ export async function updateDocument(
 /**
  * Nouvelle version : INSERT version_number+1, parent → racine.
  */
-export async function createDocumentVersion(
+async function createDocumentVersion(
   sourceDocumentId: string,
   formData: FormData,
 ): Promise<DocumentActionResult> {

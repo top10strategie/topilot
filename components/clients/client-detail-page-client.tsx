@@ -16,6 +16,7 @@ import { deleteContactClient } from "@/actions/contact-clients";
 import { deactivateClient } from "@/actions/clients";
 import { AuditHistoryButton } from "@/components/audit/audit-history-button";
 import { ClientFormDrawer } from "@/components/clients/client-form-drawer";
+import { ClientLogo } from "@/components/clients/client-logo";
 import { ContactFormDrawer } from "@/components/clients/contact-form-drawer";
 import { useDrawerStack } from "@/components/drawers/drawer-stack-context";
 import { ConfirmStatusDialog } from "@/components/layout/confirm-status-dialog";
@@ -38,6 +39,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { CategoryItem } from "@/lib/categories/types";
 import { buildMissionDuplicatePrefill } from "@/lib/crm/duplicate-prefill";
+import { getEndDateToneClass } from "@/lib/dates/end-date-tone";
 import {
   getClientResponsibleName,
   getClientStatusLabel,
@@ -51,6 +53,7 @@ import {
   getMissionKanbanStatusLabel,
   getMissionResponsibleName,
 } from "@/lib/missions/labels";
+import { cn } from "@/lib/utils";
 import type {
   MissionListItem,
   MissionOpportunityOption,
@@ -292,17 +295,11 @@ export function ClientDetailPageClient({
               left={
                 <>
                   <section className="flex gap-4">
-                    <div className="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted text-lg font-semibold">
-                      {client.logo_url ? (
-                        <img
-                          src={client.logo_url}
-                          alt=""
-                          className="size-full object-cover"
-                        />
-                      ) : (
-                        client.client_name.slice(0, 2).toUpperCase()
-                      )}
-                    </div>
+                    <ClientLogo
+                      src={client.logo_url}
+                      name={client.client_name}
+                      size="lg"
+                    />
                     <div className="min-w-0 space-y-2 text-sm">
                       <div>
                         <p className="text-muted-foreground">Nom</p>
@@ -560,7 +557,16 @@ export function ClientDetailPageClient({
                         <td className="px-3 py-2 text-muted-foreground">
                           {formatMissionDate(mission.start_at)}
                         </td>
-                        <td className="px-3 py-2 text-primary-foreground">
+                        <td
+                          className={cn(
+                            "px-3 py-2",
+                            getEndDateToneClass(mission.end_at, {
+                              muted:
+                                mission.kanban_status === "terminee" ||
+                                mission.kanban_status === "archivee",
+                            }),
+                          )}
+                        >
                           {formatMissionDate(mission.end_at)}
                         </td>
                         <td className="px-3 py-2">

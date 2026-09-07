@@ -1,0 +1,12 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "ignore": [
+    "components/ui/**",
+    "lib/supabase/database.types.ts"
+  ],
+  "ignoreDependencies": [
+    "eslint-config-next",
+    "postcss-load-config"
+  ],
+  "ignoreExportsUsedInFile": true
+}

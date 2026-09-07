@@ -38,7 +38,7 @@ export function ToolConsultationDrawer({
                 href={tool.url}
                 target="_blank"
                 rel="noreferrer"
-                className="break-all font-medium text-primary-foreground underline-offset-4 hover:underline"
+                className="break-all font-medium text-accent underline-offset-4 hover:underline"
               >
                 {tool.url}
               </a>

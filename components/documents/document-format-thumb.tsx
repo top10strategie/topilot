@@ -8,6 +8,7 @@ import {
   FileXls,
   FileZip,
 } from "@phosphor-icons/react";
+import { ClientLogo } from "@/components/clients/client-logo";
 import { getDocumentFileFormat } from "@/lib/documents/format";
 import type { DocumentListItem } from "@/lib/documents/types";
 import { cn } from "@/lib/utils";
@@ -46,36 +47,37 @@ function FormatIcon({
 }
 
 /**
- * Vignette carte document : preview image si disponible, sinon icône + extension.
+ * Vignette carte document : preview image via ClientLogo si disponible,
+ * sinon icône + extension (même slot size-16).
  */
 export function DocumentFormatThumb({
   item,
   className,
 }: DocumentFormatThumbProps) {
   const format = getDocumentFileFormat(item);
-  const showPreview = Boolean(item.preview_url);
+
+  if (item.preview_url) {
+    return (
+      <ClientLogo
+        src={item.preview_url}
+        name={item.document_name}
+        size="md"
+        className={className}
+      />
+    );
+  }
 
   return (
     <div
       className={cn(
-        "flex size-14 shrink-0 flex-col items-center justify-center overflow-hidden rounded-md border bg-muted text-muted-foreground",
+        "flex size-16 shrink-0 flex-col items-center justify-center overflow-hidden rounded-[8px] border bg-muted text-muted-foreground",
         className,
       )}
     >
-      {showPreview ? (
-        <img
-          src={item.preview_url!}
-          alt=""
-          className="size-full object-cover"
-        />
-      ) : (
-        <>
-          <FormatIcon format={format} className="size-6" />
-          <span className="mt-0.5 max-w-full truncate px-1 text-[10px] font-medium uppercase leading-none">
-            {format === "—" ? "fichier" : format}
-          </span>
-        </>
-      )}
+      <FormatIcon format={format} className="size-6" />
+      <span className="mt-0.5 max-w-full truncate px-1 text-[10px] font-medium uppercase leading-none">
+        {format === "—" ? "fichier" : format}
+      </span>
     </div>
   );
 }

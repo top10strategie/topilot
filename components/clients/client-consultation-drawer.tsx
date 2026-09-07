@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { ClientLogo } from "@/components/clients/client-logo";
 import { DrawerBody, DrawerFooterActions } from "@/components/drawers/drawer-section";
 import type { DrawerHelpers } from "@/components/drawers/drawer-stack-context";
 import { EntityFormDocumentationBlock } from "@/components/layout/entity-form-documentation-block";
@@ -50,17 +51,11 @@ export function ClientConsultationDrawer({
           <h3 className="text-sm font-semibold">Identification</h3>
 
           <div className="flex items-start gap-4">
-            <div className="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted text-lg font-semibold">
-              {client.logo_url ? (
-                <img
-                  src={client.logo_url}
-                  alt=""
-                  className="size-full object-cover"
-                />
-              ) : (
-                client.client_name.slice(0, 2).toUpperCase()
-              )}
-            </div>
+            <ClientLogo
+              src={client.logo_url}
+              name={client.client_name}
+              size="lg"
+            />
             <div className="min-w-0 space-y-2 text-sm">
               <p className="font-medium">{client.client_name}</p>
               <Badge variant={client.is_active ? "default" : "secondary"}>

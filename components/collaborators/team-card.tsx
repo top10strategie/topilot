@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import {
   Card,
   CardContent,
@@ -7,6 +8,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { CollaboratorCard } from "@/components/collaborators/collaborator-card";
+import { compareCollaboratorsByRoleThenName } from "@/lib/collaborators/labels";
 import { cn } from "@/lib/utils";
 import type { TeamListItem } from "@/lib/collaborators/types";
 
@@ -27,6 +29,11 @@ export function TeamCard({
   onOpenCollaborator,
   className,
 }: TeamCardProps) {
+  const members = useMemo(
+    () => [...team.members].sort(compareCollaboratorsByRoleThenName),
+    [team.members],
+  );
+
   return (
     <Card
       role="button"
@@ -47,10 +54,10 @@ export function TeamCard({
         <CardTitle className="text-base">{team.team_name}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-2 p-3 pt-0">
-        {team.members.length === 0 ? (
+        {members.length === 0 ? (
           <p className="text-xs text-muted-foreground">Aucun collaborateur</p>
         ) : (
-          team.members.map((member) => (
+          members.map((member) => (
             <CollaboratorCard
               key={member.id}
               collaborator={member}

@@ -18,6 +18,7 @@ import type {
   OpportunityKanbanStatus,
   OpportunityListItem,
 } from "@/lib/opportunities/types";
+import { getEndDateToneClass } from "@/lib/dates/end-date-tone";
 import { cn } from "@/lib/utils";
 
 type Board = Record<OpportunityKanbanStatus, OpportunityListItem[]>;
@@ -111,7 +112,16 @@ function OpportunityKanbanCardContent({
               {formatOpportunityProbability(item.probability_confirmation)}
             </span>
           </div>
-          <span className="shrink-0 text-primary-foreground">
+          <span
+            className={cn(
+              "shrink-0",
+              getEndDateToneClass(item.end_at, {
+                muted:
+                  item.kanban_status === "gagne" ||
+                  item.kanban_status === "perdue",
+              }),
+            )}
+          >
             {formatOpportunityDate(item.end_at)}
           </span>
         </div>

@@ -37,3 +37,6 @@ jobs:
 
       - name: Typecheck
         run: npm run typecheck
+
+      - name: Knip (dead code)
+        run: npm run knip

@@ -1,6 +1,6 @@
 /**
- * Couleur unifiée pour la date de clôture (`end_at`) — cf. 06_ui_design.mdc.
- * Retourne une classe Tailwind (ou style inline pour les hex hors tokens).
+ * Couleur unifiée pour la date de fin (`end_at`) — cf. 06_ui_design.mdc.
+ * Mutualisé missions / opportunités (et outils si besoin).
  */
 export function getEndDateToneClass(
   endAt: string | null | undefined,
