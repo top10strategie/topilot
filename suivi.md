@@ -1,5 +1,15 @@
 # Suivi des actions — TOPilot
 
+## **[2026-09-07] — Fix jsdom 29 / ERR_REQUIRE_ESM sur Vercel (fiches client)**
+
+**Type :** `fix`
+**Fichiers concernés :** `package.json`, `package-lock.json`, `next.config.ts`, `suivi.md`
+
+### Description
+
+Sur Vercel uniquement, les fiches client (ex. Intermag Auto) et l’ouverture du tiroir d’édition plantaient avec `ERR_REQUIRE_ESM` (`isomorphic-dompurify` → `jsdom@29` → `@exodus/bytes`). Localhost OK. Cause : le pin `overrides.jsdom = 25.0.1` avait disparu (cleanup Knip + resync lock vers jsdom 29). Restauration de l’override ; `npm ci` OK.
+
+---
 ## **[2026-08-07] — Fix jsdom/DOMPurify sur Vercel (wiki)**
 
 **Type :** `fix`
