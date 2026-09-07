@@ -10,7 +10,7 @@ function previewSrc(doc: DocumentListItem): string {
   return `/api/documents/${doc.id}/file`;
 }
 
-export function isDocumentPreviewable(doc: DocumentListItem): boolean {
+function isDocumentPreviewable(doc: DocumentListItem): boolean {
   if (doc.is_visual || Boolean(doc.preview_url)) return true;
   const format = getDocumentFileFormat(doc);
   if (format === "pdf") return true;

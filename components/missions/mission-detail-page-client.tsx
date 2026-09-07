@@ -23,12 +23,14 @@ import type { CategoryItem } from "@/lib/categories/types";
 import type { ClientDetail, ClientListItem } from "@/lib/clients/types";
 import type { CollaboratorListItem } from "@/lib/collaborators/types";
 import { buildMissionDuplicatePrefill } from "@/lib/crm/duplicate-prefill";
+import { getEndDateToneClass } from "@/lib/dates/end-date-tone";
 import {
   formatMissionCharge,
   formatMissionDate,
   getMissionKanbanStatusLabel,
   getMissionResponsibleName,
 } from "@/lib/missions/labels";
+import { cn } from "@/lib/utils";
 import type {
   MissionDetail,
   MissionOpportunityOption,
@@ -252,7 +254,16 @@ export function MissionDetailPageClient({
                         </div>
                         <div>
                           <p className="text-muted-foreground">Date de fin</p>
-                          <p className="font-bold text-primary-foreground">
+                          <p
+                            className={cn(
+                              "font-bold",
+                              getEndDateToneClass(mission.end_at, {
+                                muted:
+                                  mission.kanban_status === "terminee" ||
+                                  mission.kanban_status === "archivee",
+                              }),
+                            )}
+                          >
                             {formatMissionDate(mission.end_at)}
                           </p>
                         </div>

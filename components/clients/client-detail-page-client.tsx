@@ -39,6 +39,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { CategoryItem } from "@/lib/categories/types";
 import { buildMissionDuplicatePrefill } from "@/lib/crm/duplicate-prefill";
+import { getEndDateToneClass } from "@/lib/dates/end-date-tone";
 import {
   getClientResponsibleName,
   getClientStatusLabel,
@@ -52,6 +53,7 @@ import {
   getMissionKanbanStatusLabel,
   getMissionResponsibleName,
 } from "@/lib/missions/labels";
+import { cn } from "@/lib/utils";
 import type {
   MissionListItem,
   MissionOpportunityOption,
@@ -555,7 +557,16 @@ export function ClientDetailPageClient({
                         <td className="px-3 py-2 text-muted-foreground">
                           {formatMissionDate(mission.start_at)}
                         </td>
-                        <td className="px-3 py-2 text-primary-foreground">
+                        <td
+                          className={cn(
+                            "px-3 py-2",
+                            getEndDateToneClass(mission.end_at, {
+                              muted:
+                                mission.kanban_status === "terminee" ||
+                                mission.kanban_status === "archivee",
+                            }),
+                          )}
+                        >
                           {formatMissionDate(mission.end_at)}
                         </td>
                         <td className="px-3 py-2">

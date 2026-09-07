@@ -28,30 +28,3 @@ export function EntityDocumentationSection({
     </section>
   );
 }
-
-type EntityDocumentationColumnsProps = {
-  documents: ReactNode;
-  tools: ReactNode;
-  wiki: ReactNode;
-  className?: string;
-};
-
-/**
- * Présentation « Documentation » d'une fiche entité (§6) :
- * 3 colonnes (Documents / Outils / Wiki) côte à côte dès `md`.
- * Passer chaque colonne via `EntityDocumentationSection` (ou contenu libre).
- */
-export function EntityDocumentationColumns({
-  documents,
-  tools,
-  wiki,
-  className,
-}: EntityDocumentationColumnsProps) {
-  return (
-    <div className={cn("grid gap-6 md:grid-cols-3", className)}>
-      {documents}
-      {tools}
-      {wiki}
-    </div>
-  );
-}

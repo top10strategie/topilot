@@ -18,6 +18,8 @@ import type {
 } from "@/lib/collaborators/types";
 import { formatMissionDate } from "@/lib/missions/labels";
 import type { MissionListItem } from "@/lib/missions/types";
+import { getEndDateToneClass } from "@/lib/dates/end-date-tone";
+import { cn } from "@/lib/utils";
 
 function RecentMissionsTable({
   missions,
@@ -88,7 +90,16 @@ function RecentMissionsTable({
                   <td className="px-3 py-2 text-muted-foreground">
                     {formatMissionDate(mission.start_at)}
                   </td>
-                  <td className="px-3 py-2 text-muted-foreground">
+                  <td
+                    className={cn(
+                      "px-3 py-2",
+                      getEndDateToneClass(mission.end_at, {
+                        muted:
+                          mission.kanban_status === "terminee" ||
+                          mission.kanban_status === "archivee",
+                      }),
+                    )}
+                  >
                     {formatMissionDate(mission.end_at)}
                   </td>
                 </tr>

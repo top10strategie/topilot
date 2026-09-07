@@ -34,6 +34,7 @@ import {
   buildMissionDuplicatePrefill,
   buildOpportunityDuplicatePrefill,
 } from "@/lib/crm/duplicate-prefill";
+import { getEndDateToneClass } from "@/lib/dates/end-date-tone";
 import {
   formatOpportunityDate,
   formatOpportunityPrice,
@@ -48,6 +49,7 @@ import {
   getMissionKanbanStatusLabel,
   getMissionResponsibleName,
 } from "@/lib/missions/labels";
+import { cn } from "@/lib/utils";
 import type {
   MissionListItem,
   MissionOpportunityOption,
@@ -455,7 +457,16 @@ export function OpportunityDetailPageClient({
                     </div>
                     <div>
                       <p className="text-muted-foreground">Date de clôture</p>
-                      <p className="font-bold text-primary-foreground">
+                      <p
+                        className={cn(
+                          "font-bold",
+                          getEndDateToneClass(opportunity.end_at, {
+                            muted:
+                              opportunity.kanban_status === "gagne" ||
+                              opportunity.kanban_status === "perdue",
+                          }),
+                        )}
+                      >
                         {formatOpportunityDate(opportunity.end_at)}
                       </p>
                     </div>
@@ -517,7 +528,16 @@ export function OpportunityDetailPageClient({
                         <td className="px-3 py-2 text-muted-foreground">
                           {formatMissionDate(mission.start_at)}
                         </td>
-                        <td className="px-3 py-2 text-primary-foreground">
+                        <td
+                          className={cn(
+                            "px-3 py-2",
+                            getEndDateToneClass(mission.end_at, {
+                              muted:
+                                mission.kanban_status === "terminee" ||
+                                mission.kanban_status === "archivee",
+                            }),
+                          )}
+                        >
                           {formatMissionDate(mission.end_at)}
                         </td>
                         <td className="px-3 py-2">
