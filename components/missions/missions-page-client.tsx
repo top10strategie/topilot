@@ -43,6 +43,7 @@ import type { ClientListItem } from "@/lib/clients/types";
 import { getCollaboratorFullName } from "@/lib/collaborators/labels";
 import type { CollaboratorListItem } from "@/lib/collaborators/types";
 import { buildMissionDuplicatePrefill } from "@/lib/crm/duplicate-prefill";
+import { getEndDateToneClass } from "@/lib/dates/end-date-tone";
 import {
   formatMissionCharge,
   formatMissionDate,
@@ -717,7 +718,13 @@ export function MissionsPageClient({
                         </Badge>
                         <span>{formatMissionCharge(item.estimated_charge)}</span>
                       </div>
-                      <span className="shrink-0 text-primary-foreground">
+                      <span
+                        className={`shrink-0 ${getEndDateToneClass(item.end_at, {
+                          muted:
+                            item.kanban_status === "terminee" ||
+                            item.kanban_status === "archivee",
+                        })}`}
+                      >
                         {formatMissionDate(item.end_at)}
                       </span>
                     </div>
@@ -788,7 +795,13 @@ export function MissionsPageClient({
                     <td className="px-3 py-2 text-muted-foreground">
                       {formatMissionDate(item.start_at)}
                     </td>
-                    <td className="px-3 py-2 text-primary-foreground">
+                    <td
+                      className={`px-3 py-2 ${getEndDateToneClass(item.end_at, {
+                        muted:
+                          item.kanban_status === "terminee" ||
+                          item.kanban_status === "archivee",
+                      })}`}
+                    >
                       {formatMissionDate(item.end_at)}
                     </td>
                     <td className="px-3 py-2">

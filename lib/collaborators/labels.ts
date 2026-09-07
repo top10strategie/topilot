@@ -19,6 +19,33 @@ export function getCollaboratorRoleLabel(role: CollaboratorRole | string): strin
   return role;
 }
 
+/** Ordre d’affichage : Direction → Manager → Collaborateur. */
+const ROLE_RANK: Record<CollaboratorRole, number> = {
+  direction: 0,
+  manager: 1,
+  collaborator: 2,
+};
+
+export function compareCollaboratorsByRoleThenName(
+  a: {
+    role: CollaboratorRole;
+    first_name: string;
+    last_name: string;
+  },
+  b: {
+    role: CollaboratorRole;
+    first_name: string;
+    last_name: string;
+  },
+): number {
+  const rankDiff = (ROLE_RANK[a.role] ?? 99) - (ROLE_RANK[b.role] ?? 99);
+  if (rankDiff !== 0) return rankDiff;
+  return getCollaboratorFullName(a).localeCompare(
+    getCollaboratorFullName(b),
+    "fr",
+  );
+}
+
 export function getCollaboratorStatusLabel(
   status: CollaboratorStatus | string,
 ): string {

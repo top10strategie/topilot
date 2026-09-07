@@ -22,6 +22,8 @@ import {
   getMissionScopeLabel,
 } from "@/lib/missions/labels";
 import type { MissionDetail } from "@/lib/missions/types";
+import { getEndDateToneClass } from "@/lib/dates/end-date-tone";
+import { cn } from "@/lib/utils";
 
 type MissionConsultationDrawerProps = {
   mission: MissionDetail;
@@ -95,7 +97,16 @@ export function MissionConsultationDrawer({
               </div>
               <div className="grid gap-1">
                 <p className="text-muted-foreground">Date de fin</p>
-                <p className="font-medium">
+                <p
+                  className={cn(
+                    "font-medium",
+                    getEndDateToneClass(mission.end_at, {
+                      muted:
+                        mission.kanban_status === "terminee" ||
+                        mission.kanban_status === "archivee",
+                    }),
+                  )}
+                >
                   {formatMissionDate(mission.end_at)}
                 </p>
               </div>

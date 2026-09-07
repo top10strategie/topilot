@@ -42,6 +42,7 @@ import type { ClientListItem } from "@/lib/clients/types";
 import { getCollaboratorFullName } from "@/lib/collaborators/labels";
 import type { CollaboratorListItem } from "@/lib/collaborators/types";
 import { buildOpportunityDuplicatePrefill } from "@/lib/crm/duplicate-prefill";
+import { getEndDateToneClass } from "@/lib/dates/end-date-tone";
 import {
   formatOpportunityDate,
   formatOpportunityPrice,
@@ -680,7 +681,13 @@ export function OpportunitiesPageClient({
                           )}
                         </span>
                       </div>
-                      <span className="shrink-0 text-primary-foreground">
+                      <span
+                        className={`shrink-0 ${getEndDateToneClass(item.end_at, {
+                          muted:
+                            item.kanban_status === "gagne" ||
+                            item.kanban_status === "perdue",
+                        })}`}
+                      >
                         {formatOpportunityDate(item.end_at)}
                       </span>
                     </div>
@@ -747,7 +754,13 @@ export function OpportunitiesPageClient({
                     <td className="px-3 py-2 text-muted-foreground">
                       {formatOpportunityDate(item.due_date_at)}
                     </td>
-                    <td className="px-3 py-2 text-primary-foreground">
+                    <td
+                      className={`px-3 py-2 ${getEndDateToneClass(item.end_at, {
+                        muted:
+                          item.kanban_status === "gagne" ||
+                          item.kanban_status === "perdue",
+                      })}`}
+                    >
                       {formatOpportunityDate(item.end_at)}
                     </td>
                     <td className="px-3 py-2">

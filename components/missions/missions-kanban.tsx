@@ -16,6 +16,8 @@ import type {
   MissionKanbanStatus,
   MissionListItem,
 } from "@/lib/missions/types";
+import { getEndDateToneClass } from "@/lib/dates/end-date-tone";
+import { cn } from "@/lib/utils";
 
 type Board = Record<MissionKanbanStatus, MissionListItem[]>;
 
@@ -99,7 +101,16 @@ function MissionKanbanCardContent({ item }: { item: MissionListItem }) {
           <span className="min-w-0 truncate">
             {item.opportunity?.opportunity_name ?? "—"}
           </span>
-          <span className="shrink-0 text-primary-foreground">
+          <span
+            className={cn(
+              "shrink-0",
+              getEndDateToneClass(item.end_at, {
+                muted:
+                  item.kanban_status === "terminee" ||
+                  item.kanban_status === "archivee",
+              }),
+            )}
+          >
             {formatMissionDate(item.start_at)}
             {item.end_at ? ` → ${formatMissionDate(item.end_at)}` : ""}
           </span>
