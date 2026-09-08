@@ -28,6 +28,7 @@ export type ContactClientItem = {
   notes: string | null;
   phone_number: string | null;
   email_address: string | null;
+  profile_picture_id: string | null;
   profile_picture_url: string | null;
   created_at: string;
 };

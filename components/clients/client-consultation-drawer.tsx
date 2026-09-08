@@ -29,14 +29,18 @@ export function ClientConsultationDrawer({
 }: ClientConsultationDrawerProps) {
   const router = useRouter();
 
-  const addressLine = [
+  const addressParts = [
     client.address_street?.trim(),
     [client.address_zip?.trim(), client.address_city?.trim()]
       .filter(Boolean)
       .join(" "),
-  ]
-    .filter(Boolean)
-    .join(", ");
+  ].filter(Boolean);
+  const addressBase = addressParts.join(", ");
+  const country = client.address_country?.trim();
+  const addressLine =
+    addressBase && country
+      ? `${addressBase} - ${country}`
+      : addressBase || country || "";
 
   const contactsChronological = [...client.contacts].sort((a, b) =>
     a.created_at.localeCompare(b.created_at),

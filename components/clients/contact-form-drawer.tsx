@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, type FormEvent } from "react";
+import { useMemo, useState, useTransition, type FormEvent } from "react";
 import { toast } from "sonner";
 import {
   createContactClient,
@@ -18,8 +18,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { VisualFileField } from "@/components/visuels/visual-file-field";
+import { VisualDocumentField } from "@/components/visuels/visual-document-field";
 import type { ContactClientItem } from "@/lib/clients/types";
+import { PROFILE_PICTURE_TYPE_LABEL } from "@/lib/clients/visuals";
+import type { VisualDocumentOption } from "@/lib/documents/types";
 
 export type ContactFormResult = {
   id: string;
@@ -51,7 +53,17 @@ export function ContactFormDrawer({
   const [email, setEmail] = useState(contact?.email_address ?? "");
   const [phone, setPhone] = useState(contact?.phone_number ?? "");
   const [isMain, setIsMain] = useState(contact?.is_main ?? contactCount === 0);
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [pictureId, setPictureId] = useState<string | null>(
+    contact?.profile_picture_id ?? null,
+  );
+  const initialPictureSelection = useMemo<VisualDocumentOption | null>(() => {
+    if (!contact?.profile_picture_id || !contact.profile_picture_url) return null;
+    return {
+      id: contact.profile_picture_id,
+      document_name: "Photo actuelle",
+      preview_url: contact.profile_picture_url,
+    };
+  }, [contact?.profile_picture_id, contact?.profile_picture_url]);
   const [fieldErrors, setFieldErrors] = useState<
     Partial<Record<string, string>>
   >({});
@@ -73,9 +85,8 @@ export function ContactFormDrawer({
       formData.set("email_address", email);
       formData.set("phone_number", phone);
       formData.set("is_main", isMain || mainLocked ? "true" : "false");
-      if (avatarFile) {
-        formData.set("avatar", avatarFile);
-      }
+      if (pictureId) formData.set("profile_picture_id", pictureId);
+      else formData.set("clear_avatar", "true");
 
       const result =
         mode === "create"
@@ -104,12 +115,12 @@ export function ContactFormDrawer({
   return (
     <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
       <DrawerBody>
-        <VisualFileField
-          id="contact_avatar"
+        <VisualDocumentField
           label="Photo"
-          value={avatarFile}
-          existingUrl={contact?.profile_picture_url}
-          onChange={setAvatarFile}
+          expectedTypeLabel={PROFILE_PICTURE_TYPE_LABEL}
+          value={pictureId}
+          onChange={setPictureId}
+          initialSelection={initialPictureSelection}
           disabled={isPending}
           error={fieldErrors.avatar}
         />

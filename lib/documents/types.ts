@@ -48,6 +48,8 @@ export type LinkedDocumentItem = {
   file_path: string | null;
   url: string | null;
   is_visual: boolean;
+  /** URL publique vignette (bucket visuels) si applicable. */
+  preview_url: string | null;
   version_number: number;
   document_type: DocumentTypeRef;
 };
@@ -57,4 +59,11 @@ export type DocumentLinkEntity = "client" | "mission" | "opportunity";
 export type DocumentLinkOption = {
   id: string;
   document_name: string;
+};
+
+/** Option pour le sélecteur logo / avatar / photo. */
+export type VisualDocumentOption = {
+  id: string;
+  document_name: string;
+  preview_url: string | null;
 };

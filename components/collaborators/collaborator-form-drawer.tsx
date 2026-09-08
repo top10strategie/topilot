@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, type FormEvent } from "react";
+import { useMemo, useState, useTransition, type FormEvent } from "react";
 import { UserPlus } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import {
@@ -21,18 +21,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { VisualFileField } from "@/components/visuels/visual-file-field";
+import { VisualDocumentField } from "@/components/visuels/visual-document-field";
+import type { CategoryItem } from "@/lib/categories/types";
+import { PROFILE_PICTURE_TYPE_LABEL } from "@/lib/clients/visuals";
 import {
   getCollaboratorRoleLabel,
   getCollaboratorStatusLabel,
 } from "@/lib/collaborators/labels";
-import type { CategoryItem } from "@/lib/categories/types";
 import type {
   CollaboratorListItem,
   CollaboratorRole,
   CollaboratorStatus,
   TeamListItem,
 } from "@/lib/collaborators/types";
+import type { VisualDocumentOption } from "@/lib/documents/types";
 
 type TeamOption = Pick<TeamListItem, "id" | "team_name">;
 
@@ -69,7 +71,19 @@ export function CollaboratorFormDrawer({
   );
   const [teamId, setTeamId] = useState(collaborator?.team_id ?? "");
   const [jobTitle, setJobTitle] = useState(collaborator?.job_title ?? "");
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [pictureId, setPictureId] = useState<string | null>(
+    collaborator?.profile_picture_id ?? null,
+  );
+  const initialPictureSelection = useMemo<VisualDocumentOption | null>(() => {
+    if (!collaborator?.profile_picture_id || !collaborator.profile_picture_url) {
+      return null;
+    }
+    return {
+      id: collaborator.profile_picture_id,
+      document_name: "Avatar actuel",
+      preview_url: collaborator.profile_picture_url,
+    };
+  }, [collaborator?.profile_picture_id, collaborator?.profile_picture_url]);
   const [fieldErrors, setFieldErrors] = useState<
     Partial<Record<string, string>>
   >({});
@@ -116,9 +130,8 @@ export function CollaboratorFormDrawer({
       formData.set("status", status);
       formData.set("team_id", teamId);
       formData.set("job_title", jobTitle);
-      if (avatarFile) {
-        formData.set("avatar", avatarFile);
-      }
+      if (pictureId) formData.set("profile_picture_id", pictureId);
+      else formData.set("clear_avatar", "true");
 
       const result =
         mode === "create"
@@ -143,12 +156,12 @@ export function CollaboratorFormDrawer({
   return (
     <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
       <DrawerBody>
-        <VisualFileField
-          id="collaborator_avatar"
+        <VisualDocumentField
           label="Avatar"
-          value={avatarFile}
-          existingUrl={collaborator?.profile_picture_url}
-          onChange={setAvatarFile}
+          expectedTypeLabel={PROFILE_PICTURE_TYPE_LABEL}
+          value={pictureId}
+          onChange={setPictureId}
+          initialSelection={initialPictureSelection}
           disabled={isPending}
           error={fieldErrors.avatar}
         />

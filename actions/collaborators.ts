@@ -9,7 +9,7 @@ import type {
   CollaboratorStatus,
 } from "@/lib/collaborators/types";
 import { isCollaboratorRole } from "@/lib/auth/roles";
-import { uploadCollaboratorProfilePicture } from "@/lib/collaborators/profile-picture";
+import { resolveProfilePictureIdFromForm } from "@/lib/documents/resolve-profile-picture-form";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -114,7 +114,7 @@ function inviteRedirectTo(): string {
 
 /**
  * Invite Auth + création collaborateur. Rollback Auth si l'INSERT échoue.
- * Avatar optionnel (FormData field `avatar`).
+ * Photo optionnelle via `profile_picture_id` (document visuel).
  */
 export async function createCollaborator(
   formData: FormData,
@@ -142,9 +142,14 @@ export async function createCollaborator(
     };
   }
 
-  const avatar = formData.get("avatar");
-  const avatarFile =
-    avatar instanceof File && avatar.size > 0 ? avatar : null;
+  const pictureResult = await resolveProfilePictureIdFromForm(formData, null);
+  if (!pictureResult.success) {
+    return {
+      success: false,
+      error: pictureResult.error,
+      fieldErrors: { avatar: pictureResult.fieldError },
+    };
+  }
 
   const admin = createAdminClient();
   const supabase = await createClient();
@@ -174,14 +179,9 @@ export async function createCollaborator(
   }
 
   const authUserId = inviteData.user.id;
-  let profilePictureId: string | null = null;
+  const profilePictureId = pictureResult.profile_picture_id;
 
   try {
-    if (avatarFile) {
-      const uploaded = await uploadCollaboratorProfilePicture(avatarFile);
-      profilePictureId = uploaded.documentId;
-    }
-
     const { data: created, error: insertError } = await supabase
       .from("collaborator")
       .insert({
@@ -207,9 +207,6 @@ export async function createCollaborator(
   } catch (err) {
     console.error("createCollaborator — rollback:", err);
     await admin.auth.admin.deleteUser(authUserId);
-    if (profilePictureId) {
-      // best effort : laisse le document orphelin plutôt que bloquer le rollback Auth
-    }
     const message =
       err instanceof Error ? err.message : "Création du collaborateur échouée.";
     const isDuplicate = /unique|duplicate|23505/i.test(message);
@@ -271,26 +268,18 @@ export async function updateCollaborator(
     return { success: false, error: "Collaborateur introuvable." };
   }
 
-  const avatar = formData.get("avatar");
-  const avatarFile =
-    avatar instanceof File && avatar.size > 0 ? avatar : null;
-
-  let profilePictureId = existing.profile_picture_id as string | null;
-  if (avatarFile) {
-    try {
-      const uploaded = await uploadCollaboratorProfilePicture(avatarFile);
-      profilePictureId = uploaded.documentId;
-    } catch (err) {
-      return {
-        success: false,
-        error:
-          err instanceof Error
-            ? err.message
-            : "Échec de l'upload de la photo de profil.",
-        fieldErrors: { avatar: "Image invalide." },
-      };
-    }
+  const pictureResult = await resolveProfilePictureIdFromForm(
+    formData,
+    existing.profile_picture_id as string | null,
+  );
+  if (!pictureResult.success) {
+    return {
+      success: false,
+      error: pictureResult.error,
+      fieldErrors: { avatar: pictureResult.fieldError },
+    };
   }
+  const profilePictureId = pictureResult.profile_picture_id;
 
   if (values.email !== existing.email) {
     const admin = createAdminClient();

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, type FormEvent } from "react";
+import { useMemo, useState, useTransition, type FormEvent } from "react";
 import { toast } from "sonner";
 import { updateOwnProfile } from "@/actions/settings";
 import { DrawerBody, DrawerFooterActions } from "@/components/drawers/drawer-section";
@@ -16,7 +16,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { VisualFileField } from "@/components/visuels/visual-file-field";
+import { VisualDocumentField } from "@/components/visuels/visual-document-field";
+import { PROFILE_PICTURE_TYPE_LABEL } from "@/lib/clients/visuals";
+import type { VisualDocumentOption } from "@/lib/documents/types";
 import type { OwnProfile, AppTheme } from "@/lib/settings/types";
 
 type TeamOption = { id: string; team_name: string };
@@ -38,7 +40,17 @@ export function ProfileFormDrawer({
   const [teamId, setTeamId] = useState(profile.team_id);
   const [jobTitle, setJobTitle] = useState(profile.job_title);
   const [theme, setTheme] = useState<AppTheme>(profile.theme);
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [pictureId, setPictureId] = useState<string | null>(
+    profile.profile_picture_id,
+  );
+  const initialPictureSelection = useMemo<VisualDocumentOption | null>(() => {
+    if (!profile.profile_picture_id || !profile.profile_picture_url) return null;
+    return {
+      id: profile.profile_picture_id,
+      document_name: "Avatar actuel",
+      preview_url: profile.profile_picture_url,
+    };
+  }, [profile.profile_picture_id, profile.profile_picture_url]);
   const [fieldErrors, setFieldErrors] = useState<
     Partial<Record<string, string>>
   >({});
@@ -54,7 +66,8 @@ export function ProfileFormDrawer({
       formData.set("team_id", teamId);
       formData.set("job_title", jobTitle);
       formData.set("theme", theme);
-      if (avatarFile) formData.set("avatar", avatarFile);
+      if (pictureId) formData.set("profile_picture_id", pictureId);
+      else formData.set("clear_avatar", "true");
 
       const result = await updateOwnProfile(formData);
       if (!result.success) {
@@ -70,12 +83,12 @@ export function ProfileFormDrawer({
   return (
     <form onSubmit={onSubmit} className="flex min-h-0 flex-1 flex-col">
       <DrawerBody className="space-y-4">
-        <VisualFileField
-          id="profile_avatar"
+        <VisualDocumentField
           label="Avatar"
-          value={avatarFile}
-          existingUrl={profile.profile_picture_url}
-          onChange={setAvatarFile}
+          expectedTypeLabel={PROFILE_PICTURE_TYPE_LABEL}
+          value={pictureId}
+          onChange={setPictureId}
+          initialSelection={initialPictureSelection}
           disabled={isPending}
           error={fieldErrors.avatar}
         />

@@ -55,7 +55,18 @@ type DocumentFormDrawerProps = {
   /** Liaison auto à la création depuis une fiche entité. */
   linkEntity?: DocumentLinkEntity;
   linkEntityId?: string;
-  helpers: DrawerHelpers<{ id: string; document_name: string }>;
+  /** Préremplit le type (ex. Logo client / Photo de profil). */
+  defaultDocumentTypeId?: string;
+  /** Empêche de changer le type. */
+  lockDocumentType?: boolean;
+  /** Force `is_visual = true` (masque le switch). */
+  forceIsVisual?: boolean;
+  helpers: DrawerHelpers<{
+    id: string;
+    document_name: string;
+    is_visual: boolean;
+    preview_url: string | null;
+  }>;
 };
 
 function formatBytes(size: number): string {
@@ -73,6 +84,9 @@ export function DocumentFormDrawer({
   documentTypes: initialTypes,
   linkEntity,
   linkEntityId,
+  defaultDocumentTypeId,
+  lockDocumentType = false,
+  forceIsVisual = false,
   helpers,
 }: DocumentFormDrawerProps) {
   const { pushDrawer } = useDrawerStack();
@@ -83,13 +97,15 @@ export function DocumentFormDrawer({
     document?.document_name ?? "",
   );
   const [documentTypeId, setDocumentTypeId] = useState(
-    document?.document_type.id ?? "",
+    document?.document_type.id ?? defaultDocumentTypeId ?? "",
   );
   const [storageType, setStorageType] = useState<DocumentStorageType>(
     document?.storage_type ?? "supabase",
   );
   const [url, setUrl] = useState(document?.url ?? "");
-  const [isVisual, setIsVisual] = useState(document?.is_visual ?? false);
+  const [isVisual, setIsVisual] = useState(
+    forceIsVisual ? true : (document?.is_visual ?? false),
+  );
   const [file, setFile] = useState<File | null>(null);
   const [fieldErrors, setFieldErrors] = useState<
     Partial<
@@ -167,6 +183,8 @@ export function DocumentFormDrawer({
       helpers.resolve({
         id: result.id,
         document_name: documentName.trim(),
+        is_visual: result.is_visual ?? isVisual,
+        preview_url: result.preview_url ?? null,
       });
     });
   };
@@ -197,24 +215,26 @@ export function DocumentFormDrawer({
             <Label>
               Type <span className="text-destructive">*</span>
             </Label>
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              aria-label="Nouveau type"
-              title="Nouveau type"
-              onClick={openCreateType}
-              disabled={isPending}
-            >
-              <StackPlus className="size-4" />
-            </Button>
+            {lockDocumentType ? null : (
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                aria-label="Nouveau type"
+                title="Nouveau type"
+                onClick={openCreateType}
+                disabled={isPending}
+              >
+                <StackPlus className="size-4" />
+              </Button>
+            )}
           </div>
           <Select
             value={documentTypeId || "__unset__"}
             onValueChange={(value) =>
               setDocumentTypeId(value === "__unset__" ? "" : value)
             }
-            disabled={isPending}
+            disabled={isPending || lockDocumentType}
           >
             <SelectTrigger
               className="w-full"
@@ -369,42 +389,44 @@ export function DocumentFormDrawer({
           </Tabs>
         </div>
 
-        <div
-          className={`flex items-center justify-between gap-3 rounded-md border px-3 py-2 ${
-            visualToggleEnabled ? "" : "opacity-50"
-          }`}
-        >
-          <div className="min-w-0 space-y-0.5">
-            <Label htmlFor="is_visual_switch">Document image / visuel</Label>
-            <p className="text-xs text-muted-foreground">
-              {visualToggleEnabled
-                ? "Oui = photo, logo, avatar (bucket visuels)."
-                : "Sélectionnez un nouveau fichier pour modifier."}
-            </p>
+        {forceIsVisual ? (
+          <p className="text-xs text-muted-foreground">
+            Document image / visuel (bucket visuels).
+          </p>
+        ) : (
+          <div
+            className={`flex items-center justify-between gap-3 rounded-md border px-3 py-2 ${
+              visualToggleEnabled ? "" : "opacity-50"
+            }`}
+          >
+            <div className="min-w-0 space-y-0.5">
+              <Label htmlFor="is_visual_switch">Document image / visuel</Label>
+              <p className="text-xs text-muted-foreground">
+                {visualToggleEnabled
+                  ? "Oui = photo, logo, avatar (bucket visuels)."
+                  : "Sélectionnez un nouveau fichier pour modifier."}
+              </p>
+            </div>
+            <div className="flex shrink-0 items-center gap-2 text-sm">
+              <span className="text-muted-foreground">Non</span>
+              <Switch
+                id="is_visual_switch"
+                checked={isVisual}
+                onCheckedChange={(checked) => {
+                  if (checked && file && file.size > IMAGE_MAX_BYTES) {
+                    toast.error(
+                      "Ce fichier dépasse 5 Mo : retirez-le avant de passer en visuel.",
+                    );
+                    return;
+                  }
+                  setIsVisual(checked);
+                }}
+                disabled={isPending || !visualToggleEnabled}
+              />
+              <span className="text-muted-foreground">Oui</span>
+            </div>
           </div>
-          <div className="flex shrink-0 items-center gap-2 text-sm">
-            <span className="text-muted-foreground">Non</span>
-            <Switch
-              id="is_visual_switch"
-              checked={isVisual}
-              onCheckedChange={(checked) => {
-                if (
-                  checked &&
-                  file &&
-                  file.size > IMAGE_MAX_BYTES
-                ) {
-                  toast.error(
-                    "Ce fichier dépasse 5 Mo : retirez-le avant de passer en visuel.",
-                  );
-                  return;
-                }
-                setIsVisual(checked);
-              }}
-              disabled={isPending || !visualToggleEnabled}
-            />
-            <span className="text-muted-foreground">Oui</span>
-          </div>
-        </div>
+        )}
       </DrawerBody>
 
       <DrawerFooterActions>
