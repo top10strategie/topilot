@@ -64,6 +64,8 @@ type EntityLinkedResourceSectionProps<
   getItemLabel: (item: TItem) => string;
   getOptionLabel: (option: TOption) => string;
   renderItemMeta?: (item: TItem) => ReactNode;
+  /** Élément affiché à gauche du titre (ex. aperçu document). */
+  renderItemLeading?: (item: TItem) => ReactNode;
   onItemClick: (item: TItem) => void | Promise<void>;
   /** Le shell ferme déjà le dialog de liaison avant l'appel. */
   onCreateAndLink: () => void | Promise<void>;
@@ -88,6 +90,7 @@ export function EntityLinkedResourceSection<
   getItemLabel,
   getOptionLabel,
   renderItemMeta,
+  renderItemLeading,
   onItemClick,
   onCreateAndLink,
   onLinkExisting,
@@ -169,13 +172,18 @@ export function EntityLinkedResourceSection<
                 >
                   <button
                     type="button"
-                    className="min-w-0 flex-1 text-left"
+                    className="flex min-w-0 flex-1 items-center gap-2 text-left"
                     onClick={() => void onItemClick(item)}
                   >
-                    <span className="font-medium">{getItemLabel(item)}</span>
-                    {meta ? (
-                      <span className="mt-0.5 flex flex-wrap gap-1">{meta}</span>
-                    ) : null}
+                    {renderItemLeading?.(item)}
+                    <span className="min-w-0 flex-1">
+                      <span className="font-medium">{getItemLabel(item)}</span>
+                      {meta ? (
+                        <span className="mt-0.5 flex flex-wrap gap-1">
+                          {meta}
+                        </span>
+                      ) : null}
+                    </span>
                   </button>
                   {readOnly ? null : (
                     <IconActionButton

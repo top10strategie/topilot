@@ -84,6 +84,7 @@ export async function getOwnProfile(): Promise<OwnProfile | null> {
       status,
       job_title,
       team_id,
+      profile_picture_id,
       team:team_id ( team_name ),
       profile_picture:profile_picture_id ( id, file_path, is_visual ),
       setting ( theme, home_widgets, preferred_mission_category_ids )
@@ -132,6 +133,7 @@ export async function getOwnProfile(): Promise<OwnProfile | null> {
     job_title: data.job_title,
     team_id: data.team_id,
     team_name: team?.team_name ?? "—",
+    profile_picture_id: data.profile_picture_id as string | null,
     profile_picture_url: resolveVisualPublicUrl(picture),
     theme: setting?.theme ?? "systeme",
     home_widgets: Array.isArray(setting?.home_widgets)

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireActiveCollaboratorAction } from "@/lib/auth/require-action";
-import { uploadCollaboratorProfilePicture } from "@/lib/collaborators/profile-picture";
+import { resolveProfilePictureIdFromForm } from "@/lib/documents/resolve-profile-picture-form";
 import { formText } from "@/lib/form-data";
 import {
   isCollaboratorHomeWidgetId,
@@ -153,25 +153,18 @@ export async function updateOwnProfile(
     return { success: false, error: "Profil introuvable." };
   }
 
-  const avatar = formData.get("avatar");
-  const avatarFile =
-    avatar instanceof File && avatar.size > 0 ? avatar : null;
-  let profilePictureId = existing.profile_picture_id as string | null;
-  if (avatarFile) {
-    try {
-      const uploaded = await uploadCollaboratorProfilePicture(avatarFile);
-      profilePictureId = uploaded.documentId;
-    } catch (err) {
-      return {
-        success: false,
-        error:
-          err instanceof Error
-            ? err.message
-            : "Échec de l'upload de la photo.",
-        fieldErrors: { avatar: "Image invalide." },
-      };
-    }
+  const pictureResult = await resolveProfilePictureIdFromForm(
+    formData,
+    existing.profile_picture_id as string | null,
+  );
+  if (!pictureResult.success) {
+    return {
+      success: false,
+      error: pictureResult.error,
+      fieldErrors: { avatar: pictureResult.fieldError },
+    };
   }
+  const profilePictureId = pictureResult.profile_picture_id;
 
   if (email !== existing.email) {
     const admin = createAdminClient();

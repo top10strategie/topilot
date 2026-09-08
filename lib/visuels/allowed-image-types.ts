@@ -24,11 +24,6 @@ const EXTENSION_TO_MIME: Record<string, AllowedImageMimeType> = {
   avif: "image/avif",
 };
 
-export const IMAGE_FILE_ACCEPT = ALLOWED_IMAGE_MIME_TYPES.join(",");
-
-export const IMAGE_FILE_HELP =
-  "JPEG, PNG, WebP, GIF, SVG ou AVIF — 5 Mo max.";
-
 export const IMAGE_MAX_BYTES = 5 * 1024 * 1024;
 
 export const IMAGE_UNSUPPORTED_MESSAGE =

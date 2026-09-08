@@ -2,8 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { requireActiveCollaboratorAction } from "@/lib/auth/require-action";
-import { uploadContactProfilePicture } from "@/lib/clients/visuals";
-import { formBool, formFile, formOptional, formText } from "@/lib/form-data";
+import { resolveProfilePictureIdFromForm } from "@/lib/documents/resolve-profile-picture-form";
+import { formBool, formOptional, formText } from "@/lib/form-data";
 import { createClient } from "@/lib/supabase/server";
 
 export type ContactActionResult =
@@ -54,22 +54,15 @@ export async function createContactClient(
   }
 
   let profile_picture_id: string | null = null;
-  const avatar = formFile(formData, "avatar");
-  if (avatar) {
-    try {
-      profile_picture_id = (await uploadContactProfilePicture(avatar))
-        .documentId;
-    } catch (error) {
-      return {
-        success: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : "Impossible d'uploader la photo.",
-        fieldErrors: { avatar: "Image invalide." },
-      };
-    }
+  const pictureResult = await resolveProfilePictureIdFromForm(formData, null);
+  if (!pictureResult.success) {
+    return {
+      success: false,
+      error: pictureResult.error,
+      fieldErrors: { avatar: pictureResult.fieldError },
+    };
   }
+  profile_picture_id = pictureResult.profile_picture_id;
 
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -155,25 +148,18 @@ export async function updateContactClient(
     };
   }
 
-  let profile_picture_id = existing.profile_picture_id as string | null;
-  const avatar = formFile(formData, "avatar");
-  if (formBool(formData, "clear_avatar", false)) {
-    profile_picture_id = null;
-  } else if (avatar) {
-    try {
-      profile_picture_id = (await uploadContactProfilePicture(avatar))
-        .documentId;
-    } catch (error) {
-      return {
-        success: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : "Impossible d'uploader la photo.",
-        fieldErrors: { avatar: "Image invalide." },
-      };
-    }
+  const pictureResult = await resolveProfilePictureIdFromForm(
+    formData,
+    existing.profile_picture_id as string | null,
+  );
+  if (!pictureResult.success) {
+    return {
+      success: false,
+      error: pictureResult.error,
+      fieldErrors: { avatar: pictureResult.fieldError },
+    };
   }
+  const profile_picture_id = pictureResult.profile_picture_id;
 
   const notes = formOptional(formData, "notes");
   const payload: Record<string, unknown> = {

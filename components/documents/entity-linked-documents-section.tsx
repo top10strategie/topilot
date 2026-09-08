@@ -8,6 +8,7 @@ import {
 } from "@/actions/document-links";
 import { useDrawerStack } from "@/components/drawers/drawer-stack-context";
 import { DocumentFormDrawer } from "@/components/documents/document-form-drawer";
+import { DocumentFormatThumb } from "@/components/documents/document-format-thumb";
 import { EntityLinkedResourceSection } from "@/components/layout/entity-linked-resource-section";
 import { Badge } from "@/components/ui/badge";
 import type { DocumentTypeItem } from "@/lib/categories/types";
@@ -61,6 +62,9 @@ export function EntityLinkedDocumentsSection({
       onLinksChange={onLinksChange}
       getItemLabel={(doc) => doc.document_name}
       getOptionLabel={(opt) => opt.document_name}
+      renderItemLeading={(doc) => (
+        <DocumentFormatThumb item={doc} sizeClassName="size-10" />
+      )}
       renderItemMeta={(doc) => (
         <>
           <Badge variant="secondary" className="text-[10px]">
@@ -75,7 +79,12 @@ export function EntityLinkedDocumentsSection({
         window.open(documentHref(doc), "_blank", "noopener,noreferrer");
       }}
       onCreateAndLink={() => {
-        void pushDrawer<{ id: string; document_name: string }>({
+        void pushDrawer<{
+          id: string;
+          document_name: string;
+          is_visual: boolean;
+          preview_url: string | null;
+        }>({
           title: "Nouveau document",
           content: (helpers) => (
             <DocumentFormDrawer

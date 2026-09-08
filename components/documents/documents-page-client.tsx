@@ -218,7 +218,12 @@ export function DocumentsPageClient({
     filters.clientIds.length > 0;
 
   const openCreate = () => {
-    void pushDrawer({
+    void pushDrawer<{
+      id: string;
+      document_name: string;
+      is_visual: boolean;
+      preview_url: string | null;
+    }>({
       title: "Nouveau document",
       content: (helpers) => (
         <DocumentFormDrawer
@@ -233,7 +238,12 @@ export function DocumentsPageClient({
   };
 
   const openEdit = (item: DocumentListItem) => {
-    void pushDrawer({
+    void pushDrawer<{
+      id: string;
+      document_name: string;
+      is_visual: boolean;
+      preview_url: string | null;
+    }>({
       title: "Édition document",
       content: (helpers) => (
         <DocumentFormDrawer

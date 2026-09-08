@@ -151,7 +151,7 @@ Structure Hero + Tabs :
 - **Tiroir de création "Nouveau client"** (cf. section 7 de `07_ux_composants_reutilisable.mdc`), en **deux temps** :
     1. **Bloc identification** (toujours visible en haut) : logo (upload), Nom (`client_name`, obligatoire), Responsable client (`main_collaborator_id`, obligatoire, dropdown collaborateurs), Website (obligatoire). Bouton **"Enregistrer"** dédié à ce bloc : crée l'enregistrement client en base avec ces champs minimaux — nécessaire pour permettre l'ajout des sous-entités liées (contacts, documents, outils) qui requièrent un `client_id` existant.
     2. **Bloc complémentaire** (déverrouillé après l'étape 1) :
-        - Adresse, Code postal, Ville
+        - Adresse, Code postal, Ville, Pays
         - Lien Drive (`drive_link`, nullable)
         - Contact chez le client : liste simplifiée (noms uniquement, sans avatar ni Hover Card) des `contact_client` du client + bouton d'ajout (`user-plus`, drawer contact empilable, cf. `03_business_rules.mdc`). Version différente et plus riche sur la fiche client elle-même (avatars, badge principal, Hover Card, mode gestion — voir `/clients/[id]`).
         - Catégories (`client_category`) : multi-sélection + bouton d'ajout d'une nouvelle catégorie
@@ -171,7 +171,7 @@ Structure Hero + Tabs :
 
 - **Informations** :
     - Colonne gauche : logo du client (lecture seule), Nom (`client_name`), Responsable client (`main_collaborator_id`), Website (`website`). En dessous : Notes (`notes`, édition inline, historisée dans `audit_log`).
-    - Colonne droite : Adresse (`address_street`), Code postal (`address_zip`), Ville (`address_city`), Lien drive (`drive_link`).
+    - Colonne droite : Adresse (`address_street`), Code postal (`address_zip`), Ville (`address_city`), Pays (`address_country`), Lien drive (`drive_link`).
     - **Contact chez le client** (`contact_client`) : rangée d'avatars (photo ou initiales à défaut).
         - Le contact principal (`is_main = true`) affiche un petit badge (`push-pin`) en haut à droite de son avatar.
         - Survol/clic sur un avatar (hors mode gestion) : **Hover Card** ShadCN (`npx shadcn@latest add hover-card`) avec Nom, Poste, Email, Téléphone — badge principal répété dans la carte si applicable (pas de page dédiée, pas de tiroir de consultation, cf. section 9.3 de `07_ux_composants_reutilisable.mdc`).

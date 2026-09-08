@@ -173,7 +173,7 @@ Structure organisée en tabs (prenant toute la largeur de page), avec jusqu'à 4
 
 - **Détails** : informations organisées en colonnes (2 colonnes desktop, 1 colonne tablette/mobile).
 - **Liste** : informations organisées en tableau chronologique, ouvrant des tiroirs de consultation au clic (ex. missions, teams, catégories liées).
-- **Documentation** : 3 colonnes (outils / documents / wiki). Clic sur un **outil** ou un **wiki** lié : ouvre un tiroir de consultation (comportement général, cf. section 7) — le clic sur un **document** n'est pas encore spécifié (à définir avec la page `/documents`).
+- **Documentation** : 3 colonnes (outils / documents / wiki). Clic sur un **outil** ou un **wiki** lié : ouvre un tiroir de consultation (comportement général, cf. section 7). Clic sur un **document** lié : ouvre le fichier. Dans la liste Documents, un **aperçu** (vignette ou icône de format) s’affiche à gauche du titre et du type.
 - **Liste de cartes** : cartes résumant des informations basiques, ouvrant des tiroirs de consultation au clic (ex. collaborateurs).
     - Ordinateur : 4 colonnes. Tablette : 2 colonnes. Téléphone : 1 colonne (contenu simplifié en une seule colonne).
 
