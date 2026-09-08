@@ -1,5 +1,30 @@
 # Suivi des actions — TOPilot
 
+## **[2026-09-08] — Champ Pays client (`address_country`)**
+
+**Type :** `feature`
+**Fichiers concernés :** `components/clients/{client-form-drawer,client-detail-page-client,client-consultation-drawer}.tsx`, `actions/clients.ts`, `.cursor/rules/10_ux_architecture.mdc.md`, `suivi.md`
+
+### Description
+
+Exposition UI du champ déjà en base `address_country` (défaut « France ») : édition dans le tiroir client (bloc complément), affichage sur `/clients/[id]` sous Code postal/Ville, suffixe ` - Pays` dans le tiroir de consultation.
+
+---
+## **[2026-09-07] — Aperçu docs liés + sélecteur logo/avatar**
+
+**Type :** `feature`
+**Fichiers concernés :** `components/documents/*`, `components/layout/entity-linked-resource-section.tsx`, `components/visuels/visual-document-field.tsx`, `components/{clients,collaborators,settings}/*-form-drawer.tsx`, `actions/{clients,contact-clients,collaborators,settings,documents,documents-visual}.ts`, `lib/documents/*`, `lib/clients/{types,queries,visuals}.ts`, `lib/collaborators/{types,queries}.ts`, `lib/settings/*`, `.cursor/rules/07_ux_composants_reutilisable.mdc.md`, `suivi.md`
+
+### Description
+
+Section Documents des fiches : aperçu (`DocumentFormatThumb`) à gauche du titre/type, liste inchangée. Logo client / avatar collaborateur / photo contact : remplacement de l’upload fichier par un Select de documents visuels du type adapté + bouton créer (tiroir document) + carte d’aperçu ; FK `logo_id` / `profile_picture_id` uniquement.
+
+### Détails techniques
+
+- `listVisualDocumentOptions` + `loadVisualDocumentPicker` ; validation `assertVisualDocumentOfType`.
+- Suppression de `VisualFileField` et des helpers d’upload dédiés logo/avatar.
+
+---
 ## **[2026-09-07] — Fix jsdom 29 / ERR_REQUIRE_ESM sur Vercel (fiches client)**
 
 **Type :** `fix`

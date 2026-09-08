@@ -2,15 +2,16 @@
 
 import { revalidatePath } from "next/cache";
 import { requireActiveCollaboratorAction } from "@/lib/auth/require-action";
-import { deleteClientVisual, uploadClientLogo } from "@/lib/clients/visuals";
+import { CLIENT_LOGO_TYPE_LABEL } from "@/lib/clients/visuals";
+import { assertVisualDocumentOfType } from "@/lib/documents/visual-document";
 import {
   formBool,
   formCategoryIds,
-  formFile,
   formOptional,
   formText,
 } from "@/lib/form-data";
 import { createClient } from "@/lib/supabase/server";
+import { isUuid } from "@/lib/uuid";
 
 export type ClientActionResult =
   | { success: true; id: string }
@@ -30,6 +31,39 @@ export type ClientActionResult =
         >
       >;
     };
+
+async function resolveLogoIdFromForm(
+  formData: FormData,
+  currentLogoId: string | null,
+): Promise<
+  | { success: true; logo_id: string | null }
+  | { success: false; error: string; fieldError?: string }
+> {
+  if (formBool(formData, "clear_logo", false)) {
+    return { success: true, logo_id: null };
+  }
+
+  const logoId = formText(formData, "logo_id");
+  if (!logoId) {
+    return { success: true, logo_id: currentLogoId };
+  }
+  if (!isUuid(logoId)) {
+    return {
+      success: false,
+      error: "Logo invalide.",
+      fieldError: "Document invalide.",
+    };
+  }
+
+  const check = await assertVisualDocumentOfType(
+    logoId,
+    CLIENT_LOGO_TYPE_LABEL,
+  );
+  if (!check.ok) {
+    return { success: false, error: check.error, fieldError: check.error };
+  }
+  return { success: true, logo_id: logoId };
+}
 
 function revalidateClients(id?: string) {
   revalidatePath("/clients");
@@ -105,7 +139,6 @@ export async function createClientRecord(
   const client_name = formText(formData, "client_name");
   const website = formText(formData, "website");
   const main_collaborator_id = formText(formData, "main_collaborator_id");
-  const logoFile = formFile(formData, "logo");
   const fieldErrors: NonNullable<
     Extract<ClientActionResult, { success: false }>["fieldErrors"]
   > = {};
@@ -124,20 +157,13 @@ export async function createClientRecord(
     };
   }
 
-  let logo_id: string | null = null;
-  if (logoFile) {
-    try {
-      logo_id = (await uploadClientLogo(logoFile)).documentId;
-    } catch (error) {
-      return {
-        success: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : "Impossible d'uploader le logo.",
-        fieldErrors: { logo: "Image invalide." },
-      };
-    }
+  const logoResult = await resolveLogoIdFromForm(formData, null);
+  if (!logoResult.success) {
+    return {
+      success: false,
+      error: logoResult.error,
+      fieldErrors: { logo: logoResult.fieldError },
+    };
   }
 
   const supabase = await createClient();
@@ -147,7 +173,7 @@ export async function createClientRecord(
       client_name,
       website,
       main_collaborator_id,
-      logo_id,
+      logo_id: logoResult.logo_id,
     })
     .select("id")
     .single();
@@ -216,31 +242,18 @@ export async function updateClientRecord(
   const notes = formData.has("notes")
     ? formOptional(formData, "notes")
     : undefined;
-  let logo_id = existing.logo_id as string | null;
-  const previousLogoId = logo_id;
-  const logoFile = formFile(formData, "logo");
-  let shouldPurgePreviousLogo = false;
-
-  if (formBool(formData, "clear_logo", false)) {
-    logo_id = null;
-    shouldPurgePreviousLogo = Boolean(previousLogoId);
-  } else if (logoFile) {
-    try {
-      logo_id = (await uploadClientLogo(logoFile)).documentId;
-      shouldPurgePreviousLogo = Boolean(
-        previousLogoId && previousLogoId !== logo_id,
-      );
-    } catch (error) {
-      return {
-        success: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : "Impossible d'uploader le logo.",
-        fieldErrors: { logo: "Image invalide." },
-      };
-    }
+  const logoResult = await resolveLogoIdFromForm(
+    formData,
+    existing.logo_id as string | null,
+  );
+  if (!logoResult.success) {
+    return {
+      success: false,
+      error: logoResult.error,
+      fieldErrors: { logo: logoResult.fieldError },
+    };
   }
+  const logo_id = logoResult.logo_id;
 
   const payload: Record<string, unknown> = {
     client_name,
@@ -249,6 +262,7 @@ export async function updateClientRecord(
     address_street: formOptional(formData, "address_street"),
     address_city: formOptional(formData, "address_city"),
     address_zip: formOptional(formData, "address_zip"),
+    address_country: formText(formData, "address_country") || "France",
     drive_link: formOptional(formData, "drive_link"),
     logo_id,
     is_active: formBool(formData, "is_active", true),
@@ -276,10 +290,6 @@ export async function updateClientRecord(
         ? `Impossible de mettre à jour le client : ${error.message}`
         : "Client introuvable.",
     };
-  }
-
-  if (shouldPurgePreviousLogo && previousLogoId) {
-    await deleteClientVisual(previousLogoId);
   }
 
   const sync = await syncClientCategories(

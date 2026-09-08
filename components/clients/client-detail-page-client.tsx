@@ -363,6 +363,10 @@ export function ClientDetailPageClient({
                       </div>
                     </div>
                     <div>
+                      <p className="text-muted-foreground">Pays</p>
+                      <p>{client.address_country?.trim() || "—"}</p>
+                    </div>
+                    <div>
                       <p className="text-muted-foreground">Lien drive</p>
                       {client.drive_link ? (
                         <a

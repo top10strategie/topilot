@@ -30,8 +30,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { VisualFileField } from "@/components/visuels/visual-file-field";
+import { VisualDocumentField } from "@/components/visuels/visual-document-field";
 import type { CategoryItem } from "@/lib/categories/types";
+import { CLIENT_LOGO_TYPE_LABEL } from "@/lib/clients/visuals";
 import { getCollaboratorFullName } from "@/lib/collaborators/labels";
 import type { CollaboratorListItem } from "@/lib/collaborators/types";
 import { getContactFullName } from "@/lib/clients/labels";
@@ -40,6 +41,7 @@ import type {
   ClientDetail,
   ContactClientItem,
 } from "@/lib/clients/types";
+import type { VisualDocumentOption } from "@/lib/documents/types";
 
 type ClientFormDrawerProps = {
   mode: "create" | "edit";
@@ -90,15 +92,24 @@ export function ClientFormDrawer({
   const [responsibleId, setResponsibleId] = useState(
     client?.main_collaborator_id ?? "",
   );
-  const [logoFile, setLogoFile] = useState<File | null>(null);
-  /** Évite un 2e upload au save final après upload à l’identification. */
-  const [logoUploadedOnCreate, setLogoUploadedOnCreate] = useState(false);
+  const [logoId, setLogoId] = useState<string | null>(client?.logo_id ?? null);
+  const initialLogoSelection = useMemo<VisualDocumentOption | null>(() => {
+    if (!client?.logo_id || !client.logo_url) return null;
+    return {
+      id: client.logo_id,
+      document_name: "Logo actuel",
+      preview_url: client.logo_url,
+    };
+  }, [client?.logo_id, client?.logo_url]);
 
   const [addressStreet, setAddressStreet] = useState(
     client?.address_street ?? "",
   );
   const [addressZip, setAddressZip] = useState(client?.address_zip ?? "");
   const [addressCity, setAddressCity] = useState(client?.address_city ?? "");
+  const [addressCountry, setAddressCountry] = useState(
+    client?.address_country ?? "France",
+  );
   const [driveLink, setDriveLink] = useState(client?.drive_link ?? "");
   const [notes, setNotes] = useState(client?.notes ?? "");
   const [isActive, setIsActive] = useState(client?.is_active ?? true);
@@ -209,7 +220,8 @@ export function ClientFormDrawer({
       formData.set("client_name", clientName);
       formData.set("website", website);
       formData.set("main_collaborator_id", responsibleId);
-      if (logoFile) formData.set("logo", logoFile);
+      if (logoId) formData.set("logo_id", logoId);
+      else formData.set("clear_logo", "true");
 
       if (mode === "create" && !identificationSaved) {
         const result = await createClientRecord(formData);
@@ -220,9 +232,6 @@ export function ClientFormDrawer({
         }
         setClientId(result.id);
         setIdentificationSaved(true);
-        if (logoFile) {
-          setLogoUploadedOnCreate(true);
-        }
         toast.success("Client créé. Complétez les informations.");
         return;
       }
@@ -248,6 +257,7 @@ export function ClientFormDrawer({
       formData.set("address_street", addressStreet);
       formData.set("address_zip", addressZip);
       formData.set("address_city", addressCity);
+      formData.set("address_country", addressCountry);
       formData.set("drive_link", driveLink);
       if (mode === "create") {
         formData.set("notes", notes);
@@ -256,9 +266,8 @@ export function ClientFormDrawer({
       for (const category of selectedCategories) {
         formData.append("category_ids", category.id);
       }
-      if (logoFile && !logoUploadedOnCreate) {
-        formData.set("logo", logoFile);
-      }
+      if (logoId) formData.set("logo_id", logoId);
+      else formData.set("clear_logo", "true");
 
       const result = await updateClientRecord(clientId, formData);
       if (!result.success) {
@@ -282,15 +291,12 @@ export function ClientFormDrawer({
         <section className="space-y-4">
           <h3 className="text-sm font-semibold">Identification</h3>
 
-          <VisualFileField
-            id="client_logo"
+          <VisualDocumentField
             label="Logo"
-            value={logoFile}
-            existingUrl={client?.logo_url}
-            onChange={(file) => {
-              setLogoFile(file);
-              setLogoUploadedOnCreate(false);
-            }}
+            expectedTypeLabel={CLIENT_LOGO_TYPE_LABEL}
+            value={logoId}
+            onChange={setLogoId}
+            initialSelection={initialLogoSelection}
             disabled={isPending}
             error={fieldErrors.logo}
           />
@@ -424,6 +430,15 @@ export function ClientFormDrawer({
                   disabled={isPending}
                 />
               </div>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="address_country">Pays</Label>
+              <Input
+                id="address_country"
+                value={addressCountry}
+                onChange={(event) => setAddressCountry(event.target.value)}
+                disabled={isPending}
+              />
             </div>
 
             <div className="grid gap-2">

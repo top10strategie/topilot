@@ -9,13 +9,28 @@ import {
 } from "@/lib/documents/storage";
 import { formBool, formFile, formText } from "@/lib/form-data";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getSupabaseUrl } from "@/lib/supabase/env";
 import { looseClient } from "@/lib/supabase/loose";
 import { createClient } from "@/lib/supabase/server";
 import { isUuid } from "@/lib/uuid";
 import type { DocumentLinkEntity } from "@/lib/documents/types";
 
+function visualPreviewUrl(
+  isVisual: boolean,
+  filePath: string | null,
+): string | null {
+  if (!isVisual || !filePath || filePath === "pending") return null;
+  const base = getSupabaseUrl().replace(/\/$/, "");
+  return `${base}/storage/v1/object/public/visuels/${filePath}`;
+}
 export type DocumentActionResult =
-  | { success: true; id: string }
+  | {
+      success: true;
+      id: string;
+      document_name?: string;
+      is_visual?: boolean;
+      preview_url?: string | null;
+    }
   | {
       success: false;
       error: string;
@@ -182,7 +197,13 @@ export async function createDocument(
     }
 
     revalidateDocuments(entityPaths(linkEntity, linkEntityId || null));
-    return { success: true, id: data.id };
+    return {
+      success: true,
+      id: data.id,
+      document_name: documentName,
+      is_visual: isVisual,
+      preview_url: null,
+    };
   }
 
   // storage_type = supabase — insert via admin pour file_path pending puis upload
@@ -257,7 +278,19 @@ export async function createDocument(
   }
 
   revalidateDocuments(entityPaths(linkEntity, linkEntityId || null));
-  return { success: true, id: document.id };
+  const { data: finalized } = await admin
+    .from("document")
+    .select("file_path")
+    .eq("id", document.id)
+    .maybeSingle();
+  const filePath = finalized?.file_path ?? null;
+  return {
+    success: true,
+    id: document.id,
+    document_name: documentName,
+    is_visual: isVisual,
+    preview_url: visualPreviewUrl(isVisual, filePath),
+  };
 }
 
 /**

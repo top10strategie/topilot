@@ -48,6 +48,7 @@ function mapCollaborator(row: CollaboratorRow): CollaboratorListItem {
     job_title: row.job_title,
     team_id: row.team_id,
     team_name: row.team?.team_name ?? "—",
+    profile_picture_id: row.profile_picture_id,
     profile_picture_url: resolveVisualPublicUrl(row.profile_picture),
   };
 }

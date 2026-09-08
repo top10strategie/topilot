@@ -7,6 +7,7 @@ import type {
   DocumentStorageType,
   DocumentTypeRef,
   LinkedDocumentItem,
+  VisualDocumentOption,
 } from "./types";
 
 const DOCUMENT_SELECT = `
@@ -115,7 +116,10 @@ function asArray<T>(value: T | T[] | null | undefined): T[] {
   return Array.isArray(value) ? value : [value];
 }
 
-function resolvePreviewUrl(row: DocumentRow): string | null {
+function resolvePreviewUrl(row: {
+  is_visual: boolean;
+  file_path: string | null;
+}): string | null {
   if (!row.is_visual || !row.file_path || row.file_path === "pending") {
     return null;
   }
@@ -236,6 +240,7 @@ function mapLinkedItem(row: DocumentRow): LinkedDocumentItem {
     file_path: row.file_path,
     url: row.url,
     is_visual: row.is_visual,
+    preview_url: resolvePreviewUrl(row),
     version_number: row.version_number,
     document_type: mapType(row),
   };
@@ -379,5 +384,48 @@ export async function listDocumentLinkOptions(): Promise<DocumentLinkOption[]> {
   return (data ?? []).map((row) => ({
     id: row.id as string,
     document_name: row.document_name as string,
+  }));
+}
+
+/**
+ * Dernières versions de documents visuels du type donné (logo / photo de profil).
+ */
+export async function listVisualDocumentOptions(
+  typeLabel: string,
+): Promise<VisualDocumentOption[]> {
+  const supabase = await createClient();
+  const { data: typeRow, error: typeError } = await supabase
+    .from("document_type")
+    .select("id")
+    .eq("label", typeLabel)
+    .maybeSingle();
+
+  if (typeError) {
+    console.error("listVisualDocumentOptions type:", typeError);
+    throw new Error(`Impossible de charger le type : ${typeError.message}`);
+  }
+  if (!typeRow) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from("document_latest")
+    .select("id, document_name, file_path, is_visual")
+    .eq("is_visual", true)
+    .eq("document_type_id", typeRow.id)
+    .order("document_name");
+
+  if (error) {
+    console.error("listVisualDocumentOptions:", error);
+    throw new Error(`Impossible de charger les visuels : ${error.message}`);
+  }
+
+  return (data ?? []).map((row) => ({
+    id: row.id as string,
+    document_name: row.document_name as string,
+    preview_url: resolvePreviewUrl({
+      is_visual: Boolean(row.is_visual),
+      file_path: (row.file_path as string | null) ?? null,
+    }),
   }));
 }

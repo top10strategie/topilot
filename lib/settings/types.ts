@@ -10,6 +10,7 @@ export type OwnProfile = {
   job_title: string;
   team_id: string;
   team_name: string;
+  profile_picture_id: string | null;
   profile_picture_url: string | null;
   theme: AppTheme;
   home_widgets: string[];
