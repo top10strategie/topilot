@@ -113,6 +113,7 @@ export function ClientFormDrawer({
   const [driveLink, setDriveLink] = useState(client?.drive_link ?? "");
   const [notes, setNotes] = useState(client?.notes ?? "");
   const [isActive, setIsActive] = useState(client?.is_active ?? true);
+  const [facilitator, setFacilitator] = useState(client?.facilitator ?? false);
 
   const [categories, setCategories] = useState<ClientCategoryItem[]>(() => {
     const byId = new Map<string, ClientCategoryItem>();
@@ -263,6 +264,7 @@ export function ClientFormDrawer({
         formData.set("notes", notes);
       }
       formData.set("is_active", isActive ? "true" : "false");
+      formData.set("facilitator", facilitator ? "true" : "false");
       for (const category of selectedCategories) {
         formData.append("category_ids", category.id);
       }
@@ -384,23 +386,58 @@ export function ClientFormDrawer({
             <h3 className="text-sm font-semibold">Complément</h3>
 
             {mode === "edit" ? (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-2">
+                  <Label>Statut</Label>
+                  <Select
+                    value={isActive ? "actif" : "inactif"}
+                    onValueChange={(value) => setIsActive(value === "actif")}
+                    disabled={isPending}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="actif">Actif</SelectItem>
+                      <SelectItem value="inactif">Inactif</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label>Apporteur d&apos;affaires</Label>
+                  <Select
+                    value={facilitator ? "oui" : "non"}
+                    onValueChange={(value) => setFacilitator(value === "oui")}
+                    disabled={isPending}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="oui">Oui</SelectItem>
+                      <SelectItem value="non">Non</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            ) : (
               <div className="grid gap-2">
-                <Label>Statut</Label>
+                <Label>Apporteur d&apos;affaires</Label>
                 <Select
-                  value={isActive ? "actif" : "inactif"}
-                  onValueChange={(value) => setIsActive(value === "actif")}
+                  value={facilitator ? "oui" : "non"}
+                  onValueChange={(value) => setFacilitator(value === "oui")}
                   disabled={isPending}
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="actif">Actif</SelectItem>
-                    <SelectItem value="inactif">Inactif</SelectItem>
+                    <SelectItem value="oui">Oui</SelectItem>
+                    <SelectItem value="non">Non</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-            ) : null}
+            )}
 
             <div className="grid gap-2">
               <Label htmlFor="address_street">Adresse</Label>

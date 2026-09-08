@@ -270,6 +270,7 @@ CREATE TABLE public.client (
   drive_link            text,
   logo_id               uuid REFERENCES public.document(id) ON DELETE SET NULL,
   is_active             boolean NOT NULL DEFAULT true,
+  facilitator           boolean NOT NULL DEFAULT false,
   notes                 text,
   notes_updated_at      timestamptz,
   created_at            timestamptz NOT NULL DEFAULT now(),

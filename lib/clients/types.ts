@@ -48,6 +48,7 @@ export type ClientListItem = {
   website: string;
   address_city: string | null;
   is_active: boolean;
+  facilitator: boolean;
   logo_url: string | null;
   categories: ClientCategoryItem[];
   responsible: ClientResponsibleItem;

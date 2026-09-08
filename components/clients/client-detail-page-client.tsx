@@ -304,12 +304,20 @@ export function ClientDetailPageClient({
                       <div>
                         <p className="text-muted-foreground">Nom</p>
                         <p className="font-medium">{client.client_name}</p>
-                        <Badge
-                          variant={client.is_active ? "default" : "secondary"}
-                          className="mt-1"
-                        >
-                          {getClientStatusLabel(client.is_active)}
-                        </Badge>
+                        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                          <Badge
+                            variant={
+                              client.is_active ? "default" : "secondary"
+                            }
+                          >
+                            {getClientStatusLabel(client.is_active)}
+                          </Badge>
+                          {client.facilitator ? (
+                            <Badge variant="outline">
+                              Apporteur d&apos;affaires
+                            </Badge>
+                          ) : null}
+                        </div>
                       </div>
                       <div>
                         <p className="text-muted-foreground">
