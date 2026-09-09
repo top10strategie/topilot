@@ -312,14 +312,20 @@ export function ClientsPageClient({
                           <CardTitle className="text-base leading-snug">
                             {client.client_name}
                           </CardTitle>
-                          <Badge
-                            variant={
-                              client.is_active ? "default" : "secondary"
-                            }
-                            className="mt-1"
-                          >
-                            {getClientStatusLabel(client.is_active)}
-                          </Badge>
+                          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                            <Badge
+                              variant={
+                                client.is_active ? "default" : "secondary"
+                              }
+                            >
+                              {getClientStatusLabel(client.is_active)}
+                            </Badge>
+                            {client.facilitator ? (
+                              <Badge variant="outline">
+                                Apporteur d&apos;affaires
+                              </Badge>
+                            ) : null}
+                          </div>
                         </div>
                       </div>
                     </CardHeader>
@@ -348,6 +354,7 @@ export function ClientsPageClient({
                 <tr>
                   <th className="px-3 py-2 font-medium">Client</th>
                   <th className="px-3 py-2 font-medium">Statut</th>
+                  <th className="px-3 py-2 font-medium">Apporteur d&apos;affaires</th>
                   <th className="px-3 py-2 font-medium">Catégories</th>
                   <th className="px-3 py-2 font-medium">Site</th>
                   <th className="px-3 py-2 font-medium">Téléphone</th>
@@ -359,7 +366,7 @@ export function ClientsPageClient({
                 {pageItems.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={7}
+                      colSpan={8}
                       className="px-3 py-6 text-sm text-muted-foreground"
                     >
                       {query.trim() ||
@@ -392,6 +399,9 @@ export function ClientsPageClient({
                       </td>
                       <td className="px-3 py-2">
                         {getClientStatusLabel(client.is_active)}
+                      </td>
+                      <td className="px-3 py-2 text-muted-foreground">
+                        {client.facilitator ? "oui" : ""}
                       </td>
                       <td className="px-3 py-2 text-muted-foreground">
                         {client.categories.map((c) => c.label).join(", ") ||

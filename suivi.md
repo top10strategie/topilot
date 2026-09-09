@@ -1,5 +1,15 @@
 # Suivi des actions — TOPilot
 
+## **[2026-09-08] — Client `facilitator` (Apporteur d’affaires)**
+
+**Type :** `feature`
+**Fichiers concernés :** `.cursor/rules/{03,04,10}_*.mdc.md`, `lib/clients/*`, `lib/supabase/database.types.ts`, `actions/clients.ts`, `components/clients/*`, `suivi.md`
+
+### Description
+
+Alignement app sur le booléen `client.facilitator` déjà en BDD : édition Oui/Non dans le tiroir client, badge « Apporteur d’affaires » (fiche, consultation, cartes), colonne tableau `/clients` entre Statut et Catégories (`oui` / vide).
+
+---
 ## **[2026-09-08] — Champ Pays client (`address_country`)**
 
 **Type :** `feature`
