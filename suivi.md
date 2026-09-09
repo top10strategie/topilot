@@ -1,5 +1,15 @@
 # Suivi des actions — TOPilot
 
+## **[2026-09-09] — Auto-sélection logo/avatar après création document**
+
+**Type :** `fix`
+**Fichiers concernés :** `components/visuels/visual-document-field.tsx`, `components/documents/document-form-drawer.tsx`, `components/clients/{client-form-drawer,contact-form-drawer}.tsx`, `suivi.md`
+
+### Description
+
+Cause racine : `helpers.resolve` appelé depuis `startTransition` après `createDocument` → les `setState` du tiroir parent (logo) étaient abandonnés à la fermeture du Sheet empilé. Correctifs : soumission document en `async` + `useState(isPending)` (plus de `useTransition`) ; injection synchronisée **avant** `resolve` (`flushSync` + miroir `selectedId` local + remount Select) ; pattern aligné sur `injectCategory` ; `linkEntity` client si id connu.
+
+---
 ## **[2026-09-08] — Client `facilitator` (Apporteur d’affaires)**
 
 **Type :** `feature`
