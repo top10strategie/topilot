@@ -121,6 +121,8 @@ export function ContactFormDrawer({
           value={pictureId}
           onChange={setPictureId}
           initialSelection={initialPictureSelection}
+          linkEntity="client"
+          linkEntityId={clientId}
           disabled={isPending}
           error={fieldErrors.avatar}
         />

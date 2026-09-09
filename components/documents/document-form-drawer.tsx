@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { File as FileIcon, StackPlus, X } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import {
@@ -115,7 +115,7 @@ export function DocumentFormDrawer({
       >
     >
   >({});
-  const [isPending, startTransition] = useTransition();
+  const [isPending, setIsPending] = useState(false);
 
   const isEdit = mode === "edit";
   const visualToggleEnabled = !isEdit || Boolean(file);
@@ -164,29 +164,41 @@ export function DocumentFormDrawer({
     event.preventDefault();
     setFieldErrors({});
 
-    startTransition(async () => {
-      const formData = buildFormData();
-      const result =
-        mode === "create"
-          ? await createDocument(formData)
-          : await updateDocument(document!.id, formData);
+    // Pas de startTransition : les setState du tiroir parent (sélection logo)
+    // seraient sinon souvent abandonnés à la fermeture du Sheet empilé.
+    void (async () => {
+      setIsPending(true);
+      try {
+        const formData = buildFormData();
+        const result =
+          mode === "create"
+            ? await createDocument(formData)
+            : await updateDocument(document!.id, formData);
 
-      if (!result.success) {
-        setFieldErrors(result.fieldErrors ?? {});
-        toast.error(result.error);
-        return;
+        if (!result.success) {
+          setFieldErrors(result.fieldErrors ?? {});
+          toast.error(result.error);
+          return;
+        }
+
+        if (!result.id) {
+          toast.error("Document créé sans identifiant — sélection impossible.");
+          return;
+        }
+
+        toast.success(
+          mode === "create" ? "Document créé." : "Document enregistré.",
+        );
+        helpers.resolve({
+          id: result.id,
+          document_name: documentName.trim(),
+          is_visual: result.is_visual ?? isVisual,
+          preview_url: result.preview_url ?? null,
+        });
+      } finally {
+        setIsPending(false);
       }
-
-      toast.success(
-        mode === "create" ? "Document créé." : "Document enregistré.",
-      );
-      helpers.resolve({
-        id: result.id,
-        document_name: documentName.trim(),
-        is_visual: result.is_visual ?? isVisual,
-        preview_url: result.preview_url ?? null,
-      });
-    });
+    })();
   };
 
   return (

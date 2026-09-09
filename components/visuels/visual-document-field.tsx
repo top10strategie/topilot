@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { StackPlus } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { loadVisualDocumentPicker } from "@/actions/documents-visual";
@@ -18,9 +19,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { DocumentTypeItem } from "@/lib/categories/types";
-import type { VisualDocumentOption } from "@/lib/documents/types";
+import type {
+  DocumentLinkEntity,
+  VisualDocumentOption,
+} from "@/lib/documents/types";
 
 const NONE_VALUE = "__none__";
+
+type CreatedVisualDocument = {
+  id: string;
+  document_name: string;
+  is_visual: boolean;
+  preview_url: string | null;
+};
 
 type VisualDocumentFieldProps = {
   label: string;
@@ -30,9 +41,36 @@ type VisualDocumentFieldProps = {
   onChange: (documentId: string | null) => void;
   /** Aperçu initial (édition) si le doc n’est pas encore dans les options. */
   initialSelection?: VisualDocumentOption | null;
+  /** Liaison optionnelle à l’entité parente (onglet Documentation). */
+  linkEntity?: DocumentLinkEntity;
+  linkEntityId?: string;
   disabled?: boolean;
   error?: string;
 };
+
+/** Fusionne une base (souvent serveur) avec des options locales ; la base gagne si elle a déjà les champs. */
+function mergeVisualOptions(
+  base: VisualDocumentOption[],
+  extras: Array<VisualDocumentOption | null | undefined>,
+): VisualDocumentOption[] {
+  const byId = new Map(base.map((opt) => [opt.id, opt]));
+  for (const extra of extras) {
+    if (!extra) continue;
+    const existing = byId.get(extra.id);
+    if (!existing) {
+      byId.set(extra.id, extra);
+      continue;
+    }
+    byId.set(extra.id, {
+      id: existing.id,
+      document_name: existing.document_name || extra.document_name,
+      preview_url: existing.preview_url ?? extra.preview_url,
+    });
+  }
+  return [...byId.values()].sort((a, b) =>
+    a.document_name.localeCompare(b.document_name, "fr"),
+  );
+}
 
 /**
  * Sélecteur inline de document visuel + bouton créer + carte d’aperçu.
@@ -43,6 +81,8 @@ export function VisualDocumentField({
   value,
   onChange,
   initialSelection = null,
+  linkEntity,
+  linkEntityId,
   disabled = false,
   error,
 }: VisualDocumentFieldProps) {
@@ -50,9 +90,46 @@ export function VisualDocumentField({
   const [options, setOptions] = useState<VisualDocumentOption[]>(() =>
     initialSelection ? [initialSelection] : [],
   );
+  /**
+   * Miroir local de la sélection : source d’affichage fiable.
+   * Le parent (`value` / `onChange`) reste la source pour la sauvegarde.
+   */
+  const [selectedId, setSelectedId] = useState<string | null>(value);
   const [documentTypes, setDocumentTypes] = useState<DocumentTypeItem[]>([]);
   const [lockedTypeId, setLockedTypeId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  /** Remonte le Select Radix après création (ItemText souvent hors DOM si fermé). */
+  const [selectEpoch, setSelectEpoch] = useState(0);
+
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+
+  const applyCreatedRef = useRef<(created: CreatedVisualDocument) => void>(
+    () => {},
+  );
+
+  const initialSelectionId = initialSelection?.id ?? null;
+  const initialSelectionName = initialSelection?.document_name ?? null;
+  const initialSelectionPreview = initialSelection?.preview_url ?? null;
+  const initialSelectionSeed = useMemo<VisualDocumentOption | null>(() => {
+    if (!initialSelectionId || !initialSelectionName) return null;
+    return {
+      id: initialSelectionId,
+      document_name: initialSelectionName,
+      preview_url: initialSelectionPreview,
+    };
+  }, [initialSelectionId, initialSelectionName, initialSelectionPreview]);
+
+  const initialSelectionSeedRef = useRef(initialSelectionSeed);
+  initialSelectionSeedRef.current = initialSelectionSeed;
+
+  const expectedTypeLabelRef = useRef(expectedTypeLabel);
+  expectedTypeLabelRef.current = expectedTypeLabel;
+
+  // Sync depuis le parent (édition initiale, clear externe).
+  useEffect(() => {
+    setSelectedId(value);
+  }, [value]);
 
   useEffect(() => {
     let cancelled = false;
@@ -65,29 +142,63 @@ export function VisualDocumentField({
       }
       setDocumentTypes(result.documentTypes);
       setLockedTypeId(result.lockedTypeId);
-      setOptions((prev) => {
-        const byId = new Map(result.options.map((opt) => [opt.id, opt]));
-        for (const opt of prev) {
-          if (!byId.has(opt.id)) byId.set(opt.id, opt);
-        }
-        if (initialSelection && !byId.has(initialSelection.id)) {
-          byId.set(initialSelection.id, initialSelection);
-        }
-        return [...byId.values()].sort((a, b) =>
-          a.document_name.localeCompare(b.document_name, "fr"),
-        );
-      });
+      setOptions((prev) =>
+        mergeVisualOptions(result.options, [...prev, initialSelectionSeed]),
+      );
       setLoading(false);
     });
     return () => {
       cancelled = true;
     };
-  }, [expectedTypeLabel, initialSelection]);
+  }, [expectedTypeLabel, initialSelectionSeed]);
 
-  const selected = useMemo(
-    () => (value ? (options.find((opt) => opt.id === value) ?? null) : null),
-    [options, value],
-  );
+  const selected = useMemo(() => {
+    if (!selectedId) return null;
+    return options.find((opt) => opt.id === selectedId) ?? null;
+  }, [options, selectedId]);
+
+  applyCreatedRef.current = (created: CreatedVisualDocument) => {
+    if (!created.id) {
+      toast.error("Document créé sans identifiant — sélection impossible.");
+      return;
+    }
+
+    const option: VisualDocumentOption = {
+      id: created.id,
+      document_name: created.document_name,
+      preview_url: created.preview_url,
+    };
+
+    // flushSync : commit immédiat avant fermeture du tiroir empilé.
+    flushSync(() => {
+      setOptions((prev) => mergeVisualOptions(prev, [option]));
+      setSelectedId(created.id);
+      onChangeRef.current(created.id);
+      setSelectEpoch((n) => n + 1);
+    });
+
+    toast.success("Document créé et sélectionné.");
+    if (!created.is_visual) {
+      toast.message(
+        "Attention : le document n’est pas marqué comme visuel. L’enregistrement du formulaire pourra échouer.",
+      );
+    }
+
+    void loadVisualDocumentPicker(expectedTypeLabelRef.current).then(
+      (refresh) => {
+        if (!refresh.success) return;
+        setDocumentTypes(refresh.documentTypes);
+        setLockedTypeId(refresh.lockedTypeId);
+        setOptions((prev) =>
+          mergeVisualOptions(refresh.options, [
+            ...prev,
+            option,
+            initialSelectionSeedRef.current,
+          ]),
+        );
+      },
+    );
+  };
 
   const openCreateDocument = () => {
     if (!lockedTypeId) {
@@ -96,45 +207,34 @@ export function VisualDocumentField({
       );
       return;
     }
-    void pushDrawer<{
-      id: string;
-      document_name: string;
-      is_visual: boolean;
-      preview_url: string | null;
-    }>({
+    void pushDrawer<CreatedVisualDocument>({
       title: "Nouveau document",
       content: (helpers) => (
         <DocumentFormDrawer
           mode="create"
           documentTypes={documentTypes}
-          helpers={helpers}
+          helpers={{
+            dismiss: helpers.dismiss,
+            resolve: (created) => {
+              // Comme injectCategory : muter l’état parent AVANT de fermer.
+              applyCreatedRef.current(created);
+              helpers.resolve(created);
+            },
+          }}
           defaultDocumentTypeId={lockedTypeId}
           lockDocumentType
           forceIsVisual
+          linkEntity={linkEntity}
+          linkEntityId={linkEntityId}
         />
       ),
-    }).then((created) => {
-      if (!created) return;
-      if (!created.is_visual) {
-        toast.message(
-          "Document créé, mais non sélectionné (il n’est pas marqué comme visuel).",
-        );
-        return;
-      }
-      const option: VisualDocumentOption = {
-        id: created.id,
-        document_name: created.document_name,
-        preview_url: created.preview_url,
-      };
-      setOptions((prev) => {
-        if (prev.some((item) => item.id === option.id)) return prev;
-        return [...prev, option].sort((a, b) =>
-          a.document_name.localeCompare(b.document_name, "fr"),
-        );
-      });
-      onChange(created.id);
-      toast.success("Document créé et sélectionné.");
     });
+  };
+
+  const handleSelectChange = (next: string) => {
+    const id = next === NONE_VALUE ? null : next;
+    setSelectedId(id);
+    onChange(id);
   };
 
   return (
@@ -143,10 +243,9 @@ export function VisualDocumentField({
         <Label>{label}</Label>
         <div className="flex items-center gap-2">
           <Select
-            value={value ?? NONE_VALUE}
-            onValueChange={(next) =>
-              onChange(next === NONE_VALUE ? null : next)
-            }
+            key={selectEpoch}
+            value={selectedId ?? NONE_VALUE}
+            onValueChange={handleSelectChange}
             disabled={disabled || loading}
           >
             <SelectTrigger className="min-w-0 flex-1">
