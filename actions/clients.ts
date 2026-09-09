@@ -174,6 +174,7 @@ export async function createClientRecord(
       website,
       main_collaborator_id,
       logo_id: logoResult.logo_id,
+      facilitator: formBool(formData, "facilitator", false),
     })
     .select("id")
     .single();
@@ -266,6 +267,7 @@ export async function updateClientRecord(
     drive_link: formOptional(formData, "drive_link"),
     logo_id,
     is_active: formBool(formData, "is_active", true),
+    facilitator: formBool(formData, "facilitator", false),
   };
 
   if (notes !== undefined) {

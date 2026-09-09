@@ -67,6 +67,7 @@ audit_log.action                : INSERT | UPDATE | DELETE
 - Un seul lien Drive principal par client (`client.drive_link`, nullable).
 - Les back-offices client sont un type d'outil spécifique à un client utilisant la table `tool` et ayant un accès spécifique `tool_access.client_id`.
 - Le client est soit actif, soit inactif (`client.is_active`) — géré manuellement pour le moment.
+- `client.facilitator` (booléen, défaut `false`) marque un **apporteur d’affaires** — géré manuellement en UI (libellé « Apporteur d’affaires »).
 
 ### Contact principal (`contact_client.is_main`)
 

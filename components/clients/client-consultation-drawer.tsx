@@ -62,9 +62,14 @@ export function ClientConsultationDrawer({
             />
             <div className="min-w-0 space-y-2 text-sm">
               <p className="font-medium">{client.client_name}</p>
-              <Badge variant={client.is_active ? "default" : "secondary"}>
-                {getClientStatusLabel(client.is_active)}
-              </Badge>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <Badge variant={client.is_active ? "default" : "secondary"}>
+                  {getClientStatusLabel(client.is_active)}
+                </Badge>
+                {client.facilitator ? (
+                  <Badge variant="outline">Apporteur d&apos;affaires</Badge>
+                ) : null}
+              </div>
             </div>
           </div>
 

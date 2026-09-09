@@ -69,6 +69,7 @@ const CLIENT_LIST_SELECT = `
   website,
   address_city,
   is_active,
+  facilitator,
   main_collaborator_id,
   logo:logo_id ( id, file_path, is_visual ),
   main_collaborator:main_collaborator_id (
@@ -96,6 +97,7 @@ type ClientListRow = {
   website: string;
   address_city: string | null;
   is_active: boolean;
+  facilitator: boolean;
   main_collaborator_id: string;
   logo: DocumentVisualRow | null;
   main_collaborator: {
@@ -157,6 +159,7 @@ function mapListItem(
     website: row.website,
     address_city: row.address_city,
     is_active: row.is_active,
+    facilitator: row.facilitator,
     logo_url: resolveVisualPublicUrl(row.logo),
     categories,
     responsible,
@@ -246,6 +249,7 @@ export async function getClientById(id: string): Promise<ClientDetail | null> {
       address_country,
       drive_link,
       is_active,
+      facilitator,
       notes,
       logo_id,
       main_collaborator_id,

@@ -135,9 +135,9 @@ Structure Hero + Tabs :
 - **Vue Cartes** (`carte avec image`, cf. section 5.1 et 9.2 de `07_ux_composants_reutilisable.mdc`) : 4 colonnes desktop / 2 tablette / 1 téléphone.
     - Carte avec image (client) :
         - image : logo du client (placeholder si absent)
-        - informations : Nom du client (titre), Statut du client (`is_active` : "Actif" / "Inactif"), Nb de missions liées, Nb d'opportunités liées, Nom du collaborateur responsable (`main_collaborator_id`).
+        - informations : Nom du client (titre), Statut du client (`is_active` : "Actif" / "Inactif") + badge « Apporteur d’affaires » si `facilitator` ; Nb de missions liées, Nb d'opportunités liées, Nom du collaborateur responsable (`main_collaborator_id`).
     - Clic sur la carte : redirection vers `/clients/[id]` (page de liste principale, cf. section 9.3 — pas de tiroir).
-- **Vue Tableau** (cf. section 5.2) : colonnes Nom Client (+ logo), Statut, Catégories, Site (`website`), Téléphone, Email, Nom du responsable.
+- **Vue Tableau** (cf. section 5.2) : colonnes Nom Client (+ logo), Statut, Apporteur d’affaires (`facilitator` : « oui » / vide), Catégories, Site (`website`), Téléphone, Email, Nom du responsable.
     - Téléphone et Email affichent les coordonnées du contact **principal** (`contact_client` où `is_main = true`) rattaché au client — ce ne sont pas des champs propres à l'entité `client` (voir `03_business_rules.mdc`).
     - Clic sur la ligne : redirection vers `/clients/[id]`, idem vue Cartes.
 - **Pagination et compteur** (cf. section 5.3) : "Nombre de clients" (total, en bas à gauche) + pagination 25/page avec "Page : x/y" et navigation précédent/suivant (en bas à droite).
@@ -151,6 +151,7 @@ Structure Hero + Tabs :
 - **Tiroir de création "Nouveau client"** (cf. section 7 de `07_ux_composants_reutilisable.mdc`), en **deux temps** :
     1. **Bloc identification** (toujours visible en haut) : logo (upload), Nom (`client_name`, obligatoire), Responsable client (`main_collaborator_id`, obligatoire, dropdown collaborateurs), Website (obligatoire). Bouton **"Enregistrer"** dédié à ce bloc : crée l'enregistrement client en base avec ces champs minimaux — nécessaire pour permettre l'ajout des sous-entités liées (contacts, documents, outils) qui requièrent un `client_id` existant.
     2. **Bloc complémentaire** (déverrouillé après l'étape 1) :
+        - Apporteur d’affaires (`facilitator`, Oui/Non)
         - Adresse, Code postal, Ville, Pays
         - Lien Drive (`drive_link`, nullable)
         - Contact chez le client : liste simplifiée (noms uniquement, sans avatar ni Hover Card) des `contact_client` du client + bouton d'ajout (`user-plus`, drawer contact empilable, cf. `03_business_rules.mdc`). Version différente et plus riche sur la fiche client elle-même (avatars, badge principal, Hover Card, mode gestion — voir `/clients/[id]`).
@@ -170,7 +171,7 @@ Structure Hero + Tabs :
 **Contenu - Tabs** : "Informations" | "Missions" | "Documentations"
 
 - **Informations** :
-    - Colonne gauche : logo du client (lecture seule), Nom (`client_name`), Responsable client (`main_collaborator_id`), Website (`website`). En dessous : Notes (`notes`, édition inline, historisée dans `audit_log`).
+    - Colonne gauche : logo du client (lecture seule), Nom (`client_name`), statut (`is_active`) + badge « Apporteur d’affaires » si `facilitator`, Responsable client (`main_collaborator_id`), Website (`website`). En dessous : Notes (`notes`, édition inline, historisée dans `audit_log`).
     - Colonne droite : Adresse (`address_street`), Code postal (`address_zip`), Ville (`address_city`), Pays (`address_country`), Lien drive (`drive_link`).
     - **Contact chez le client** (`contact_client`) : rangée d'avatars (photo ou initiales à défaut).
         - Le contact principal (`is_main = true`) affiche un petit badge (`push-pin`) en haut à droite de son avatar.

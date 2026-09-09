@@ -10,6 +10,16 @@
 Cause racine : `helpers.resolve` appelé depuis `startTransition` après `createDocument` → les `setState` du tiroir parent (logo) étaient abandonnés à la fermeture du Sheet empilé. Correctifs : soumission document en `async` + `useState(isPending)` (plus de `useTransition`) ; injection synchronisée **avant** `resolve` (`flushSync` + miroir `selectedId` local + remount Select) ; pattern aligné sur `injectCategory` ; `linkEntity` client si id connu.
 
 ---
+## **[2026-09-08] — Client `facilitator` (Apporteur d’affaires)**
+
+**Type :** `feature`
+**Fichiers concernés :** `.cursor/rules/{03,04,10}_*.mdc.md`, `lib/clients/*`, `lib/supabase/database.types.ts`, `actions/clients.ts`, `components/clients/*`, `suivi.md`
+
+### Description
+
+Alignement app sur le booléen `client.facilitator` déjà en BDD : édition Oui/Non dans le tiroir client, badge « Apporteur d’affaires » (fiche, consultation, cartes), colonne tableau `/clients` entre Statut et Catégories (`oui` / vide).
+
+---
 ## **[2026-09-08] — Champ Pays client (`address_country`)**
 
 **Type :** `feature`
