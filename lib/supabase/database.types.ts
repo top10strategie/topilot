@@ -106,6 +106,7 @@ export type Database = {
           client_name: string
           created_at: string
           drive_link: string | null
+          facilitator: boolean
           id: string
           is_active: boolean
           logo_id: string | null
@@ -124,6 +125,7 @@ export type Database = {
           client_name: string
           created_at?: string
           drive_link?: string | null
+          facilitator?: boolean
           id?: string
           is_active?: boolean
           logo_id?: string | null
@@ -142,6 +144,7 @@ export type Database = {
           client_name?: string
           created_at?: string
           drive_link?: string | null
+          facilitator?: boolean
           id?: string
           is_active?: boolean
           logo_id?: string | null
