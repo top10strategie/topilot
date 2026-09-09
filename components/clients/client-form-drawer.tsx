@@ -297,6 +297,8 @@ export function ClientFormDrawer({
             value={logoId}
             onChange={setLogoId}
             initialSelection={initialLogoSelection}
+            linkEntity={clientId ? "client" : undefined}
+            linkEntityId={clientId || undefined}
             disabled={isPending}
             error={fieldErrors.logo}
           />
