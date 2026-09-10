@@ -1,6 +1,7 @@
 "use server";
 
 import { requireActiveCollaboratorAction } from "@/lib/auth/require-action";
+import { mirrorOpportunityDocumentToClient } from "@/lib/documents/mirror-opportunity-to-client";
 import type { DocumentLinkEntity } from "@/lib/documents/types";
 import {
   crmEntityFk,
@@ -31,11 +32,12 @@ export async function linkDocumentToEntity(input: {
     return { success: false, error: "Identifiants invalides." };
   }
 
-  const supabase = looseClient(await createClient());
+  const supabase = await createClient();
+  const db = looseClient(supabase);
   const table = documentJunctionTable(input.entity);
   const fk = crmEntityFk(input.entity);
 
-  const { error } = await supabase.from(table).upsert(
+  const { error } = await db.from(table).upsert(
     { [fk]: entityId, document_id: documentId },
     { onConflict: `${fk},document_id`, ignoreDuplicates: true },
   );
@@ -45,6 +47,20 @@ export async function linkDocumentToEntity(input: {
       success: false,
       error: `Impossible de lier le document : ${error.message}`,
     };
+  }
+
+  if (input.entity === "opportunity") {
+    const mirrored = await mirrorOpportunityDocumentToClient(
+      supabase,
+      entityId,
+      documentId,
+    );
+    if (mirrored.error) {
+      return {
+        success: false,
+        error: `Document lié à l'opportunité mais pas au client : ${mirrored.error}`,
+      };
+    }
   }
 
   revalidateCrmEntity(input.entity, entityId, ["/documents"]);
