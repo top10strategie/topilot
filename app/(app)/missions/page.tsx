@@ -4,7 +4,7 @@ import { PageHero } from "@/components/layout/page-hero";
 import { Skeleton } from "@/components/ui/skeleton";
 import { listBusinessCategories } from "@/lib/categories/queries";
 import { getCurrentCollaborator } from "@/lib/auth/get-current-collaborator";
-import { listClients } from "@/lib/clients/queries";
+import { listClientOptions } from "@/lib/clients/queries";
 import { listCollaborators } from "@/lib/collaborators/queries";
 import {
   listMissionOpportunityOptions,
@@ -33,7 +33,7 @@ async function MissionsContent({
   ] = await Promise.all([
     listMissions(),
     listCollaborators(),
-    listClients(),
+    listClientOptions(),
     listBusinessCategories(),
     listMissionOpportunityOptions(),
     getCurrentCollaborator(),

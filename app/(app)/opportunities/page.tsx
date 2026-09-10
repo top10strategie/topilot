@@ -3,7 +3,7 @@ import { OpportunitiesPageClient } from "@/components/opportunities/opportunitie
 import { PageHero } from "@/components/layout/page-hero";
 import { Skeleton } from "@/components/ui/skeleton";
 import { listBusinessCategories } from "@/lib/categories/queries";
-import { listClients } from "@/lib/clients/queries";
+import { listClientOptions } from "@/lib/clients/queries";
 import { listCollaborators } from "@/lib/collaborators/queries";
 import {
   listOpportunities,
@@ -15,7 +15,7 @@ async function OpportunitiesContent() {
     await Promise.all([
       listOpportunities(),
       listCollaborators(),
-      listClients(),
+      listClientOptions(),
       listOpportunityContactOptions(),
       listBusinessCategories(),
     ]);

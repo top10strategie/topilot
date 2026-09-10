@@ -9,7 +9,7 @@ import { listCollaborators } from "@/lib/collaborators/queries";
 async function ClientsContent() {
   const [clients, collaborators, categories] = await Promise.all([
     listClients(),
-    listCollaborators(),
+    listCollaborators({ includeAvatar: false }),
     listBusinessCategories(),
   ]);
 

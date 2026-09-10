@@ -54,16 +54,17 @@ function mapCollaborator(row: CollaboratorRow): CollaboratorListItem {
 }
 
 /**
- * Liste tous les collaborateurs (tous statuts) avec pôle et avatar.
- * Filtrage UI éventuel (actifs vs sortis) côté page.
+ * Liste tous les collaborateurs (tous statuts) avec pôle.
+ * `includeAvatar` (défaut true) : joindre le document avatar — inutile pour les filtres /clients.
  */
-export async function listCollaborators(): Promise<CollaboratorListItem[]> {
+export async function listCollaborators(options?: {
+  includeAvatar?: boolean;
+}): Promise<CollaboratorListItem[]> {
+  const includeAvatar = options?.includeAvatar ?? true;
   const supabase = await createClient();
 
-  const { data, error } = await supabase
-    .from("collaborator")
-    .select(
-      `
+  const select = includeAvatar
+    ? `
       id,
       first_name,
       last_name,
@@ -75,8 +76,22 @@ export async function listCollaborators(): Promise<CollaboratorListItem[]> {
       profile_picture_id,
       team:team_id ( team_name ),
       profile_picture:profile_picture_id ( id, file_path, is_visual )
-    `,
-    )
+    `
+    : `
+      id,
+      first_name,
+      last_name,
+      email,
+      role,
+      status,
+      job_title,
+      team_id,
+      team:team_id ( team_name )
+    `;
+
+  const { data, error } = await supabase
+    .from("collaborator")
+    .select(select)
     .order("last_name", { ascending: true })
     .order("first_name", { ascending: true });
 
@@ -86,7 +101,16 @@ export async function listCollaborators(): Promise<CollaboratorListItem[]> {
   }
 
   const collaborators = ((data ?? []) as unknown as CollaboratorRow[]).map(
-    mapCollaborator,
+    (row) =>
+      mapCollaborator(
+        includeAvatar
+          ? row
+          : {
+              ...row,
+              profile_picture_id: null,
+              profile_picture: null,
+            },
+      ),
   );
 
   // Pôles privés : le join team échoue pour les collaborateurs (RLS),

@@ -5,14 +5,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrentCollaborator } from "@/lib/auth/get-current-collaborator";
 import { isManagerOrDirection } from "@/lib/auth/roles";
 import { listDocumentTypes } from "@/lib/categories/queries";
-import { listClients } from "@/lib/clients/queries";
+import { listClientOptions } from "@/lib/clients/queries";
 import { listDocuments } from "@/lib/documents/queries";
 
 async function DocumentsContent() {
   const [documents, documentTypes, clients, collaborator] = await Promise.all([
     listDocuments(),
     listDocumentTypes(),
-    listClients(),
+    listClientOptions(),
     getCurrentCollaborator(),
   ]);
 

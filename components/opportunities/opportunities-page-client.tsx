@@ -38,7 +38,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { CategoryItem } from "@/lib/categories/types";
-import type { ClientListItem } from "@/lib/clients/types";
+import type { ClientOption } from "@/lib/clients/types";
 import { getCollaboratorFullName } from "@/lib/collaborators/labels";
 import type { CollaboratorListItem } from "@/lib/collaborators/types";
 import { buildOpportunityDuplicatePrefill } from "@/lib/crm/duplicate-prefill";
@@ -91,7 +91,7 @@ const OPPORTUNITY_VIEW_TABS: ListViewTab[] = [
 type OpportunitiesPageClientProps = {
   opportunities: OpportunityListItem[];
   collaborators: CollaboratorListItem[];
-  clients: ClientListItem[];
+  clients: ClientOption[];
   contacts: OpportunityContactOption[];
   categories: CategoryItem[];
 };

@@ -6,6 +6,7 @@ import type {
   ClientDocumentItem,
   ClientListItem,
   ClientMainContactItem,
+  ClientOption,
   ClientResponsibleItem,
   ContactClientItem,
 } from "./types";
@@ -18,20 +19,6 @@ type DocumentVisualRow = {
   storage_type?: string;
   url?: string | null;
 };
-
-function mapResponsible(row: {
-  id: string;
-  first_name: string;
-  last_name: string;
-  profile_picture: DocumentVisualRow | null;
-}): ClientResponsibleItem {
-  return {
-    id: row.id,
-    first_name: row.first_name,
-    last_name: row.last_name,
-    profile_picture_url: resolveVisualPublicUrl(row.profile_picture),
-  };
-}
 
 function mapContact(row: {
   id: string;
@@ -75,11 +62,10 @@ const CLIENT_LIST_SELECT = `
   main_collaborator:main_collaborator_id (
     id,
     first_name,
-    last_name,
-    profile_picture:profile_picture_id ( id, file_path, is_visual )
+    last_name
   ),
   client_category (
-    category:category_business!category_id ( id, label, is_private )
+    category:category_business!category_id ( id, label )
   ),
   contact_client (
     id,
@@ -88,7 +74,9 @@ const CLIENT_LIST_SELECT = `
     phone_number,
     email_address,
     is_main
-  )
+  ),
+  mission ( count ),
+  opportunity ( count )
 `;
 
 type ClientListRow = {
@@ -104,7 +92,7 @@ type ClientListRow = {
     id: string;
     first_name: string;
     last_name: string;
-    profile_picture: DocumentVisualRow | null;
+    profile_picture?: DocumentVisualRow | null;
   } | null;
   client_category: Array<{
     category: { id: string; label: string } | null;
@@ -117,13 +105,11 @@ type ClientListRow = {
     email_address: string | null;
     is_main: boolean;
   }> | null;
+  mission: Array<{ count: number }> | null;
+  opportunity: Array<{ count: number }> | null;
 };
 
-function mapListItem(
-  row: ClientListRow,
-  missionCount = 0,
-  opportunityCount = 0,
-): ClientListItem {
+function mapListItem(row: ClientListRow): ClientListItem {
   const categories: ClientCategoryItem[] = (row.client_category ?? [])
     .map((link) => link.category)
     .filter((c): c is { id: string; label: string } => Boolean(c))
@@ -144,8 +130,15 @@ function mapListItem(
       }
     : null;
 
-  const responsible = row.main_collaborator
-    ? mapResponsible(row.main_collaborator)
+  const responsible: ClientResponsibleItem = row.main_collaborator
+    ? {
+        id: row.main_collaborator.id,
+        first_name: row.main_collaborator.first_name,
+        last_name: row.main_collaborator.last_name,
+        profile_picture_url: resolveVisualPublicUrl(
+          row.main_collaborator.profile_picture ?? null,
+        ),
+      }
     : {
         id: row.main_collaborator_id,
         first_name: "?",
@@ -164,8 +157,8 @@ function mapListItem(
     categories,
     responsible,
     main_contact,
-    mission_count: missionCount,
-    opportunity_count: opportunityCount,
+    mission_count: row.mission?.[0]?.count ?? 0,
+    opportunity_count: row.opportunity?.[0]?.count ?? 0,
   };
 }
 
@@ -205,13 +198,14 @@ async function loadEntityCounts(
 }
 
 /**
- * Liste tous les clients (actifs et inactifs) pour la page /clients.
+ * Liste tous les clients pour /clients (une seule requête : counts embeddés).
  */
 export async function listClients(): Promise<ClientListItem[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("client")
     .select(CLIENT_LIST_SELECT)
+    .eq("contact_client.is_main", true)
     .order("client_name", { ascending: true });
 
   if (error) {
@@ -219,16 +213,28 @@ export async function listClients(): Promise<ClientListItem[]> {
     throw new Error(`Impossible de charger les clients : ${error.message}`);
   }
 
-  const rows = (data ?? []) as unknown as ClientListRow[];
-  const counts = await loadEntityCounts(rows.map((r) => r.id));
+  return ((data ?? []) as unknown as ClientListRow[]).map(mapListItem);
+}
 
-  return rows.map((row) =>
-    mapListItem(
-      row,
-      counts.missions.get(row.id) ?? 0,
-      counts.opportunities.get(row.id) ?? 0,
-    ),
-  );
+/**
+ * Options légères id + nom (filtres / selects hors page /clients).
+ */
+export async function listClientOptions(): Promise<ClientOption[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("client")
+    .select("id, client_name")
+    .order("client_name", { ascending: true });
+
+  if (error) {
+    console.error("listClientOptions:", error);
+    throw new Error(`Impossible de charger les clients : ${error.message}`);
+  }
+
+  return (data ?? []).map((row) => ({
+    id: row.id as string,
+    client_name: row.client_name as string,
+  }));
 }
 
 /**
@@ -332,11 +338,11 @@ export async function getClientById(id: string): Promise<ClientDetail | null> {
   };
 
   const counts = await loadEntityCounts([row.id]);
-  const base = mapListItem(
-    row,
-    counts.missions.get(row.id) ?? 0,
-    counts.opportunities.get(row.id) ?? 0,
-  );
+  const base = mapListItem({
+    ...row,
+    mission: [{ count: counts.missions.get(row.id) ?? 0 }],
+    opportunity: [{ count: counts.opportunities.get(row.id) ?? 0 }],
+  });
 
   const contacts = (row.contact_client ?? [])
     .map(mapContact)

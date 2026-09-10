@@ -41,13 +41,13 @@ import type {
 } from "@/lib/audit/types";
 import type { CategoryItem } from "@/lib/categories/types";
 import { getContactFullName } from "@/lib/clients/labels";
-import type { ClientListItem } from "@/lib/clients/types";
+import type { ClientOption } from "@/lib/clients/types";
 
 type ToolOption = { id: string; tool_name: string };
 
 type HistoryPageClientProps = {
   initialLogs: AuditLogListItem[];
-  clients: ClientListItem[];
+  clients: ClientOption[];
   contacts: AuditContactOption[];
   categories: CategoryItem[];
   tools: ToolOption[];

@@ -7,7 +7,7 @@ import { getCurrentCollaborator } from "@/lib/auth/get-current-collaborator";
 import { isManagerOrDirection } from "@/lib/auth/roles";
 import { listAuditContactOptions, listAuditLogsForPage } from "@/lib/audit/queries";
 import { listBusinessCategories } from "@/lib/categories/queries";
-import { listClients } from "@/lib/clients/queries";
+import { listClientOptions } from "@/lib/clients/queries";
 import { listToolLinkOptions } from "@/lib/tools/queries";
 
 async function HistoryContent() {
@@ -18,7 +18,7 @@ async function HistoryContent() {
 
   const [logs, clients, contacts, categories, tools] = await Promise.all([
     listAuditLogsForPage(),
-    listClients(),
+    listClientOptions(),
     listAuditContactOptions(),
     listBusinessCategories(),
     listToolLinkOptions(),

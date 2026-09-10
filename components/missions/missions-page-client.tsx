@@ -39,7 +39,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { CategoryItem } from "@/lib/categories/types";
-import type { ClientListItem } from "@/lib/clients/types";
+import type { ClientOption } from "@/lib/clients/types";
 import { getCollaboratorFullName } from "@/lib/collaborators/labels";
 import type { CollaboratorListItem } from "@/lib/collaborators/types";
 import { buildMissionDuplicatePrefill } from "@/lib/crm/duplicate-prefill";
@@ -91,7 +91,7 @@ const MISSION_VIEW_TABS: ListViewTab[] = [
 type MissionsPageClientProps = {
   missions: MissionListItem[];
   collaborators: CollaboratorListItem[];
-  clients: ClientListItem[];
+  clients: ClientOption[];
   categories: CategoryItem[];
   opportunityOptions: MissionOpportunityOption[];
   currentCollaboratorId: string;

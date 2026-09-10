@@ -45,7 +45,7 @@ import {
   getClientStatusLabel,
   getContactFullName,
 } from "@/lib/clients/labels";
-import type { ClientDetail, ClientListItem, ContactClientItem } from "@/lib/clients/types";
+import type { ClientDetail, ClientOption, ContactClientItem } from "@/lib/clients/types";
 import type { CollaboratorListItem } from "@/lib/collaborators/types";
 import {
   formatMissionCharge,
@@ -63,7 +63,7 @@ type ClientDetailPageClientProps = {
   client: ClientDetail;
   collaborators: CollaboratorListItem[];
   categories: CategoryItem[];
-  clients: ClientListItem[];
+  clients: ClientOption[];
   missions: MissionListItem[];
   opportunityOptions: MissionOpportunityOption[];
   currentCollaboratorId: string;

@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrentCollaborator } from "@/lib/auth/get-current-collaborator";
 import { isManagerOrDirection } from "@/lib/auth/roles";
 import { listBusinessCategories } from "@/lib/categories/queries";
-import { getClientById, listClients } from "@/lib/clients/queries";
+import { getClientById, listClientOptions } from "@/lib/clients/queries";
 import { listCollaborators } from "@/lib/collaborators/queries";
 import {
   listMissionOpportunityOptions,
@@ -35,7 +35,7 @@ async function ClientDetailContent({
     getClientById(id),
     listCollaborators(),
     listBusinessCategories(),
-    listClients(),
+    listClientOptions(),
     listMissionsByClientId(id),
     listMissionOpportunityOptions(),
     getCurrentCollaborator(),

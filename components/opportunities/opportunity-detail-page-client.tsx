@@ -27,7 +27,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { CategoryItem } from "@/lib/categories/types";
-import type { ClientDetail, ClientListItem } from "@/lib/clients/types";
+import type { ClientDetail, ClientOption } from "@/lib/clients/types";
 import { getContactFullName } from "@/lib/clients/labels";
 import type { CollaboratorListItem } from "@/lib/collaborators/types";
 import {
@@ -62,7 +62,7 @@ import type {
 type OpportunityDetailPageClientProps = {
   opportunity: OpportunityDetail;
   collaborators: CollaboratorListItem[];
-  clients: ClientListItem[];
+  clients: ClientOption[];
   linkedClient: ClientDetail | null;
   contacts: OpportunityContactOption[];
   categories: CategoryItem[];

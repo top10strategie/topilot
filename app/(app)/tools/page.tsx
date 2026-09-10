@@ -5,7 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrentCollaborator } from "@/lib/auth/get-current-collaborator";
 import { isManagerOrDirection } from "@/lib/auth/roles";
 import { listCategories } from "@/lib/categories/queries";
-import { listClients } from "@/lib/clients/queries";
+import { listClientOptions } from "@/lib/clients/queries";
 import { listCollaborators } from "@/lib/collaborators/queries";
 import { listTools } from "@/lib/tools/queries";
 
@@ -14,7 +14,7 @@ async function ToolsContent() {
     await Promise.all([
       listTools(),
       listCategories(),
-      listClients(),
+      listClientOptions(),
       listCollaborators(),
       getCurrentCollaborator(),
     ]);

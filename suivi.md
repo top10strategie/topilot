@@ -1,5 +1,15 @@
 # Suivi des actions — TOPilot
 
+## **[2026-09-10] — Perf liste /clients**
+
+**Type :** `perf`
+**Fichiers concernés :** `lib/clients/{queries,types}.ts`, `lib/collaborators/queries.ts`, `app/(app)/clients/page.tsx`, pages CRM/outils/docs/history, `components/**` (props `ClientOption`), `components/clients/client-logo.tsx`, `suivi.md`
+
+### Description
+
+La pagination UI (24) ne limitait pas le fetch : `listClients` chargeait tous les clients + tous les contacts + toutes les lignes mission/opportunity pour compter. Correctifs : counts PostgREST embeddés (`mission(count)`, `opportunity(count)`), contacts filtrés `is_main`, select allégé (pas d’avatar responsable), `listClientOptions` pour les selects des autres pages, collaborateurs sans avatar sur `/clients`, `loading=lazy` sur les logos.
+
+---
 ## **[2026-09-09] — Auto-sélection logo/avatar après création document**
 
 **Type :** `fix`

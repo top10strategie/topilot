@@ -49,7 +49,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { DocumentTypeItem } from "@/lib/categories/types";
-import type { ClientListItem } from "@/lib/clients/types";
+import type { ClientOption } from "@/lib/clients/types";
 import { getDocumentFileFormat } from "@/lib/documents/format";
 import type { DocumentListItem } from "@/lib/documents/types";
 
@@ -85,7 +85,7 @@ const DEFAULT_FILTERS: Filters = {
 type DocumentsPageClientProps = {
   documents: DocumentListItem[];
   documentTypes: DocumentTypeItem[];
-  clients: ClientListItem[];
+  clients: ClientOption[];
   canViewHistory: boolean;
 };
 

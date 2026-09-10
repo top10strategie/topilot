@@ -50,7 +50,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { CategoryItem } from "@/lib/categories/types";
-import type { ClientListItem } from "@/lib/clients/types";
+import type { ClientOption } from "@/lib/clients/types";
 import type { CollaboratorListItem } from "@/lib/collaborators/types";
 import {
   computeToolMonthlyBadge,
@@ -79,7 +79,7 @@ const TOOL_VIEW_TABS: ListViewTab[] = [
 type ToolsPageClientProps = {
   tools: ToolListItem[];
   categories: CategoryItem[];
-  clients: ClientListItem[];
+  clients: ClientOption[];
   collaborators: CollaboratorListItem[];
   canManagePrivacy: boolean;
 };

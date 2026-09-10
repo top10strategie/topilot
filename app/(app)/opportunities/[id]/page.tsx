@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrentCollaborator } from "@/lib/auth/get-current-collaborator";
 import { isManagerOrDirection } from "@/lib/auth/roles";
 import { listBusinessCategories } from "@/lib/categories/queries";
-import { getClientById, listClients } from "@/lib/clients/queries";
+import { getClientById, listClientOptions } from "@/lib/clients/queries";
 import { listCollaborators } from "@/lib/collaborators/queries";
 import { listMissionsByOpportunityId } from "@/lib/missions/queries";
 import {
@@ -35,7 +35,7 @@ async function OpportunityDetailContent({
   ] = await Promise.all([
     getOpportunityById(id),
     listCollaborators(),
-    listClients(),
+    listClientOptions(),
     listOpportunityContactOptions(),
     listBusinessCategories(),
     listMissionsByOpportunityId(id),
