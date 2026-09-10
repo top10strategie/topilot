@@ -183,13 +183,3 @@ export function formatToolMonthlyBadge(badge: ToolMonthlyBadge): string | null {
       return badge.symbols.join(" ");
   }
 }
-
-/** Utilisé par le filtre "Avec abonnement / Sans abonnement". */
-export function hasActiveSubscriptionCost(badge: ToolMonthlyBadge): boolean {
-  return badge.kind === "amount" || badge.kind === "symbols";
-}
-
-/** Valeur en euros utilisable pour le filtre par tranche de coût (devise unique uniquement). */
-export function monthlyCostEuros(badge: ToolMonthlyBadge): number | null {
-  return badge.kind === "amount" ? badge.monthly_cents / 100 : null;
-}

@@ -6,19 +6,51 @@ import { getCurrentCollaborator } from "@/lib/auth/get-current-collaborator";
 import { isManagerOrDirection } from "@/lib/auth/roles";
 import { listDocumentTypes } from "@/lib/categories/queries";
 import { listClientOptions } from "@/lib/clients/queries";
-import { listDocuments } from "@/lib/documents/queries";
+import {
+  DOCUMENTS_PAGE_SIZE,
+  parseDocumentsListSearchParams,
+} from "@/lib/documents/list-filters";
+import {
+  listDistinctDocumentVersions,
+  listDocumentsPage,
+} from "@/lib/documents/queries";
 
-async function DocumentsContent() {
-  const [documents, documentTypes, clients, collaborator] = await Promise.all([
-    listDocuments(),
+async function DocumentsContent({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
+  let filters = parseDocumentsListSearchParams(params ?? {});
+
+  const [
+    pageResult,
+    documentTypes,
+    clients,
+    availableVersions,
+    collaborator,
+  ] = await Promise.all([
+    listDocumentsPage(filters),
     listDocumentTypes(),
     listClientOptions(),
+    listDistinctDocumentVersions(),
     getCurrentCollaborator(),
   ]);
+
+  let { documents, totalCount } = pageResult;
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / DOCUMENTS_PAGE_SIZE));
+  if (filters.page > totalPages) {
+    filters = { ...filters, page: totalPages };
+    ({ documents, totalCount } = await listDocumentsPage(filters));
+  }
 
   return (
     <DocumentsPageClient
       documents={documents}
+      totalCount={totalCount}
+      filters={filters}
+      availableVersions={availableVersions}
       documentTypes={documentTypes}
       clients={clients}
       canViewHistory={
@@ -44,10 +76,14 @@ function DocumentsFallback() {
   );
 }
 
-export default function DocumentsPage() {
+export default function DocumentsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   return (
     <Suspense fallback={<DocumentsFallback />}>
-      <DocumentsContent />
+      <DocumentsContent searchParams={searchParams} />
     </Suspense>
   );
 }

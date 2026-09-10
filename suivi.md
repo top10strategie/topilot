@@ -1,5 +1,15 @@
 # Suivi des actions — TOPilot
 
+## **[2026-09-10] — Pagination serveur missions / opportunités / documents / outils**
+
+**Type :** `perf`
+**Fichiers concernés :** `supabase/migrations/2026091013{0000,1000,2000,3000}_list_*_page.sql`, `lib/{missions,opportunities,documents,tools}/list-filters.ts`, `lib/{missions,opportunities,documents,tools}/queries.ts`, `lib/supabase/database.types.ts`, `app/(app)/{missions,opportunities,documents,tools}/page.tsx`, `components/{missions,opportunities,documents,tools}/*-page-client.tsx`, `actions/documents.ts`, `suivi.md`
+
+### Description
+
+Même pattern que `/clients` : filtres + page dans l’URL, RPC `list_*_page` (`SECURITY INVOKER`). Missions/opportunités : mode `p_board` (jeu filtré complet en Kanban, pagination cartes/tableau). Documents : `is_latest` / lignée calculés en SQL (`PAGE_SIZE` 25). Outils : buckets coût + abonnement (`PAGE_SIZE` 24). Les `list*` full restent pour accueil, admin et liens entité.
+
+---
 ## **[2026-09-10] — Pagination serveur /clients**
 
 **Type :** `perf`

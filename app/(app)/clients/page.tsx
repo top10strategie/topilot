@@ -15,13 +15,13 @@ async function ClientsContent({
   const params = await searchParams;
   let filters = parseClientsListSearchParams(params ?? {});
 
-  let [{ clients, totalCount }, collaborators, categories, cities] =
-    await Promise.all([
-      listClientsPage(filters),
-      listCollaborators({ includeAvatar: false }),
-      listBusinessCategories(),
-      listClientCities(),
-    ]);
+  const [pageResult, collaborators, categories, cities] = await Promise.all([
+    listClientsPage(filters),
+    listCollaborators({ includeAvatar: false }),
+    listBusinessCategories(),
+    listClientCities(),
+  ]);
+  let { clients, totalCount } = pageResult;
 
   const totalPages = Math.max(1, Math.ceil(totalCount / CLIENTS_PAGE_SIZE));
   if (filters.page > totalPages) {

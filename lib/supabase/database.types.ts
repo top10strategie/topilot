@@ -1526,6 +1526,149 @@ export type Database = {
           total_count: number
         }[]
       }
+      list_documents_page: {
+        Args: {
+          p_page?: number
+          p_page_size?: number
+          p_type_ids?: string[] | null
+          p_versions?: number[] | null
+          p_client_ids?: string[] | null
+          p_include_interne?: boolean
+          p_query?: string | null
+        }
+        Returns: {
+          id: string
+          document_name: string
+          document_type_id: string
+          document_type_label: string
+          storage_type: Database["public"]["Enums"]["document_storage_type_enum"]
+          file_path: string | null
+          url: string | null
+          is_visual: boolean
+          version_number: number
+          parent_document_id: string | null
+          lineage_root_id: string
+          is_latest: boolean
+          created_at: string
+          updated_at: string | null
+          linked: Json
+          total_count: number
+        }[]
+      }
+      list_missions_page: {
+        Args: {
+          p_page?: number
+          p_page_size?: number
+          p_board?: boolean
+          p_client_id?: string | null
+          p_responsible_id?: string | null
+          p_team_id?: string | null
+          p_category_ids?: string[] | null
+          p_scope?: string | null
+          p_statuses?: string[] | null
+          p_start_from?: string | null
+          p_start_to?: string | null
+          p_end_from?: string | null
+          p_end_to?: string | null
+          p_query?: string | null
+        }
+        Returns: {
+          id: string
+          mission_name: string
+          mission_scope: Database["public"]["Enums"]["mission_scope_enum"]
+          client_id: string | null
+          collaborator_id: string
+          opportunity_id: string | null
+          series_id: string | null
+          kanban_status: Database["public"]["Enums"]["mission_kanban_status_enum"]
+          kanban_order: number | null
+          archived_at: string | null
+          completed_at: string | null
+          estimated_charge: number | null
+          start_at: string | null
+          end_at: string | null
+          client_name: string | null
+          opportunity_name: string | null
+          responsible_first_name: string | null
+          responsible_last_name: string | null
+          profile_picture_file_path: string | null
+          profile_picture_is_visual: boolean | null
+          series_frequency: Database["public"]["Enums"]["mission_recurrence_frequency"] | null
+          series_starts_on: string | null
+          series_ends_on: string | null
+          categories: Json
+          created_at: string
+          total_count: number
+        }[]
+      }
+      list_opportunities_page: {
+        Args: {
+          p_page?: number
+          p_page_size?: number
+          p_board?: boolean
+          p_client_id?: string | null
+          p_responsible_id?: string | null
+          p_team_id?: string | null
+          p_category_ids?: string[] | null
+          p_statuses?: string[] | null
+          p_priority?: string | null
+          p_amount_bucket?: string | null
+          p_probability_bucket?: string | null
+          p_include_archived?: boolean
+          p_query?: string | null
+        }
+        Returns: {
+          id: string
+          opportunity_name: string
+          client_id: string
+          contact_client_id: string | null
+          collaborator_id: string
+          price: number | null
+          probability_confirmation: number
+          average_price: number | null
+          entry_average_price: number | null
+          kanban_status: Database["public"]["Enums"]["opportunity_kanban_status_enum"]
+          kanban_order: number | null
+          is_active: boolean
+          priority: Database["public"]["Enums"]["opportunity_priority_enum"]
+          due_date_at: string | null
+          end_at: string | null
+          closed_at: string | null
+          client_name: string | null
+          contact_first_name: string | null
+          contact_last_name: string | null
+          responsible_first_name: string | null
+          responsible_last_name: string | null
+          profile_picture_file_path: string | null
+          profile_picture_is_visual: boolean | null
+          categories: Json
+          created_at: string
+          total_count: number
+        }[]
+      }
+      list_tools_page: {
+        Args: {
+          p_page?: number
+          p_page_size?: number
+          p_category_ids?: string[] | null
+          p_client_ids?: string[] | null
+          p_include_interne?: boolean
+          p_cost_bucket?: string
+          p_with_subscription?: boolean
+          p_without_subscription?: boolean
+          p_query?: string | null
+        }
+        Returns: {
+          id: string
+          tool_name: string
+          url: string
+          description: string | null
+          categories: Json
+          clients: Json
+          subscriptions: Json
+          total_count: number
+        }[]
+      }
       read_secret: { Args: { secret_name: string }; Returns: string }
       search_global: {
         Args: { p_limit?: number; p_query: string }

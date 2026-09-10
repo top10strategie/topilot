@@ -1,6 +1,11 @@
 import { createClient } from "@/lib/supabase/server";
 import { endOfCurrentIsoWeekParis } from "@/lib/dates/paris-week";
+import type { Json } from "@/lib/supabase/database.types";
 import { resolveVisualPublicUrl } from "@/lib/visuels/public-url";
+import {
+  MISSIONS_PAGE_SIZE,
+  type MissionsListFilters,
+} from "./list-filters";
 import type {
   MissionCategoryItem,
   MissionDetail,
@@ -162,6 +167,146 @@ export async function listMissions(): Promise<MissionListItem[]> {
   }
 
   return ((data ?? []) as unknown as MissionListRow[]).map(mapListItem);
+}
+
+type MissionsPageRpcRow = {
+  id: string;
+  mission_name: string;
+  mission_scope: MissionScope;
+  client_id: string | null;
+  collaborator_id: string;
+  opportunity_id: string | null;
+  series_id: string | null;
+  kanban_status: MissionKanbanStatus;
+  kanban_order: number | null;
+  archived_at: string | null;
+  completed_at: string | null;
+  estimated_charge: number | string | null;
+  start_at: string | null;
+  end_at: string | null;
+  client_name: string | null;
+  opportunity_name: string | null;
+  responsible_first_name: string | null;
+  responsible_last_name: string | null;
+  profile_picture_file_path: string | null;
+  profile_picture_is_visual: boolean | null;
+  series_frequency: MissionRecurrenceFrequency | null;
+  series_starts_on: string | null;
+  series_ends_on: string | null;
+  categories: Json;
+  created_at: string;
+  total_count: number;
+};
+
+function mapPageRpcRow(row: MissionsPageRpcRow): MissionListItem {
+  const categoriesRaw = Array.isArray(row.categories) ? row.categories : [];
+  const categories: MissionCategoryItem[] = categoriesRaw
+    .map((entry) => {
+      if (!entry || typeof entry !== "object") return null;
+      const obj = entry as { id?: unknown; label?: unknown };
+      if (typeof obj.id !== "string" || typeof obj.label !== "string") {
+        return null;
+      }
+      return { id: obj.id, label: obj.label };
+    })
+    .filter((c): c is MissionCategoryItem => Boolean(c));
+
+  const series: MissionSeriesItem | null =
+    row.series_id && row.series_frequency && row.series_starts_on
+      ? {
+          id: row.series_id,
+          frequency: row.series_frequency,
+          starts_on: row.series_starts_on,
+          ends_on: row.series_ends_on,
+        }
+      : null;
+
+  return {
+    id: row.id,
+    mission_name: row.mission_name,
+    mission_scope: row.mission_scope,
+    client_id: row.client_id,
+    collaborator_id: row.collaborator_id,
+    opportunity_id: row.opportunity_id,
+    series_id: row.series_id,
+    kanban_status: row.kanban_status,
+    kanban_order: row.kanban_order,
+    archived_at: row.archived_at,
+    completed_at: row.completed_at,
+    estimated_charge: toNumber(row.estimated_charge),
+    start_at: row.start_at,
+    end_at: row.end_at,
+    client: row.client_id
+      ? { id: row.client_id, client_name: row.client_name ?? "" }
+      : null,
+    opportunity: row.opportunity_id
+      ? {
+          id: row.opportunity_id,
+          opportunity_name: row.opportunity_name ?? "",
+        }
+      : null,
+    responsible: {
+      id: row.collaborator_id,
+      first_name: row.responsible_first_name ?? "?",
+      last_name: row.responsible_last_name ?? "?",
+      profile_picture_url: resolveVisualPublicUrl(
+        row.profile_picture_file_path
+          ? {
+              file_path: row.profile_picture_file_path,
+              is_visual: Boolean(row.profile_picture_is_visual),
+            }
+          : null,
+      ),
+    },
+    categories,
+    series,
+  };
+}
+
+export type MissionsPageResult = {
+  missions: MissionListItem[];
+  totalCount: number;
+};
+
+/**
+ * Liste /missions filtrée ; paginée sauf en mode board (Kanban).
+ */
+export async function listMissionsPage(
+  filters: MissionsListFilters,
+): Promise<MissionsPageResult> {
+  const supabase = await createClient();
+  const board = filters.view === "kanban";
+  const { data, error } = await supabase.rpc("list_missions_page", {
+    p_page: filters.page,
+    p_page_size: MISSIONS_PAGE_SIZE,
+    p_board: board,
+    p_client_id: filters.clientId || null,
+    p_responsible_id: filters.responsibleId || null,
+    p_team_id: filters.teamId || null,
+    p_category_ids:
+      filters.categoryIds.length > 0 ? filters.categoryIds : null,
+    p_scope: filters.scope || null,
+    p_statuses: filters.statuses.length > 0 ? filters.statuses : null,
+    p_start_from: filters.startFrom || null,
+    p_start_to: filters.startTo || null,
+    p_end_from: filters.endFrom || null,
+    p_end_to: filters.endTo || null,
+    p_query: filters.q || null,
+  });
+
+  if (error) {
+    console.error("listMissionsPage:", error);
+    throw new Error(`Impossible de charger les missions : ${error.message}`);
+  }
+
+  const rows = (data ?? []) as MissionsPageRpcRow[];
+  const totalCount =
+    rows.length > 0 ? Number(rows[0].total_count) || 0 : 0;
+
+  return {
+    missions: rows.map(mapPageRpcRow),
+    totalCount,
+  };
 }
 
 export async function listMissionsByOpportunityId(

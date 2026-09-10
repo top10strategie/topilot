@@ -7,13 +7,14 @@ import {
   removeStoragePaths,
   uploadDocumentFile,
 } from "@/lib/documents/storage";
+import { listDocumentLineage } from "@/lib/documents/queries";
 import { formBool, formFile, formText } from "@/lib/form-data";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSupabaseUrl } from "@/lib/supabase/env";
 import { looseClient } from "@/lib/supabase/loose";
 import { createClient } from "@/lib/supabase/server";
 import { isUuid } from "@/lib/uuid";
-import type { DocumentLinkEntity } from "@/lib/documents/types";
+import type { DocumentLinkEntity, DocumentListItem } from "@/lib/documents/types";
 
 function visualPreviewUrl(
   isVisual: boolean,
@@ -873,4 +874,35 @@ export async function deleteDocumentLineage(
   await removeStoragePaths(storageTargets);
   revalidateDocuments();
   return { success: true };
+}
+
+/**
+ * Charge toutes les versions d'une lignée pour le tiroir historique.
+ */
+export async function fetchDocumentLineage(
+  lineageRootId: string,
+): Promise<
+  | { success: true; versions: DocumentListItem[] }
+  | { success: false; error: string }
+> {
+  const gate = await requireActiveCollaboratorAction();
+  if (!gate.success) {
+    return { success: false, error: gate.error };
+  }
+  if (!isUuid(lineageRootId)) {
+    return { success: false, error: "Identifiant invalide." };
+  }
+  try {
+    const versions = await listDocumentLineage(lineageRootId);
+    return { success: true, versions };
+  } catch (error) {
+    console.error("fetchDocumentLineage:", error);
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Impossible de charger l'historique.",
+    };
+  }
 }
