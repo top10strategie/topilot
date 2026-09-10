@@ -170,7 +170,8 @@ Même dans un formulaire d'ajout rapide (ex : depuis le drawer de création de m
 
 - Un document se rattache soit à une entité via une table de jonction (`mission_document`, `client_document`, `opportunity_document`), soit directement via une clé étrangère dédiée à un usage précis : `client.logo_id`, `collaborator.profile_picture_id`, `contact_client.profile_picture_id`.
 - Les liens externes passent par `document` avec `storage_type = url`.
-- Pas de vérification de cohérence croisée des liens documentaires en V1.
+- Liaison à une **opportunité** : crée aussi automatiquement un lien `client_document` vers le client de l’opportunité (si `client_id` est renseigné). Le retrait depuis l’opportunité ne retire pas le lien client.
+- Pas d’autre vérification de cohérence croisée des liens documentaires en V1 (ex. mission → client).
 
 ---
 

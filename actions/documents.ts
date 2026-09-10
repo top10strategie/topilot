@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireActiveCollaboratorAction } from "@/lib/auth/require-action";
+import { mirrorOpportunityDocumentToClient } from "@/lib/documents/mirror-opportunity-to-client";
 import {
   copyStorageObject,
   removeStoragePaths,
@@ -275,6 +276,19 @@ export async function createDocument(
         success: false,
         error: `Document créé mais liaison impossible : ${linkError}`,
       };
+    }
+    if (linkEntity === "opportunity") {
+      const mirrored = await mirrorOpportunityDocumentToClient(
+        supabase,
+        linkEntityId,
+        document.id,
+      );
+      if (mirrored.error) {
+        return {
+          success: false,
+          error: `Document lié à l'opportunité mais pas au client : ${mirrored.error}`,
+        };
+      }
     }
   }
 
