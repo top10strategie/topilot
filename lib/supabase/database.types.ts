@@ -1491,6 +1491,41 @@ export type Database = {
       }
       is_active_collaborator: { Args: never; Returns: boolean }
       is_manager_or_direction: { Args: never; Returns: boolean }
+      list_clients_page: {
+        Args: {
+          p_page?: number
+          p_page_size?: number
+          p_status?: string
+          p_responsible_id?: string | null
+          p_team_id?: string | null
+          p_city?: string | null
+          p_category_ids?: string[] | null
+          p_mission_bucket?: string
+          p_query?: string | null
+        }
+        Returns: {
+          id: string
+          client_name: string
+          website: string
+          address_city: string | null
+          is_active: boolean
+          facilitator: boolean
+          logo_file_path: string | null
+          logo_is_visual: boolean | null
+          responsible_id: string | null
+          responsible_first_name: string | null
+          responsible_last_name: string | null
+          main_contact_id: string | null
+          main_contact_first_name: string | null
+          main_contact_last_name: string | null
+          main_contact_phone: string | null
+          main_contact_email: string | null
+          categories: Json
+          mission_count: number
+          opportunity_count: number
+          total_count: number
+        }[]
+      }
       read_secret: { Args: { secret_name: string }; Returns: string }
       search_global: {
         Args: { p_limit?: number; p_query: string }

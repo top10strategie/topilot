@@ -1,5 +1,15 @@
 # Suivi des actions — TOPilot
 
+## **[2026-09-10] — Pagination serveur /clients**
+
+**Type :** `perf`
+**Fichiers concernés :** `supabase/migrations/20260910120000_list_clients_page.sql`, `lib/clients/{list-filters,queries}.ts`, `lib/supabase/database.types.ts`, `app/(app)/clients/page.tsx`, `components/clients/clients-page-client.tsx`, `suivi.md`
+
+### Description
+
+`/clients` lit les filtres/page depuis l’URL et charge uniquement la page courante via RPC `list_clients_page` (status, responsable, pôle, ville, catégories AND, bucket missions, recherche). Villes via `listClientCities`. Plus de filtre/slice sur tout le dataset client.
+
+---
 ## **[2026-09-10] — Perf liste /clients**
 
 **Type :** `perf`

@@ -3,19 +3,38 @@ import { ClientsPageClient } from "@/components/clients/clients-page-client";
 import { PageHero } from "@/components/layout/page-hero";
 import { Skeleton } from "@/components/ui/skeleton";
 import { listBusinessCategories } from "@/lib/categories/queries";
-import { listClients } from "@/lib/clients/queries";
+import { parseClientsListSearchParams, CLIENTS_PAGE_SIZE } from "@/lib/clients/list-filters";
+import { listClientCities, listClientsPage } from "@/lib/clients/queries";
 import { listCollaborators } from "@/lib/collaborators/queries";
 
-async function ClientsContent() {
-  const [clients, collaborators, categories] = await Promise.all([
-    listClients(),
-    listCollaborators({ includeAvatar: false }),
-    listBusinessCategories(),
-  ]);
+async function ClientsContent({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
+  let filters = parseClientsListSearchParams(params);
+
+  let [{ clients, totalCount }, collaborators, categories, cities] =
+    await Promise.all([
+      listClientsPage(filters),
+      listCollaborators({ includeAvatar: false }),
+      listBusinessCategories(),
+      listClientCities(),
+    ]);
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / CLIENTS_PAGE_SIZE));
+  if (filters.page > totalPages) {
+    filters = { ...filters, page: totalPages };
+    ({ clients, totalCount } = await listClientsPage(filters));
+  }
 
   return (
     <ClientsPageClient
       clients={clients}
+      totalCount={totalCount}
+      filters={filters}
+      cities={cities}
       collaborators={collaborators}
       categories={categories}
     />
@@ -38,10 +57,14 @@ function ClientsFallback() {
   );
 }
 
-export default function ClientsPage() {
+export default function ClientsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   return (
     <Suspense fallback={<ClientsFallback />}>
-      <ClientsContent />
+      <ClientsContent searchParams={searchParams} />
     </Suspense>
   );
 }

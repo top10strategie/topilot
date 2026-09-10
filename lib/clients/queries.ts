@@ -1,5 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { resolveVisualPublicUrl } from "@/lib/visuels/public-url";
+import {
+  CLIENTS_PAGE_SIZE,
+  type ClientsListFilters,
+} from "./list-filters";
 import type {
   ClientCategoryItem,
   ClientDetail,
@@ -49,35 +53,6 @@ function mapContact(row: {
     created_at: row.created_at,
   };
 }
-
-const CLIENT_LIST_SELECT = `
-  id,
-  client_name,
-  website,
-  address_city,
-  is_active,
-  facilitator,
-  main_collaborator_id,
-  logo:logo_id ( id, file_path, is_visual ),
-  main_collaborator:main_collaborator_id (
-    id,
-    first_name,
-    last_name
-  ),
-  client_category (
-    category:category_business!category_id ( id, label )
-  ),
-  contact_client (
-    id,
-    first_name,
-    last_name,
-    phone_number,
-    email_address,
-    is_main
-  ),
-  mission ( count ),
-  opportunity ( count )
-`;
 
 type ClientListRow = {
   id: string;
@@ -198,25 +173,6 @@ async function loadEntityCounts(
 }
 
 /**
- * Liste tous les clients pour /clients (une seule requête : counts embeddés).
- */
-export async function listClients(): Promise<ClientListItem[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("client")
-    .select(CLIENT_LIST_SELECT)
-    .eq("contact_client.is_main", true)
-    .order("client_name", { ascending: true });
-
-  if (error) {
-    console.error("listClients:", error);
-    throw new Error(`Impossible de charger les clients : ${error.message}`);
-  }
-
-  return ((data ?? []) as unknown as ClientListRow[]).map(mapListItem);
-}
-
-/**
  * Options légères id + nom (filtres / selects hors page /clients).
  */
 export async function listClientOptions(): Promise<ClientOption[]> {
@@ -235,6 +191,154 @@ export async function listClientOptions(): Promise<ClientOption[]> {
     id: row.id as string,
     client_name: row.client_name as string,
   }));
+}
+
+/** Villes distinctes pour le filtre /clients. */
+export async function listClientCities(): Promise<string[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("client")
+    .select("address_city")
+    .not("address_city", "is", null)
+    .order("address_city", { ascending: true });
+
+  if (error) {
+    console.error("listClientCities:", error);
+    throw new Error(`Impossible de charger les villes : ${error.message}`);
+  }
+
+  const cities = new Set<string>();
+  for (const row of data ?? []) {
+    const city = (row.address_city as string | null)?.trim();
+    if (city) cities.add(city);
+  }
+  return [...cities].sort((a, b) => a.localeCompare(b, "fr"));
+}
+
+type ClientsPageRpcRow = {
+  id: string;
+  client_name: string;
+  website: string;
+  address_city: string | null;
+  is_active: boolean;
+  facilitator: boolean;
+  logo_file_path: string | null;
+  logo_is_visual: boolean | null;
+  responsible_id: string | null;
+  responsible_first_name: string | null;
+  responsible_last_name: string | null;
+  main_contact_id: string | null;
+  main_contact_first_name: string | null;
+  main_contact_last_name: string | null;
+  main_contact_phone: string | null;
+  main_contact_email: string | null;
+  categories: unknown;
+  mission_count: number;
+  opportunity_count: number;
+  total_count: number;
+};
+
+function mapPageRpcRow(row: ClientsPageRpcRow): ClientListItem {
+  const rawCategories = row.categories;
+  const categories: ClientCategoryItem[] = Array.isArray(rawCategories)
+    ? rawCategories
+        .map((item) => {
+          if (!item || typeof item !== "object") return null;
+          const record = item as { id?: unknown; label?: unknown };
+          const id = typeof record.id === "string" ? record.id : "";
+          const label = typeof record.label === "string" ? record.label : "";
+          if (!id || !label) return null;
+          return { id, label };
+        })
+        .filter((item): item is ClientCategoryItem => Boolean(item))
+        .sort((a, b) => a.label.localeCompare(b.label, "fr"))
+    : [];
+
+  const responsible: ClientResponsibleItem = row.responsible_id
+    ? {
+        id: row.responsible_id,
+        first_name: row.responsible_first_name ?? "?",
+        last_name: row.responsible_last_name ?? "?",
+        profile_picture_url: null,
+      }
+    : {
+        id: "",
+        first_name: "?",
+        last_name: "?",
+        profile_picture_url: null,
+      };
+
+  const main_contact: ClientMainContactItem | null = row.main_contact_id
+    ? {
+        id: row.main_contact_id,
+        first_name: row.main_contact_first_name ?? "",
+        last_name: row.main_contact_last_name ?? "",
+        phone_number: row.main_contact_phone,
+        email_address: row.main_contact_email,
+      }
+    : null;
+
+  return {
+    id: row.id,
+    client_name: row.client_name,
+    website: row.website,
+    address_city: row.address_city,
+    is_active: row.is_active,
+    facilitator: row.facilitator,
+    logo_url: resolveVisualPublicUrl(
+      row.logo_file_path
+        ? {
+            file_path: row.logo_file_path,
+            is_visual: Boolean(row.logo_is_visual),
+          }
+        : null,
+    ),
+    categories,
+    responsible,
+    main_contact,
+    mission_count: Number(row.mission_count) || 0,
+    opportunity_count: Number(row.opportunity_count) || 0,
+  };
+}
+
+export type ClientsPageResult = {
+  clients: ClientListItem[];
+  totalCount: number;
+};
+
+/**
+ * Page /clients filtrée + paginée (RPC `list_clients_page`).
+ */
+export async function listClientsPage(
+  filters: ClientsListFilters,
+): Promise<ClientsPageResult> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("list_clients_page", {
+    p_page: filters.page,
+    p_page_size: CLIENTS_PAGE_SIZE,
+    p_status: filters.status,
+    p_responsible_id: filters.responsibleId || null,
+    p_team_id: filters.teamId || null,
+    p_city: filters.city || null,
+    p_category_ids:
+      filters.categoryIds.length > 0 ? filters.categoryIds : null,
+    p_mission_bucket: filters.missionBucket,
+    p_query: filters.q || null,
+  });
+
+  if (error) {
+    console.error("listClientsPage:", error);
+    throw new Error(`Impossible de charger les clients : ${error.message}`);
+  }
+
+  const rows = (data ?? []) as ClientsPageRpcRow[];
+  const totalCount =
+    rows.length > 0 ? Number(rows[0].total_count) || 0 : 0;
+
+  return {
+    clients: rows.map(mapPageRpcRow),
+    totalCount,
+  };
 }
 
 /**

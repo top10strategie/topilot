@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -49,15 +49,20 @@ import {
 } from "@/components/ui/select";
 import type { CategoryItem } from "@/lib/categories/types";
 import {
+  CLIENTS_PAGE_SIZE,
+  clientsListHref,
+  DEFAULT_CLIENTS_LIST_FILTERS,
+  type ClientsListFilters,
+  type ClientsListStatus,
+  type ClientsMissionBucket,
+} from "@/lib/clients/list-filters";
+import {
   getClientResponsibleName,
   getClientStatusLabel,
-  getContactFullName,
 } from "@/lib/clients/labels";
 import type { ClientListItem } from "@/lib/clients/types";
 import { getCollaboratorFullName } from "@/lib/collaborators/labels";
 import type { CollaboratorListItem } from "@/lib/collaborators/types";
-
-const PAGE_SIZE = 24;
 
 const CLIENT_VIEW_TABS: ListViewTab[] = [
   {
@@ -74,42 +79,89 @@ const CLIENT_VIEW_TABS: ListViewTab[] = [
 
 type ClientsPageClientProps = {
   clients: ClientListItem[];
+  totalCount: number;
+  filters: ClientsListFilters;
+  cities: string[];
   collaborators: CollaboratorListItem[];
   categories: CategoryItem[];
 };
 
-type Filters = {
-  categoryIds: string[];
-  responsibleId: string;
-  teamId: string;
-  city: string;
-  missionBucket: "all" | "lt5" | "5to20" | "gt20";
-  status: "active" | "inactive" | "all";
-};
+type DialogFilters = Pick<
+  ClientsListFilters,
+  | "status"
+  | "responsibleId"
+  | "teamId"
+  | "city"
+  | "categoryIds"
+  | "missionBucket"
+>;
 
-const DEFAULT_FILTERS: Filters = {
-  categoryIds: [],
-  responsibleId: "",
-  teamId: "",
-  city: "",
-  missionBucket: "all",
-  status: "active",
-};
+function toDialogFilters(filters: ClientsListFilters): DialogFilters {
+  return {
+    status: filters.status,
+    responsibleId: filters.responsibleId,
+    teamId: filters.teamId,
+    city: filters.city,
+    categoryIds: filters.categoryIds,
+    missionBucket: filters.missionBucket,
+  };
+}
+
+function hasActiveFilters(filters: ClientsListFilters): boolean {
+  return (
+    Boolean(filters.q.trim()) ||
+    filters.status !== DEFAULT_CLIENTS_LIST_FILTERS.status ||
+    Boolean(filters.responsibleId) ||
+    Boolean(filters.teamId) ||
+    Boolean(filters.city) ||
+    filters.missionBucket !== DEFAULT_CLIENTS_LIST_FILTERS.missionBucket ||
+    filters.categoryIds.length > 0
+  );
+}
 
 export function ClientsPageClient({
   clients,
+  totalCount,
+  filters,
+  cities,
   collaborators,
   categories,
 }: ClientsPageClientProps) {
   const router = useRouter();
   const { pushDrawer } = useDrawerStack();
-  const [query, setQuery] = useState("");
+  const [isPending, startTransition] = useTransition();
+  const [query, setQuery] = useState(filters.q);
   const [view, setView] = useState<"cards" | "table">("cards");
-  const [page, setPage] = useState(1);
-  const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
-  const [draftFilters, setDraftFilters] = useState<Filters>(DEFAULT_FILTERS);
+  const [draftFilters, setDraftFilters] = useState<DialogFilters>(() =>
+    toDialogFilters(filters),
+  );
   const [filterOpen, setFilterOpen] = useState(false);
   const filterPortalRef = useRef<HTMLDivElement>(null);
+
+  const navigate = (next: ClientsListFilters) => {
+    startTransition(() => {
+      router.push(clientsListHref(next));
+    });
+  };
+
+  useEffect(() => {
+    setQuery(filters.q);
+  }, [filters.q]);
+
+  useEffect(() => {
+    setDraftFilters(toDialogFilters(filters));
+  }, [filters]);
+
+  useEffect(() => {
+    const trimmed = query.trim();
+    if (trimmed === filters.q) return;
+    const handle = window.setTimeout(() => {
+      navigate({ ...filters, q: trimmed, page: 1 });
+    }, 300);
+    return () => window.clearTimeout(handle);
+    // Intentionnel : debounce sur la saisie locale uniquement.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query]);
 
   const draftSelectedCategories = useMemo(
     () =>
@@ -118,14 +170,6 @@ export function ClientsPageClient({
       ),
     [categories, draftFilters.categoryIds],
   );
-
-  const cities = useMemo(() => {
-    const set = new Set<string>();
-    for (const client of clients) {
-      if (client.address_city) set.add(client.address_city);
-    }
-    return [...set].sort((a, b) => a.localeCompare(b, "fr"));
-  }, [clients]);
 
   const responsibleOptions = useMemo(
     () =>
@@ -152,73 +196,7 @@ export function ClientsPageClient({
       .sort((a, b) => a.label.localeCompare(b.label, "fr"));
   }, [collaborators]);
 
-  const teamIdByCollaboratorId = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const person of collaborators) {
-      map.set(person.id, person.team_id);
-    }
-    return map;
-  }, [collaborators]);
-
-  const filtered = useMemo(() => {
-    const q = query.trim().toLocaleLowerCase("fr");
-    return clients.filter((client) => {
-      if (filters.status === "active" && !client.is_active) return false;
-      if (filters.status === "inactive" && client.is_active) return false;
-
-      if (
-        filters.responsibleId &&
-        client.responsible.id !== filters.responsibleId
-      ) {
-        return false;
-      }
-
-      if (filters.teamId) {
-        const teamId = teamIdByCollaboratorId.get(client.responsible.id);
-        if (teamId !== filters.teamId) return false;
-      }
-
-      if (filters.city && client.address_city !== filters.city) {
-        return false;
-      }
-
-      if (filters.categoryIds.length > 0) {
-        const ids = new Set(client.categories.map((c) => c.id));
-        if (!filters.categoryIds.every((id) => ids.has(id))) return false;
-      }
-
-      if (filters.missionBucket === "lt5" && client.mission_count >= 5) {
-        return false;
-      }
-      if (
-        filters.missionBucket === "5to20" &&
-        (client.mission_count < 5 || client.mission_count > 20)
-      ) {
-        return false;
-      }
-      if (filters.missionBucket === "gt20" && client.mission_count <= 20) {
-        return false;
-      }
-
-      if (!q) return true;
-      const blob = [
-        client.client_name,
-        client.website,
-        client.address_city,
-        getClientResponsibleName(client.responsible),
-        ...client.categories.map((c) => c.label),
-        client.main_contact
-          ? getContactFullName(client.main_contact)
-          : "",
-      ]
-        .join(" ")
-        .toLocaleLowerCase("fr");
-      return blob.includes(q);
-    });
-  }, [clients, filters, query, teamIdByCollaboratorId]);
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const totalPages = Math.max(1, Math.ceil(totalCount / CLIENTS_PAGE_SIZE));
 
   const openCreate = () => {
     void pushDrawer({
@@ -236,12 +214,15 @@ export function ClientsPageClient({
     });
   };
 
+  const emptyMessage = hasActiveFilters(filters)
+    ? "Aucun client ne correspond aux critères."
+    : "Aucun client pour le moment. Créez-en un pour commencer.";
+
   return (
     <ListViewTabs
       value={view}
       onValueChange={(value) => {
         setView(value as "cards" | "table");
-        setPage(1);
       }}
     >
       <PageHero
@@ -257,19 +238,17 @@ export function ClientsPageClient({
                 type="search"
                 placeholder="Rechercher…"
                 value={query}
-                onChange={(event) => {
-                  setQuery(event.target.value);
-                  setPage(1);
-                }}
+                onChange={(event) => setQuery(event.target.value)}
                 className="pl-8"
                 aria-label="Recherche contextuelle clients"
+                disabled={isPending}
               />
             </div>
             <ListViewTabsSwitcher tabs={CLIENT_VIEW_TABS} showLabels={false} />
             <IconActionButton
               label="Filtres"
               onClick={() => {
-                setDraftFilters(filters);
+                setDraftFilters(toDialogFilters(filters));
                 setFilterOpen(true);
               }}
             >
@@ -284,21 +263,11 @@ export function ClientsPageClient({
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 md:px-6">
         <ListViewTabsContent value="cards" className="flex-none">
-          {pageItems.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              {query.trim() ||
-              filters.status !== "active" ||
-              filters.responsibleId ||
-              filters.teamId ||
-              filters.city ||
-              filters.missionBucket !== "all" ||
-              filters.categoryIds.length > 0
-                ? "Aucun client ne correspond aux critères."
-                : "Aucun client pour le moment. Créez-en un pour commencer."}
-            </p>
+          {clients.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{emptyMessage}</p>
           ) : (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              {pageItems.map((client) => (
+              {clients.map((client) => (
                 <Link key={client.id} href={`/clients/${client.id}`}>
                   <Card className="h-full transition-colors hover:bg-muted/40">
                     <CardHeader className="space-y-3 p-4 pb-2">
@@ -354,7 +323,9 @@ export function ClientsPageClient({
                 <tr>
                   <th className="px-3 py-2 font-medium">Client</th>
                   <th className="px-3 py-2 font-medium">Statut</th>
-                  <th className="px-3 py-2 font-medium">Apporteur d&apos;affaires</th>
+                  <th className="px-3 py-2 font-medium">
+                    Apporteur d&apos;affaires
+                  </th>
                   <th className="px-3 py-2 font-medium">Catégories</th>
                   <th className="px-3 py-2 font-medium">Site</th>
                   <th className="px-3 py-2 font-medium">Téléphone</th>
@@ -363,25 +334,17 @@ export function ClientsPageClient({
                 </tr>
               </thead>
               <tbody>
-                {pageItems.length === 0 ? (
+                {clients.length === 0 ? (
                   <tr>
                     <td
                       colSpan={8}
                       className="px-3 py-6 text-sm text-muted-foreground"
                     >
-                      {query.trim() ||
-                      filters.status !== "active" ||
-                      filters.responsibleId ||
-                      filters.teamId ||
-                      filters.city ||
-                      filters.missionBucket !== "all" ||
-                      filters.categoryIds.length > 0
-                        ? "Aucun client ne correspond aux critères."
-                        : "Aucun client pour le moment. Créez-en un pour commencer."}
+                      {emptyMessage}
                     </td>
                   </tr>
                 ) : (
-                  pageItems.map((client) => (
+                  clients.map((client) => (
                     <tr
                       key={client.id}
                       className="cursor-pointer border-b last:border-0 hover:bg-muted/30"
@@ -430,11 +393,11 @@ export function ClientsPageClient({
 
       <ListPaginationFooter
         countLabel="Nombre de clients"
-        count={filtered.length}
-        page={page}
+        count={totalCount}
+        page={filters.page}
         totalPages={totalPages}
-        pageSize={PAGE_SIZE}
-        onPageChange={setPage}
+        pageSize={CLIENTS_PAGE_SIZE}
+        onPageChange={(page) => navigate({ ...filters, page })}
       />
 
       <Dialog open={filterOpen} onOpenChange={setFilterOpen}>
@@ -456,7 +419,7 @@ export function ClientsPageClient({
                   onValueChange={(value) =>
                     setDraftFilters((prev) => ({
                       ...prev,
-                      status: value as Filters["status"],
+                      status: value as ClientsListStatus,
                     }))
                   }
                 >
@@ -549,7 +512,7 @@ export function ClientsPageClient({
                   onValueChange={(value) =>
                     setDraftFilters((prev) => ({
                       ...prev,
-                      missionBucket: value as Filters["missionBucket"],
+                      missionBucket: value as ClientsMissionBucket,
                     }))
                   }
                 >
@@ -588,10 +551,10 @@ export function ClientsPageClient({
               type="button"
               variant="outline"
               onClick={() => {
-                setDraftFilters(DEFAULT_FILTERS);
-                setFilters(DEFAULT_FILTERS);
-                setPage(1);
+                setDraftFilters(toDialogFilters(DEFAULT_CLIENTS_LIST_FILTERS));
+                setQuery("");
                 setFilterOpen(false);
+                navigate({ ...DEFAULT_CLIENTS_LIST_FILTERS });
               }}
             >
               Réinitialiser
@@ -599,9 +562,13 @@ export function ClientsPageClient({
             <Button
               type="button"
               onClick={() => {
-                setFilters(draftFilters);
-                setPage(1);
                 setFilterOpen(false);
+                navigate({
+                  ...filters,
+                  ...draftFilters,
+                  q: query.trim(),
+                  page: 1,
+                });
               }}
             >
               Appliquer
