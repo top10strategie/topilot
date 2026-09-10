@@ -1,6 +1,7 @@
 import { looseClient } from "@/lib/supabase/loose";
 import { createClient } from "@/lib/supabase/server";
 import { isUuid } from "@/lib/uuid";
+import { HISTORY_PAGE_SIZE } from "./list-filters";
 import type {
   AuditContactOption,
   AuditEntityRef,
@@ -317,9 +318,19 @@ async function queryAuditLogs(options: {
   entityTypes?: AuditEntityType[];
   dateFrom?: string;
   dateTo?: string;
+  /** Sans page : limite fixe (modales). Avec page : pagination serveur. */
+  page?: number;
+  pageSize?: number;
   limit?: number;
-}): Promise<AuditLogListItem[]> {
+}): Promise<{ logs: AuditLogListItem[]; totalCount: number }> {
   const supabase = looseClient(await createClient());
+  const paginate =
+    options.page != null && options.pageSize != null && options.pageSize > 0;
+  const page = paginate ? Math.max(1, options.page!) : 1;
+  const pageSize = paginate ? options.pageSize! : null;
+  const from = pageSize != null ? (page - 1) * pageSize : 0;
+  const to = pageSize != null ? from + pageSize - 1 : undefined;
+
   let query = supabase
     .from("audit_log")
     .select(
@@ -331,6 +342,7 @@ async function queryAuditLogs(options: {
       entity_id,
       collaborator:collaborator_id ( first_name, last_name )
     `,
+      paginate ? { count: "exact" } : undefined,
     )
     .in("action", ["INSERT", "DELETE"])
     .order("created_at", { ascending: false });
@@ -357,19 +369,24 @@ async function queryAuditLogs(options: {
     query = query.or(orFilter);
   }
 
-  if (options.limit) {
-    query = query.limit(options.limit);
+  if (paginate && to != null) {
+    query = query.range(from, to);
   } else {
-    query = query.limit(500);
+    query = query.limit(options.limit ?? 500);
   }
 
-  const { data, error } = await query;
+  const { data, error, count } = await query;
   if (error) {
     console.error("queryAuditLogs:", error);
     throw new Error(`Impossible de charger l'historique : ${error.message}`);
   }
 
-  return ((data ?? []) as unknown as AuditLogRow[]).map(mapRow);
+  const logs = ((data ?? []) as unknown as AuditLogRow[]).map(mapRow);
+  const totalCount = paginate
+    ? Number(count) || 0
+    : logs.length;
+
+  return { logs, totalCount };
 }
 
 /**
@@ -470,37 +487,46 @@ async function buildPageFilterTarget(
   return { kind: "refs", refs: exactRefs };
 }
 
+export type AuditLogsPageResult = {
+  logs: AuditLogListItem[];
+  totalCount: number;
+};
+
 /**
- * Historique global (page /history) — INSERT/DELETE uniquement.
+ * Historique global (page /history) — INSERT/DELETE uniquement, paginé.
  */
 export async function listAuditLogsForPage(
   filters: AuditHistoryPageFilters = {},
-): Promise<AuditLogListItem[]> {
+): Promise<AuditLogsPageResult> {
   const target = await buildPageFilterTarget(filters);
+  const pageRaw = Number(filters.page ?? 1);
+  const page = Number.isFinite(pageRaw) && pageRaw > 0 ? pageRaw : 1;
 
   if (target.kind === "refs" && target.refs.length === 0) {
-    return [];
+    return { logs: [], totalCount: 0 };
   }
 
+  const common = {
+    dateFrom: filters.dateFrom,
+    dateTo: filters.dateTo,
+    page,
+    pageSize: HISTORY_PAGE_SIZE,
+  };
+
   if (target.kind === "all") {
-    return queryAuditLogs({
-      dateFrom: filters.dateFrom,
-      dateTo: filters.dateTo,
-    });
+    return queryAuditLogs(common);
   }
 
   if (target.kind === "types") {
     return queryAuditLogs({
+      ...common,
       entityTypes: target.entityTypes,
-      dateFrom: filters.dateFrom,
-      dateTo: filters.dateTo,
     });
   }
 
   return queryAuditLogs({
+    ...common,
     refs: target.refs,
-    dateFrom: filters.dateFrom,
-    dateTo: filters.dateTo,
   });
 }
 
@@ -513,12 +539,16 @@ export async function listAuditLogsForScope(
   const resolved = await resolveAuditEntityScope(scope);
 
   if ("entityTypesOnly" in resolved) {
-    return queryAuditLogs({ entityTypes: resolved.entityTypesOnly });
+    const { logs } = await queryAuditLogs({
+      entityTypes: resolved.entityTypesOnly,
+    });
+    return logs;
   }
 
   if (resolved.length === 0) {
     return [];
   }
 
-  return queryAuditLogs({ refs: resolved });
+  const { logs } = await queryAuditLogs({ refs: resolved });
+  return logs;
 }

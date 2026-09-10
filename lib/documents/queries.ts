@@ -412,23 +412,16 @@ export async function listDocumentsPage(
 /** Numéros de version distincts (options filtre dialog). */
 export async function listDistinctDocumentVersions(): Promise<number[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("document")
-    .select("version_number")
-    .order("version_number", { ascending: true });
+  const { data, error } = await supabase.rpc("list_document_version_numbers");
 
   if (error) {
     console.error("listDistinctDocumentVersions:", error);
     return [];
   }
 
-  return [
-    ...new Set(
-      (data ?? [])
-        .map((row) => Number(row.version_number))
-        .filter((n) => Number.isFinite(n) && n > 0),
-    ),
-  ].sort((a, b) => a - b);
+  return (data ?? [])
+    .map((value) => Number(value))
+    .filter((n) => Number.isFinite(n) && n > 0);
 }
 
 /** Toutes les versions d'une lignée (historique tiroir). */

@@ -1,5 +1,15 @@
 # Suivi des actions — TOPilot
 
+## **[2026-09-10] — Perf documents + pagination historique**
+
+**Type :** `perf`
+**Fichiers concernés :** `supabase/migrations/20260910140000_list_documents_page_perf.sql`, `lib/documents/queries.ts`, `lib/audit/{list-filters,queries,types}.ts`, `actions/audit-logs.ts`, `app/(app)/history/page.tsx`, `components/audit/history-page-client.tsx`, `lib/supabase/database.types.ts`, `suivi.md`
+
+### Description
+
+`/documents` : `linked` calculé seulement après `LIMIT` ; versions via RPC `list_document_version_numbers` (DISTINCT) ; `PAGE_SIZE` 24. `/history` : pagination serveur 50 événements/page (au lieu du plafond 500), compteur exact + pied de page.
+
+---
 ## **[2026-09-10] — Pagination serveur missions / opportunités / documents / outils**
 
 **Type :** `perf`
@@ -7,7 +17,7 @@
 
 ### Description
 
-Même pattern que `/clients` : filtres + page dans l’URL, RPC `list_*_page` (`SECURITY INVOKER`). Missions/opportunités : mode `p_board` (jeu filtré complet en Kanban, pagination cartes/tableau). Documents : `is_latest` / lignée calculés en SQL (`PAGE_SIZE` 25). Outils : buckets coût + abonnement (`PAGE_SIZE` 24). Les `list*` full restent pour accueil, admin et liens entité.
+Même pattern que `/clients` : filtres + page dans l’URL, RPC `list_*_page` (`SECURITY INVOKER`). Missions/opportunités : mode `p_board` (jeu filtré complet en Kanban, pagination cartes/tableau). Documents : `is_latest` / lignée calculés en SQL (`PAGE_SIZE` 24). Outils : buckets coût + abonnement (`PAGE_SIZE` 24). Les `list*` full restent pour accueil, admin et liens entité.
 
 ---
 ## **[2026-09-10] — Pagination serveur /clients**

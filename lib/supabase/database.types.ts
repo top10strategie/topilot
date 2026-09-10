@@ -1526,6 +1526,10 @@ export type Database = {
           total_count: number
         }[]
       }
+      list_document_version_numbers: {
+        Args: Record<PropertyKey, never>
+        Returns: number[]
+      }
       list_documents_page: {
         Args: {
           p_page?: number

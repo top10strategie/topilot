@@ -1,6 +1,6 @@
 /** Pagination / filtres URL pour `/documents`. */
 
-export const DOCUMENTS_PAGE_SIZE = 25;
+export const DOCUMENTS_PAGE_SIZE = 24;
 
 /** Sentinelle URL / filtre : document sans lien client (ni jonction ni logo). */
 export const DOCUMENTS_OWNER_INTERNE_ID = "__interne__";
