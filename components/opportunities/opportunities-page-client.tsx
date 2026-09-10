@@ -1,7 +1,13 @@
 "use client";
 
-import { useMemo, useRef, useState, type MouseEvent } from "react";
-import dynamic from "next/dynamic";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+  type MouseEvent,
+} from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -21,6 +27,7 @@ import {
   type ListViewTab,
 } from "@/components/layout/list-view-tabs";
 import { OpportunityFormDrawer } from "@/components/opportunities/opportunity-form-drawer";
+import { OpportunitiesKanban } from "@/components/opportunities/opportunities-kanban";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,11 +45,20 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { CategoryItem } from "@/lib/categories/types";
-import type { ClientListItem } from "@/lib/clients/types";
+import type { ClientOption } from "@/lib/clients/types";
 import { getCollaboratorFullName } from "@/lib/collaborators/labels";
 import type { CollaboratorListItem } from "@/lib/collaborators/types";
 import { buildOpportunityDuplicatePrefill } from "@/lib/crm/duplicate-prefill";
 import { getEndDateToneClass } from "@/lib/dates/end-date-tone";
+import {
+  DEFAULT_OPPORTUNITIES_LIST_FILTERS,
+  OPPORTUNITIES_PAGE_SIZE,
+  opportunitiesListHref,
+  type OpportunitiesListFilters,
+  type OpportunitiesListView,
+  type OpportunityAmountBucket,
+  type OpportunityProbabilityBucket,
+} from "@/lib/opportunities/list-filters";
 import {
   formatOpportunityDate,
   formatOpportunityPrice,
@@ -59,16 +75,7 @@ import type {
   OpportunityListItem,
   OpportunityPriority,
 } from "@/lib/opportunities/types";
-
-const OpportunitiesKanban = dynamic(
-  () =>
-    import("@/components/opportunities/opportunities-kanban").then((m) => ({
-      default: m.OpportunitiesKanban,
-    })),
-  { ssr: false },
-);
-
-const PAGE_SIZE = 24;
+import { cn } from "@/lib/utils";
 
 const OPPORTUNITY_VIEW_TABS: ListViewTab[] = [
   {
@@ -90,54 +97,101 @@ const OPPORTUNITY_VIEW_TABS: ListViewTab[] = [
 
 type OpportunitiesPageClientProps = {
   opportunities: OpportunityListItem[];
+  totalCount: number;
+  filters?: OpportunitiesListFilters;
   collaborators: CollaboratorListItem[];
-  clients: ClientListItem[];
+  clients: ClientOption[];
   contacts: OpportunityContactOption[];
   categories: CategoryItem[];
 };
 
-type Filters = {
-  clientId: string;
-  responsibleId: string;
-  teamId: string;
-  categoryIds: string[];
-  amountBucket: "all" | "lt5k" | "5to20k" | "gt20k";
-  statuses: OpportunityKanbanStatus[];
-  probabilityBucket: "all" | "lt30" | "30to50" | "gt50";
-  priority: OpportunityPriority | "";
-  includeArchived: boolean;
-};
+type DialogFilters = Pick<
+  OpportunitiesListFilters,
+  | "clientId"
+  | "responsibleId"
+  | "teamId"
+  | "categoryIds"
+  | "amountBucket"
+  | "statuses"
+  | "probabilityBucket"
+  | "priority"
+  | "includeArchived"
+>;
 
-const DEFAULT_FILTERS: Filters = {
-  clientId: "",
-  responsibleId: "",
-  teamId: "",
-  categoryIds: [],
-  amountBucket: "all",
-  statuses: [],
-  probabilityBucket: "all",
-  priority: "",
-  includeArchived: false,
-};
+function toDialogFilters(filters: OpportunitiesListFilters): DialogFilters {
+  return {
+    clientId: filters.clientId,
+    responsibleId: filters.responsibleId,
+    teamId: filters.teamId,
+    categoryIds: filters.categoryIds,
+    amountBucket: filters.amountBucket,
+    statuses: filters.statuses,
+    probabilityBucket: filters.probabilityBucket,
+    priority: filters.priority,
+    includeArchived: filters.includeArchived,
+  };
+}
+
+function hasActiveDialogFilters(filters: OpportunitiesListFilters): boolean {
+  return (
+    filters.includeArchived ||
+    Boolean(filters.clientId) ||
+    Boolean(filters.responsibleId) ||
+    Boolean(filters.teamId) ||
+    filters.categoryIds.length > 0 ||
+    filters.statuses.length > 0 ||
+    Boolean(filters.priority) ||
+    filters.amountBucket !== "all" ||
+    filters.probabilityBucket !== "all"
+  );
+}
 
 export function OpportunitiesPageClient({
   opportunities,
+  totalCount,
+  filters: filtersProp,
   collaborators,
   clients,
   contacts,
   categories,
 }: OpportunitiesPageClientProps) {
+  const filters = filtersProp ?? DEFAULT_OPPORTUNITIES_LIST_FILTERS;
   const router = useRouter();
   const { pushDrawer } = useDrawerStack();
-  const [query, setQuery] = useState("");
-  const [view, setView] = useState<"kanban" | "cards" | "table">("kanban");
-  const [page, setPage] = useState(1);
-  const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
-  const [draftFilters, setDraftFilters] = useState<Filters>(DEFAULT_FILTERS);
+  const [isPending, startTransition] = useTransition();
+  const [query, setQuery] = useState(filters.q);
+  const [draftFilters, setDraftFilters] = useState<DialogFilters>(() =>
+    toDialogFilters(filters),
+  );
   const [filterOpen, setFilterOpen] = useState(false);
   const [duplicateTarget, setDuplicateTarget] =
     useState<OpportunityListItem | null>(null);
   const filterPortalRef = useRef<HTMLDivElement>(null);
+
+  const navigate = (next: OpportunitiesListFilters) => {
+    startTransition(() => {
+      router.push(opportunitiesListHref(next));
+    });
+  };
+
+  useEffect(() => {
+    setQuery(filters.q);
+  }, [filters.q]);
+
+  useEffect(() => {
+    setDraftFilters(toDialogFilters(filters));
+  }, [filters]);
+
+  useEffect(() => {
+    const trimmed = query.trim();
+    if (trimmed === filters.q) return;
+    const handle = window.setTimeout(() => {
+      navigate({ ...filters, q: trimmed, page: 1 });
+    }, 300);
+    return () => window.clearTimeout(handle);
+    // Intentionnel : debounce sur la saisie locale uniquement.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query]);
 
   const draftSelectedCategories = useMemo(
     () =>
@@ -172,14 +226,6 @@ export function OpportunitiesPageClient({
       .sort((a, b) => a.label.localeCompare(b.label, "fr"));
   }, [collaborators]);
 
-  const teamIdByCollaboratorId = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const person of collaborators) {
-      map.set(person.id, person.team_id);
-    }
-    return map;
-  }, [collaborators]);
-
   const clientOptions = useMemo(
     () =>
       [...clients].sort((a, b) =>
@@ -188,92 +234,8 @@ export function OpportunitiesPageClient({
     [clients],
   );
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLocaleLowerCase("fr");
-    return opportunities.filter((item) => {
-      // Kanban affiche les colonnes Gagné/Perdue : ne pas masquer les archivées.
-      if (view !== "kanban" && !item.is_active) {
-        const statusSelected = filters.statuses.includes(item.kanban_status);
-        if (!filters.includeArchived && !statusSelected) return false;
-      }
-
-      if (filters.clientId && item.client_id !== filters.clientId) {
-        return false;
-      }
-
-      if (
-        filters.responsibleId &&
-        item.responsible.id !== filters.responsibleId
-      ) {
-        return false;
-      }
-
-      if (filters.teamId) {
-        const teamId = teamIdByCollaboratorId.get(item.responsible.id);
-        if (teamId !== filters.teamId) return false;
-      }
-
-      if (filters.categoryIds.length > 0) {
-        const ids = new Set(item.categories.map((c) => c.id));
-        if (!filters.categoryIds.every((id) => ids.has(id))) return false;
-      }
-
-      if (filters.statuses.length > 0) {
-        if (!filters.statuses.includes(item.kanban_status)) return false;
-      }
-
-      if (filters.priority && item.priority !== filters.priority) {
-        return false;
-      }
-
-      const amount = item.price ?? 0;
-      if (filters.amountBucket === "lt5k" && amount >= 5000) return false;
-      if (
-        filters.amountBucket === "5to20k" &&
-        (amount < 5000 || amount > 20000)
-      ) {
-        return false;
-      }
-      if (filters.amountBucket === "gt20k" && amount <= 20000) return false;
-
-      const prob = item.probability_confirmation;
-      if (filters.probabilityBucket === "lt30" && prob >= 30) return false;
-      if (
-        filters.probabilityBucket === "30to50" &&
-        (prob < 30 || prob > 50)
-      ) {
-        return false;
-      }
-      if (filters.probabilityBucket === "gt50" && prob <= 50) return false;
-
-      if (!q) return true;
-      const blob = [
-        item.opportunity_name,
-        item.client.client_name,
-        getOpportunityResponsibleName(item.responsible),
-        getOpportunityKanbanStatusLabel(item.kanban_status),
-        getOpportunityPriorityLabel(item.priority),
-        ...item.categories.map((c) => c.label),
-      ]
-        .join(" ")
-        .toLocaleLowerCase("fr");
-      return blob.includes(q);
-    });
-  }, [opportunities, filters, query, view, teamIdByCollaboratorId]);
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-
-  const hasActiveFilters =
-    filters.includeArchived ||
-    Boolean(filters.clientId) ||
-    Boolean(filters.responsibleId) ||
-    Boolean(filters.teamId) ||
-    filters.categoryIds.length > 0 ||
-    filters.statuses.length > 0 ||
-    Boolean(filters.priority) ||
-    filters.amountBucket !== "all" ||
-    filters.probabilityBucket !== "all";
+  const totalPages = Math.max(1, Math.ceil(totalCount / OPPORTUNITIES_PAGE_SIZE));
+  const hasActiveFilters = hasActiveDialogFilters(filters);
 
   const openCreate = (duplicateSource?: OpportunityListItem) => {
     void pushDrawer({
@@ -323,27 +285,35 @@ export function OpportunitiesPageClient({
     <EntityListPageShell
       title="Opportunités"
       searchAriaLabel="Recherche contextuelle opportunités"
-      view={view}
+      view={filters.view}
       onViewChange={(value) => {
-        setView(value as "kanban" | "cards" | "table");
-        setPage(1);
+        navigate({
+          ...filters,
+          view: value as OpportunitiesListView,
+          page: 1,
+        });
       }}
       viewTabs={OPPORTUNITY_VIEW_TABS}
       query={query}
-      onQueryChange={(value) => {
-        setQuery(value);
-        setPage(1);
-      }}
+      onQueryChange={setQuery}
       toolbarActions={
         <>
           <IconActionButton
-            label="Filtres"
+            label={
+              hasActiveFilters
+                ? `Filtres (${filters.categoryIds.length > 0 ? `${filters.categoryIds.length} catégorie${filters.categoryIds.length > 1 ? "s" : ""}` : "actifs"})`
+                : "Filtres"
+            }
+            variant={hasActiveFilters ? "default" : "outline"}
             onClick={() => {
-              setDraftFilters(filters);
+              setDraftFilters(toDialogFilters(filters));
               setFilterOpen(true);
             }}
           >
-            <FunnelSimple className="size-4" />
+            <FunnelSimple
+              className="size-4"
+              weight={hasActiveFilters ? "fill" : "regular"}
+            />
           </IconActionButton>
           <IconActionButton
             label="Nouvelle opportunité"
@@ -353,16 +323,16 @@ export function OpportunitiesPageClient({
           </IconActionButton>
         </>
       }
-      kanbanLayout={view === "kanban"}
+      kanbanLayout={filters.view === "kanban"}
       pagination={
-        view !== "kanban"
+        filters.view !== "kanban"
           ? {
               countLabel: "Nombre d'opportunités",
-              count: filtered.length,
-              page,
+              count: totalCount,
+              page: filters.page,
               totalPages,
-              pageSize: PAGE_SIZE,
-              onPageChange: setPage,
+              pageSize: OPPORTUNITIES_PAGE_SIZE,
+              onPageChange: (page) => navigate({ ...filters, page }),
             }
           : null
       }
@@ -480,7 +450,7 @@ export function OpportunitiesPageClient({
                 onValueChange={(value) =>
                   setDraftFilters((prev) => ({
                     ...prev,
-                    amountBucket: value as Filters["amountBucket"],
+                    amountBucket: value as OpportunityAmountBucket,
                   }))
                 }
               >
@@ -525,7 +495,7 @@ export function OpportunitiesPageClient({
                 onValueChange={(value) =>
                   setDraftFilters((prev) => ({
                     ...prev,
-                    probabilityBucket: value as Filters["probabilityBucket"],
+                    probabilityBucket: value as OpportunityProbabilityBucket,
                   }))
                 }
               >
@@ -590,10 +560,11 @@ export function OpportunitiesPageClient({
               type="button"
               variant="outline"
               onClick={() => {
-                setDraftFilters(DEFAULT_FILTERS);
-                setFilters(DEFAULT_FILTERS);
-                setPage(1);
                 setFilterOpen(false);
+                navigate({
+                  ...DEFAULT_OPPORTUNITIES_LIST_FILTERS,
+                  view: filters.view,
+                });
               }}
             >
               Réinitialiser
@@ -601,9 +572,13 @@ export function OpportunitiesPageClient({
             <Button
               type="button"
               onClick={() => {
-                setFilters(draftFilters);
-                setPage(1);
                 setFilterOpen(false);
+                navigate({
+                  ...filters,
+                  ...draftFilters,
+                  q: query.trim(),
+                  page: 1,
+                });
               }}
             >
               Appliquer
@@ -612,175 +587,182 @@ export function OpportunitiesPageClient({
         ),
       }}
     >
-      <ListViewTabsContent value="kanban" className="min-h-0 flex-1">
-        <OpportunitiesKanban items={filtered} />
-      </ListViewTabsContent>
+      <div
+        className={cn(
+          "flex h-full min-h-0 flex-1 flex-col",
+          isPending && "opacity-60 transition-opacity",
+        )}
+      >
+        <ListViewTabsContent value="kanban" className="min-h-0 flex-1">
+          <OpportunitiesKanban items={opportunities} />
+        </ListViewTabsContent>
 
-      <ListViewTabsContent value="cards" className="flex-none">
-        {filtered.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            {query.trim() || hasActiveFilters
-              ? "Aucune opportunité ne correspond aux critères."
-              : "Aucune opportunité pour le moment. Créez-en une pour commencer."}
-          </p>
-        ) : (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {pageItems.map((item) => (
-              <Link key={item.id} href={`/opportunities/${item.id}`}>
-                <Card className="h-full transition-colors hover:bg-muted/40">
-                  <CardHeader className="space-y-2 p-4 pb-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <CardTitle className="min-w-0 text-base leading-snug">
-                        {item.opportunity_name}
-                      </CardTitle>
-                      <IconActionButton
-                        label="Dupliquer l'opportunité"
-                        className="shrink-0"
-                        onClick={(event) => requestDuplicate(event, item)}
-                      >
-                        <CopySimple className="size-4" />
-                      </IconActionButton>
-                    </div>
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-                        {item.categories.length === 0 ? (
-                          <span className="text-xs text-muted-foreground">
-                            —
-                          </span>
-                        ) : (
-                          item.categories.slice(0, 3).map((category) => (
-                            <Badge key={category.id} variant="secondary">
-                              {category.label}
-                            </Badge>
-                          ))
-                        )}
+        <ListViewTabsContent value="cards" className="flex-none">
+          {opportunities.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              {filters.q.trim() || hasActiveFilters
+                ? "Aucune opportunité ne correspond aux critères."
+                : "Aucune opportunité pour le moment. Créez-en une pour commencer."}
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {opportunities.map((item) => (
+                <Link key={item.id} href={`/opportunities/${item.id}`}>
+                  <Card className="h-full transition-colors hover:bg-muted/40">
+                    <CardHeader className="space-y-2 p-4 pb-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <CardTitle className="min-w-0 text-base leading-snug">
+                          {item.opportunity_name}
+                        </CardTitle>
+                        <IconActionButton
+                          label="Dupliquer l'opportunité"
+                          className="shrink-0"
+                          onClick={(event) => requestDuplicate(event, item)}
+                        >
+                          <CopySimple className="size-4" />
+                        </IconActionButton>
                       </div>
-                      <span className="shrink-0 text-xs text-muted-foreground">
-                        {getOpportunityPriorityLabel(item.priority)}
-                      </span>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-1 p-4 pt-2 text-xs text-muted-foreground">
-                    <div className="flex items-baseline justify-between gap-2">
-                      <span className="min-w-0 truncate">
-                        {item.client.client_name}
-                      </span>
-                      <span className="shrink-0 text-right">
-                        {getOpportunityResponsibleName(item.responsible)}
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
-                      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-                        <Badge variant="outline" className="font-normal">
-                          {getOpportunityKanbanStatusLabel(item.kanban_status)}
-                        </Badge>
-                        <span>{formatOpportunityPrice(item.price)}</span>
-                        <span>
-                          {formatOpportunityProbability(
-                            item.probability_confirmation,
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                          {item.categories.length === 0 ? (
+                            <span className="text-xs text-muted-foreground">
+                              —
+                            </span>
+                          ) : (
+                            item.categories.slice(0, 3).map((category) => (
+                              <Badge key={category.id} variant="secondary">
+                                {category.label}
+                              </Badge>
+                            ))
                           )}
+                        </div>
+                        <span className="shrink-0 text-xs text-muted-foreground">
+                          {getOpportunityPriorityLabel(item.priority)}
                         </span>
                       </div>
-                      <span
-                        className={`shrink-0 ${getEndDateToneClass(item.end_at, {
+                    </CardHeader>
+                    <CardContent className="space-y-1 p-4 pt-2 text-xs text-muted-foreground">
+                      <div className="flex items-baseline justify-between gap-2">
+                        <span className="min-w-0 truncate">
+                          {item.client.client_name}
+                        </span>
+                        <span className="shrink-0 text-right">
+                          {getOpportunityResponsibleName(item.responsible)}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+                        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                          <Badge variant="outline" className="font-normal">
+                            {getOpportunityKanbanStatusLabel(item.kanban_status)}
+                          </Badge>
+                          <span>{formatOpportunityPrice(item.price)}</span>
+                          <span>
+                            {formatOpportunityProbability(
+                              item.probability_confirmation,
+                            )}
+                          </span>
+                        </div>
+                        <span
+                          className={`shrink-0 ${getEndDateToneClass(item.end_at, {
+                            muted:
+                              item.kanban_status === "gagne" ||
+                              item.kanban_status === "perdue",
+                          })}`}
+                        >
+                          {formatOpportunityDate(item.end_at)}
+                        </span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+          )}
+        </ListViewTabsContent>
+
+        <ListViewTabsContent value="table" className="flex-none">
+          <div className="overflow-x-auto rounded-md border">
+            <table className="w-full min-w-[960px] text-left text-sm">
+              <thead className="border-b bg-muted/40 text-xs text-muted-foreground">
+                <tr>
+                  <th className="px-3 py-2 font-medium">Nom</th>
+                  <th className="px-3 py-2 font-medium">Client</th>
+                  <th className="px-3 py-2 font-medium">Responsable</th>
+                  <th className="px-3 py-2 font-medium">Statut</th>
+                  <th className="px-3 py-2 font-medium">Urgence</th>
+                  <th className="px-3 py-2 font-medium">Catégories</th>
+                  <th className="px-3 py-2 font-medium">Échéance</th>
+                  <th className="px-3 py-2 font-medium">Clôture</th>
+                  <th className="px-3 py-2 font-medium">Montant</th>
+                  <th className="px-3 py-2 font-medium">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {opportunities.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={10}
+                      className="px-3 py-6 text-sm text-muted-foreground"
+                    >
+                      {filters.q.trim() || hasActiveFilters
+                        ? "Aucune opportunité ne correspond aux critères."
+                        : "Aucune opportunité pour le moment. Créez-en une pour commencer."}
+                    </td>
+                  </tr>
+                ) : (
+                  opportunities.map((item) => (
+                    <tr
+                      key={item.id}
+                      className="cursor-pointer border-b last:border-0 hover:bg-muted/30"
+                      onClick={() => router.push(`/opportunities/${item.id}`)}
+                    >
+                      <td className="px-3 py-2 font-medium">
+                        {item.opportunity_name}
+                      </td>
+                      <td className="px-3 py-2">{item.client.client_name}</td>
+                      <td className="px-3 py-2">
+                        {getOpportunityResponsibleName(item.responsible)}
+                      </td>
+                      <td className="px-3 py-2">
+                        {getOpportunityKanbanStatusLabel(item.kanban_status)}
+                      </td>
+                      <td className="px-3 py-2">
+                        {getOpportunityPriorityLabel(item.priority)}
+                      </td>
+                      <td className="px-3 py-2 text-muted-foreground">
+                        {item.categories.map((c) => c.label).join(", ") || "—"}
+                      </td>
+                      <td className="px-3 py-2 text-muted-foreground">
+                        {formatOpportunityDate(item.due_date_at)}
+                      </td>
+                      <td
+                        className={`px-3 py-2 ${getEndDateToneClass(item.end_at, {
                           muted:
                             item.kanban_status === "gagne" ||
                             item.kanban_status === "perdue",
                         })}`}
                       >
                         {formatOpportunityDate(item.end_at)}
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
+                      </td>
+                      <td className="px-3 py-2">
+                        {formatOpportunityPrice(item.price)}
+                      </td>
+                      <td className="px-3 py-2">
+                        <IconActionButton
+                          label="Dupliquer l'opportunité"
+                          onClick={(event) => requestDuplicate(event, item)}
+                        >
+                          <CopySimple className="size-4" />
+                        </IconActionButton>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
-        )}
-      </ListViewTabsContent>
-
-      <ListViewTabsContent value="table" className="flex-none">
-        <div className="overflow-x-auto rounded-md border">
-          <table className="w-full min-w-[960px] text-left text-sm">
-            <thead className="border-b bg-muted/40 text-xs text-muted-foreground">
-              <tr>
-                <th className="px-3 py-2 font-medium">Nom</th>
-                <th className="px-3 py-2 font-medium">Client</th>
-                <th className="px-3 py-2 font-medium">Responsable</th>
-                <th className="px-3 py-2 font-medium">Statut</th>
-                <th className="px-3 py-2 font-medium">Urgence</th>
-                <th className="px-3 py-2 font-medium">Catégories</th>
-                <th className="px-3 py-2 font-medium">Échéance</th>
-                <th className="px-3 py-2 font-medium">Clôture</th>
-                <th className="px-3 py-2 font-medium">Montant</th>
-                <th className="px-3 py-2 font-medium">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pageItems.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={10}
-                    className="px-3 py-6 text-sm text-muted-foreground"
-                  >
-                    {query.trim() || hasActiveFilters
-                      ? "Aucune opportunité ne correspond aux critères."
-                      : "Aucune opportunité pour le moment. Créez-en une pour commencer."}
-                  </td>
-                </tr>
-              ) : (
-                pageItems.map((item) => (
-                  <tr
-                    key={item.id}
-                    className="cursor-pointer border-b last:border-0 hover:bg-muted/30"
-                    onClick={() => router.push(`/opportunities/${item.id}`)}
-                  >
-                    <td className="px-3 py-2 font-medium">
-                      {item.opportunity_name}
-                    </td>
-                    <td className="px-3 py-2">{item.client.client_name}</td>
-                    <td className="px-3 py-2">
-                      {getOpportunityResponsibleName(item.responsible)}
-                    </td>
-                    <td className="px-3 py-2">
-                      {getOpportunityKanbanStatusLabel(item.kanban_status)}
-                    </td>
-                    <td className="px-3 py-2">
-                      {getOpportunityPriorityLabel(item.priority)}
-                    </td>
-                    <td className="px-3 py-2 text-muted-foreground">
-                      {item.categories.map((c) => c.label).join(", ") || "—"}
-                    </td>
-                    <td className="px-3 py-2 text-muted-foreground">
-                      {formatOpportunityDate(item.due_date_at)}
-                    </td>
-                    <td
-                      className={`px-3 py-2 ${getEndDateToneClass(item.end_at, {
-                        muted:
-                          item.kanban_status === "gagne" ||
-                          item.kanban_status === "perdue",
-                      })}`}
-                    >
-                      {formatOpportunityDate(item.end_at)}
-                    </td>
-                    <td className="px-3 py-2">
-                      {formatOpportunityPrice(item.price)}
-                    </td>
-                    <td className="px-3 py-2">
-                      <IconActionButton
-                        label="Dupliquer l'opportunité"
-                        onClick={(event) => requestDuplicate(event, item)}
-                      >
-                        <CopySimple className="size-4" />
-                      </IconActionButton>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </ListViewTabsContent>
+        </ListViewTabsContent>
+      </div>
     </EntityListPageShell>
   );
 }

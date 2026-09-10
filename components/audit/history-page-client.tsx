@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { fetchAuditLogsForPage } from "@/actions/audit-logs";
 import { AuditHistoryTable } from "@/components/audit/audit-history-table";
 import { IconActionButton } from "@/components/layout/icon-action-button";
+import { ListPaginationFooter } from "@/components/layout/list-pagination-footer";
 import { PageHero } from "@/components/layout/page-hero";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,6 +30,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { HISTORY_PAGE_SIZE } from "@/lib/audit/list-filters";
 import {
   getAuditActionLabel,
   getAuditCollaboratorDisplayName,
@@ -41,13 +43,15 @@ import type {
 } from "@/lib/audit/types";
 import type { CategoryItem } from "@/lib/categories/types";
 import { getContactFullName } from "@/lib/clients/labels";
-import type { ClientListItem } from "@/lib/clients/types";
+import type { ClientOption } from "@/lib/clients/types";
 
 type ToolOption = { id: string; tool_name: string };
 
 type HistoryPageClientProps = {
   initialLogs: AuditLogListItem[];
-  clients: ClientListItem[];
+  initialTotalCount: number;
+  initialPage?: number;
+  clients: ClientOption[];
   contacts: AuditContactOption[];
   categories: CategoryItem[];
   tools: ToolOption[];
@@ -77,8 +81,12 @@ const EMPTY_FILTERS: DraftFilters = {
   focusRecurrences: false,
 };
 
-function toApiFilters(draft: DraftFilters): AuditHistoryPageFilters {
+function toApiFilters(
+  draft: DraftFilters,
+  page: number,
+): AuditHistoryPageFilters {
   return {
+    page,
     dateFrom: draft.dateFrom || undefined,
     dateTo: draft.dateTo || undefined,
     clientId: draft.clientId || undefined,
@@ -93,6 +101,8 @@ function toApiFilters(draft: DraftFilters): AuditHistoryPageFilters {
 
 export function HistoryPageClient({
   initialLogs,
+  initialTotalCount,
+  initialPage = 1,
   clients,
   contacts,
   categories,
@@ -100,11 +110,15 @@ export function HistoryPageClient({
 }: HistoryPageClientProps) {
   const [query, setQuery] = useState("");
   const [logs, setLogs] = useState(initialLogs);
+  const [totalCount, setTotalCount] = useState(initialTotalCount);
+  const [page, setPage] = useState(initialPage);
   const [appliedFilters, setAppliedFilters] =
     useState<DraftFilters>(EMPTY_FILTERS);
   const [draftFilters, setDraftFilters] = useState<DraftFilters>(EMPTY_FILTERS);
   const [filterOpen, setFilterOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / HISTORY_PAGE_SIZE));
 
   const filteredLogs = useMemo(() => {
     const q = query.trim().toLocaleLowerCase("fr");
@@ -124,17 +138,25 @@ export function HistoryPageClient({
     });
   }, [logs, query]);
 
-  const applyFilters = (next: DraftFilters) => {
+  const loadPage = (nextFilters: DraftFilters, nextPage: number) => {
     startTransition(async () => {
-      const result = await fetchAuditLogsForPage(toApiFilters(next));
+      const result = await fetchAuditLogsForPage(
+        toApiFilters(nextFilters, nextPage),
+      );
       if (!result.success) {
         toast.error(result.error);
         return;
       }
       setLogs(result.logs);
-      setAppliedFilters(next);
+      setTotalCount(result.totalCount);
+      setPage(nextPage);
+      setAppliedFilters(nextFilters);
       setFilterOpen(false);
     });
+  };
+
+  const applyFilters = (next: DraftFilters) => {
+    loadPage(next, 1);
   };
 
   return (
@@ -154,7 +176,7 @@ export function HistoryPageClient({
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 className="pl-8"
-                aria-label="Recherche dans l'historique"
+                aria-label="Recherche dans l'historique (page courante)"
               />
             </div>
             <IconActionButton
@@ -176,13 +198,26 @@ export function HistoryPageClient({
           <span>
             {isPending
               ? "Chargement…"
-              : `${filteredLogs.length} événement${filteredLogs.length > 1 ? "s" : ""}`}
+              : query.trim()
+                ? `${filteredLogs.length} sur cette page`
+                : `${totalCount} événement${totalCount > 1 ? "s" : ""}`}
           </span>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        <div
+          className={`min-h-0 flex-1 overflow-y-auto ${isPending ? "opacity-60 transition-opacity" : ""}`}
+        >
           <AuditHistoryTable logs={filteredLogs} />
         </div>
       </div>
+
+      <ListPaginationFooter
+        countLabel="Nombre d'événements"
+        count={totalCount}
+        page={page}
+        totalPages={totalPages}
+        pageSize={HISTORY_PAGE_SIZE}
+        onPageChange={(nextPage) => loadPage(appliedFilters, nextPage)}
+      />
 
       <Dialog open={filterOpen} onOpenChange={setFilterOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -50,18 +50,22 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { CategoryItem } from "@/lib/categories/types";
-import type { ClientListItem } from "@/lib/clients/types";
+import type { ClientOption } from "@/lib/clients/types";
 import type { CollaboratorListItem } from "@/lib/collaborators/types";
 import {
   computeToolMonthlyBadge,
   formatToolMonthlyBadge,
-  hasActiveSubscriptionCost,
-  monthlyCostEuros,
 } from "@/lib/tools/pricing";
+import {
+  DEFAULT_TOOLS_LIST_FILTERS,
+  TOOLS_OWNER_INTERNE_ID,
+  TOOLS_PAGE_SIZE,
+  toolsListHref,
+  type ToolsCostBucket,
+  type ToolsListFilters,
+} from "@/lib/tools/list-filters";
 import type { ToolListItem } from "@/lib/tools/types";
 import { cn } from "@/lib/utils";
-
-const PAGE_SIZE = 24;
 
 const TOOL_VIEW_TABS: ListViewTab[] = [
   {
@@ -78,46 +82,62 @@ const TOOL_VIEW_TABS: ListViewTab[] = [
 
 type ToolsPageClientProps = {
   tools: ToolListItem[];
+  totalCount: number;
+  filters?: ToolsListFilters;
   categories: CategoryItem[];
-  clients: ClientListItem[];
+  clients: ClientOption[];
   collaborators: CollaboratorListItem[];
   canManagePrivacy: boolean;
 };
 
-const OWNER_INTERNE_ID = "__interne__";
+type DialogFilters = Pick<
+  ToolsListFilters,
+  | "categoryIds"
+  | "clientIds"
+  | "costBucket"
+  | "withSubscription"
+  | "withoutSubscription"
+>;
 
-type CostBucket = "all" | "lt10" | "10to20" | "gt20";
+function toDialogFilters(filters: ToolsListFilters): DialogFilters {
+  return {
+    categoryIds: filters.categoryIds,
+    clientIds: filters.clientIds,
+    costBucket: filters.costBucket,
+    withSubscription: filters.withSubscription,
+    withoutSubscription: filters.withoutSubscription,
+  };
+}
 
-type Filters = {
-  categoryIds: string[];
-  clientIds: string[];
-  costBucket: CostBucket;
-  withSubscription: boolean;
-  withoutSubscription: boolean;
-};
-
-const DEFAULT_FILTERS: Filters = {
-  categoryIds: [],
-  clientIds: [],
-  costBucket: "all",
-  withSubscription: false,
-  withoutSubscription: false,
-};
+function hasActiveFilters(filters: ToolsListFilters): boolean {
+  return (
+    Boolean(filters.q.trim()) ||
+    filters.categoryIds.length > 0 ||
+    filters.clientIds.length > 0 ||
+    filters.costBucket !== DEFAULT_TOOLS_LIST_FILTERS.costBucket ||
+    filters.withSubscription ||
+    filters.withoutSubscription
+  );
+}
 
 export function ToolsPageClient({
   tools,
+  totalCount,
+  filters: filtersProp,
   categories,
   clients,
   collaborators,
   canManagePrivacy,
 }: ToolsPageClientProps) {
+  const filters = filtersProp ?? DEFAULT_TOOLS_LIST_FILTERS;
   const router = useRouter();
   const { pushDrawer } = useDrawerStack();
-  const [query, setQuery] = useState("");
+  const [isPending, startTransition] = useTransition();
+  const [query, setQuery] = useState(filters.q);
   const [view, setView] = useState<"cards" | "table">("cards");
-  const [page, setPage] = useState(1);
-  const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
-  const [draftFilters, setDraftFilters] = useState<Filters>(DEFAULT_FILTERS);
+  const [draftFilters, setDraftFilters] = useState<DialogFilters>(() =>
+    toDialogFilters(filters),
+  );
   const [filterOpen, setFilterOpen] = useState(false);
   const filterPortalRef = useRef<HTMLDivElement>(null);
   const [toolPendingDelete, setToolPendingDelete] =
@@ -126,6 +146,31 @@ export function ToolsPageClient({
     () => new Set<string>(),
   );
 
+  const navigate = (next: ToolsListFilters) => {
+    startTransition(() => {
+      router.push(toolsListHref(next));
+    });
+  };
+
+  useEffect(() => {
+    setQuery(filters.q);
+  }, [filters.q]);
+
+  useEffect(() => {
+    setDraftFilters(toDialogFilters(filters));
+  }, [filters]);
+
+  useEffect(() => {
+    const trimmed = query.trim();
+    if (trimmed === filters.q) return;
+    const handle = window.setTimeout(() => {
+      navigate({ ...filters, q: trimmed, page: 1 });
+    }, 300);
+    return () => window.clearTimeout(handle);
+    // Intentionnel : debounce sur la saisie locale uniquement.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query]);
+
   const visibleTools = useMemo(
     () => tools.filter((tool) => !optimisticallyRemovedIds.has(tool.id)),
     [tools, optimisticallyRemovedIds],
@@ -133,7 +178,7 @@ export function ToolsPageClient({
 
   const ownerOptions = useMemo(
     () => [
-      { id: OWNER_INTERNE_ID, label: "Interne" },
+      { id: TOOLS_OWNER_INTERNE_ID, label: "Interne" },
       ...[...clients]
         .sort((a, b) => a.client_name.localeCompare(b.client_name, "fr"))
         .map((client) => ({ id: client.id, label: client.client_name })),
@@ -165,73 +210,10 @@ export function ToolsPageClient({
     return map;
   }, [visibleTools]);
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLocaleLowerCase("fr");
-    return visibleTools.filter((item) => {
-      if (filters.categoryIds.length > 0) {
-        const ids = new Set(item.categories.map((c) => c.id));
-        if (!filters.categoryIds.every((id) => ids.has(id))) return false;
-      }
-
-      if (filters.clientIds.length > 0) {
-        const wantsInterne = filters.clientIds.includes(OWNER_INTERNE_ID);
-        const selectedClientIds = filters.clientIds.filter(
-          (id) => id !== OWNER_INTERNE_ID,
-        );
-        const isInterne = item.clients.length === 0;
-        const matchesClient = selectedClientIds.some((id) =>
-          item.clients.some((client) => client.id === id),
-        );
-        if (!((wantsInterne && isInterne) || matchesClient)) return false;
-      }
-
-      const badge = badgesByToolId.get(item.id) ?? { kind: "none" as const };
-      const hasCost = hasActiveSubscriptionCost(badge);
-
-      if (filters.withSubscription && !filters.withoutSubscription && !hasCost) {
-        return false;
-      }
-      if (filters.withoutSubscription && !filters.withSubscription && hasCost) {
-        return false;
-      }
-
-      if (filters.costBucket !== "all") {
-        const monthly = monthlyCostEuros(badge);
-        if (monthly == null) return false;
-        if (filters.costBucket === "lt10" && monthly >= 10) return false;
-        if (
-          filters.costBucket === "10to20" &&
-          (monthly < 10 || monthly > 20)
-        ) {
-          return false;
-        }
-        if (filters.costBucket === "gt20" && monthly <= 20) return false;
-      }
-
-      if (!q) return true;
-      const blob = [
-        item.tool_name,
-        item.url,
-        item.description,
-        ...item.categories.map((c) => c.label),
-        ...item.clients.map((c) => c.client_name),
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLocaleLowerCase("fr");
-      return blob.includes(q);
-    });
-  }, [visibleTools, filters, query, badgesByToolId]);
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-
-  const hasActiveFilters =
-    filters.categoryIds.length > 0 ||
-    filters.clientIds.length > 0 ||
-    filters.costBucket !== "all" ||
-    filters.withSubscription ||
-    filters.withoutSubscription;
+  const totalPages = Math.max(1, Math.ceil(totalCount / TOOLS_PAGE_SIZE));
+  const emptyMessage = hasActiveFilters(filters)
+    ? "Aucun outil ne correspond aux critères."
+    : "Aucun outil pour le moment. Créez-en un pour commencer.";
 
   const openCreate = () => {
     void pushDrawer({
@@ -283,7 +265,6 @@ export function ToolsPageClient({
       value={view}
       onValueChange={(value) => {
         setView(value as "cards" | "table");
-        setPage(1);
       }}
     >
       <PageHero
@@ -299,19 +280,17 @@ export function ToolsPageClient({
                 type="search"
                 placeholder="Rechercher…"
                 value={query}
-                onChange={(event) => {
-                  setQuery(event.target.value);
-                  setPage(1);
-                }}
+                onChange={(event) => setQuery(event.target.value)}
                 className="pl-8"
                 aria-label="Recherche contextuelle outils"
+                disabled={isPending}
               />
             </div>
             <ListViewTabsSwitcher tabs={TOOL_VIEW_TABS} showLabels={false} />
             <IconActionButton
               label="Filtres"
               onClick={() => {
-                setDraftFilters(filters);
+                setDraftFilters(toDialogFilters(filters));
                 setFilterOpen(true);
               }}
             >
@@ -330,15 +309,11 @@ export function ToolsPageClient({
         )}
       >
         <ListViewTabsContent value="cards" className="flex-none">
-          {filtered.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              {query.trim() || hasActiveFilters
-                ? "Aucun outil ne correspond aux critères."
-                : "Aucun outil pour le moment. Créez-en un pour commencer."}
-            </p>
+          {visibleTools.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{emptyMessage}</p>
           ) : (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {pageItems.map((item) => {
+              {visibleTools.map((item) => {
                 const badge = badgesByToolId.get(item.id) ?? {
                   kind: "none" as const,
                 };
@@ -415,19 +390,17 @@ export function ToolsPageClient({
                 </tr>
               </thead>
               <tbody>
-                {pageItems.length === 0 ? (
+                {visibleTools.length === 0 ? (
                   <tr>
                     <td
                       colSpan={6}
                       className="px-3 py-6 text-sm text-muted-foreground"
                     >
-                      {query.trim() || hasActiveFilters
-                        ? "Aucun outil ne correspond aux critères."
-                        : "Aucun outil pour le moment. Créez-en un pour commencer."}
+                      {emptyMessage}
                     </td>
                   </tr>
                 ) : (
-                  pageItems.map((item) => {
+                  visibleTools.map((item) => {
                     const badge = badgesByToolId.get(item.id) ?? {
                       kind: "none" as const,
                     };
@@ -476,11 +449,11 @@ export function ToolsPageClient({
 
       <ListPaginationFooter
         countLabel="Nombre d'outils"
-        count={filtered.length}
-        page={page}
+        count={totalCount}
+        page={filters.page}
         totalPages={totalPages}
-        pageSize={PAGE_SIZE}
-        onPageChange={setPage}
+        pageSize={TOOLS_PAGE_SIZE}
+        onPageChange={(page) => navigate({ ...filters, page })}
       />
 
       <Dialog open={filterOpen} onOpenChange={setFilterOpen}>
@@ -536,7 +509,7 @@ export function ToolsPageClient({
                   onValueChange={(value) =>
                     setDraftFilters((prev) => ({
                       ...prev,
-                      costBucket: value as CostBucket,
+                      costBucket: value as ToolsCostBucket,
                     }))
                   }
                 >
@@ -603,9 +576,13 @@ export function ToolsPageClient({
               type="button"
               variant="outline"
               onClick={() => {
-                setDraftFilters(DEFAULT_FILTERS);
-                setFilters(DEFAULT_FILTERS);
-                setPage(1);
+                const cleared = toDialogFilters(DEFAULT_TOOLS_LIST_FILTERS);
+                setDraftFilters(cleared);
+                navigate({
+                  ...filters,
+                  ...cleared,
+                  page: 1,
+                });
                 setFilterOpen(false);
               }}
             >
@@ -614,8 +591,11 @@ export function ToolsPageClient({
             <Button
               type="button"
               onClick={() => {
-                setFilters(draftFilters);
-                setPage(1);
+                navigate({
+                  ...filters,
+                  ...draftFilters,
+                  page: 1,
+                });
                 setFilterOpen(false);
               }}
             >

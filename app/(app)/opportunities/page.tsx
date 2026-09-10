@@ -3,26 +3,50 @@ import { OpportunitiesPageClient } from "@/components/opportunities/opportunitie
 import { PageHero } from "@/components/layout/page-hero";
 import { Skeleton } from "@/components/ui/skeleton";
 import { listBusinessCategories } from "@/lib/categories/queries";
-import { listClients } from "@/lib/clients/queries";
+import { listClientOptions } from "@/lib/clients/queries";
 import { listCollaborators } from "@/lib/collaborators/queries";
 import {
-  listOpportunities,
+  OPPORTUNITIES_PAGE_SIZE,
+  parseOpportunitiesListSearchParams,
+} from "@/lib/opportunities/list-filters";
+import {
+  listOpportunitiesPage,
   listOpportunityContactOptions,
 } from "@/lib/opportunities/queries";
 
-async function OpportunitiesContent() {
-  const [opportunities, collaborators, clients, contacts, categories] =
-    await Promise.all([
-      listOpportunities(),
-      listCollaborators(),
-      listClients(),
-      listOpportunityContactOptions(),
-      listBusinessCategories(),
-    ]);
+async function OpportunitiesContent({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
+  let filters = parseOpportunitiesListSearchParams(params ?? {});
+
+  const [collaborators, clients, contacts, categories] = await Promise.all([
+    listCollaborators(),
+    listClientOptions(),
+    listOpportunityContactOptions(),
+    listBusinessCategories(),
+  ]);
+
+  let { opportunities, totalCount } = await listOpportunitiesPage(filters);
+
+  if (filters.view !== "kanban") {
+    const totalPages = Math.max(
+      1,
+      Math.ceil(totalCount / OPPORTUNITIES_PAGE_SIZE),
+    );
+    if (filters.page > totalPages) {
+      filters = { ...filters, page: totalPages };
+      ({ opportunities, totalCount } = await listOpportunitiesPage(filters));
+    }
+  }
 
   return (
     <OpportunitiesPageClient
       opportunities={opportunities}
+      totalCount={totalCount}
+      filters={filters}
       collaborators={collaborators}
       clients={clients}
       contacts={contacts}
@@ -47,10 +71,14 @@ function OpportunitiesFallback() {
   );
 }
 
-export default function OpportunitiesPage() {
+export default function OpportunitiesPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   return (
     <Suspense fallback={<OpportunitiesFallback />}>
-      <OpportunitiesContent />
+      <OpportunitiesContent searchParams={searchParams} />
     </Suspense>
   );
 }

@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { listBusinessCategories } from "@/lib/categories/queries";
 import { getCurrentCollaborator } from "@/lib/auth/get-current-collaborator";
 import { isManagerOrDirection } from "@/lib/auth/roles";
-import { getClientById, listClients } from "@/lib/clients/queries";
+import { getClientById, listClientOptions } from "@/lib/clients/queries";
 import { listCollaborators } from "@/lib/collaborators/queries";
 import {
   getMissionById,
@@ -33,7 +33,7 @@ async function MissionDetailContent({
   ] = await Promise.all([
     getMissionById(id),
     listCollaborators(),
-    listClients(),
+    listClientOptions(),
     listBusinessCategories(),
     listMissionOpportunityOptions(),
     getCurrentCollaborator(),

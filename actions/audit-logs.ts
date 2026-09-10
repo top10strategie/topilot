@@ -12,6 +12,10 @@ import type {
 } from "@/lib/audit/types";
 
 export type AuditLogsActionResult =
+  | { success: true; logs: AuditLogListItem[]; totalCount: number }
+  | { success: false; error: string };
+
+export type AuditScopeLogsActionResult =
   | { success: true; logs: AuditLogListItem[] }
   | { success: false; error: string };
 
@@ -27,8 +31,8 @@ export async function fetchAuditLogsForPage(
   }
 
   try {
-    const logs = await listAuditLogsForPage(filters);
-    return { success: true, logs };
+    const { logs, totalCount } = await listAuditLogsForPage(filters);
+    return { success: true, logs, totalCount };
   } catch (error) {
     console.error("fetchAuditLogsForPage:", error);
     return {
@@ -46,7 +50,7 @@ export async function fetchAuditLogsForPage(
  */
 export async function fetchAuditLogsForScope(
   scope: AuditEntityScope,
-): Promise<AuditLogsActionResult> {
+): Promise<AuditScopeLogsActionResult> {
   const auth = await requireManagerOrDirectionAction();
   if (!auth.success) {
     return { success: false, error: auth.error };

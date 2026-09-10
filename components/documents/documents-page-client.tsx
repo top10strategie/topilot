@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   Cards,
@@ -15,6 +15,7 @@ import {
   Trash,
 } from "@phosphor-icons/react";
 import { toast } from "sonner";
+import { fetchDocumentLineage } from "@/actions/documents";
 import { AuditHistoryButton } from "@/components/audit/audit-history-button";
 import { CategoryMultiCombobox } from "@/components/categories/category-multi-combobox";
 import { useDrawerStack } from "@/components/drawers/drawer-stack-context";
@@ -49,11 +50,16 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { DocumentTypeItem } from "@/lib/categories/types";
-import type { ClientListItem } from "@/lib/clients/types";
+import type { ClientOption } from "@/lib/clients/types";
 import { getDocumentFileFormat } from "@/lib/documents/format";
+import {
+  DEFAULT_DOCUMENTS_LIST_FILTERS,
+  DOCUMENTS_OWNER_INTERNE_ID,
+  DOCUMENTS_PAGE_SIZE,
+  documentsListHref,
+  type DocumentsListFilters,
+} from "@/lib/documents/list-filters";
 import type { DocumentListItem } from "@/lib/documents/types";
-
-const PAGE_SIZE = 25;
 
 const DOCUMENT_VIEW_TABS: ListViewTab[] = [
   {
@@ -68,24 +74,35 @@ const DOCUMENT_VIEW_TABS: ListViewTab[] = [
   },
 ];
 
-const OWNER_INTERNE_ID = "__interne__";
+type DialogFilters = Pick<
+  DocumentsListFilters,
+  "typeIds" | "versions" | "clientIds"
+>;
 
-type Filters = {
-  typeIds: string[];
-  versions: number[];
-  clientIds: string[];
-};
+function toDialogFilters(filters: DocumentsListFilters): DialogFilters {
+  return {
+    typeIds: filters.typeIds,
+    versions: filters.versions,
+    clientIds: filters.clientIds,
+  };
+}
 
-const DEFAULT_FILTERS: Filters = {
-  typeIds: [],
-  versions: [],
-  clientIds: [],
-};
+function hasActiveFilters(filters: DocumentsListFilters): boolean {
+  return (
+    Boolean(filters.q.trim()) ||
+    filters.typeIds.length > 0 ||
+    filters.versions.length > 0 ||
+    filters.clientIds.length > 0
+  );
+}
 
 type DocumentsPageClientProps = {
   documents: DocumentListItem[];
+  totalCount: number;
+  filters?: DocumentsListFilters;
+  availableVersions: number[];
   documentTypes: DocumentTypeItem[];
-  clients: ClientListItem[];
+  clients: ClientOption[];
   canViewHistory: boolean;
 };
 
@@ -108,17 +125,22 @@ function linkedLabel(item: DocumentListItem): string {
 
 export function DocumentsPageClient({
   documents,
+  totalCount,
+  filters: filtersProp,
+  availableVersions,
   documentTypes,
   clients,
   canViewHistory,
 }: DocumentsPageClientProps) {
+  const filters = filtersProp ?? DEFAULT_DOCUMENTS_LIST_FILTERS;
   const router = useRouter();
   const { pushDrawer } = useDrawerStack();
-  const [query, setQuery] = useState("");
+  const [isPending, startTransition] = useTransition();
+  const [query, setQuery] = useState(filters.q);
   const [view, setView] = useState<"cards" | "table">("cards");
-  const [page, setPage] = useState(1);
-  const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
-  const [draftFilters, setDraftFilters] = useState<Filters>(DEFAULT_FILTERS);
+  const [draftFilters, setDraftFilters] = useState<DialogFilters>(() =>
+    toDialogFilters(filters),
+  );
   const [filterOpen, setFilterOpen] = useState(false);
   const filterPortalRef = useRef<HTMLDivElement>(null);
   const [pendingDelete, setPendingDelete] = useState<DocumentListItem | null>(
@@ -129,19 +151,39 @@ export function DocumentsPageClient({
     () => new Set<string>(),
   );
 
+  const navigate = (next: DocumentsListFilters) => {
+    startTransition(() => {
+      router.push(documentsListHref(next));
+    });
+  };
+
+  useEffect(() => {
+    setQuery(filters.q);
+  }, [filters.q]);
+
+  useEffect(() => {
+    setDraftFilters(toDialogFilters(filters));
+  }, [filters]);
+
+  useEffect(() => {
+    const trimmed = query.trim();
+    if (trimmed === filters.q) return;
+    const handle = window.setTimeout(() => {
+      navigate({ ...filters, q: trimmed, page: 1 });
+    }, 300);
+    return () => window.clearTimeout(handle);
+    // Intentionnel : debounce sur la saisie locale uniquement.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query]);
+
   const visible = useMemo(
     () => documents.filter((doc) => !optimisticallyRemovedIds.has(doc.id)),
     [documents, optimisticallyRemovedIds],
   );
 
-  const availableVersions = useMemo(() => {
-    const set = new Set(visible.map((doc) => doc.version_number));
-    return [...set].sort((a, b) => a - b);
-  }, [visible]);
-
   const ownerOptions = useMemo(
     () => [
-      { id: OWNER_INTERNE_ID, label: "Sans client / interne" },
+      { id: DOCUMENTS_OWNER_INTERNE_ID, label: "Sans client / interne" },
       ...[...clients]
         .sort((a, b) => a.client_name.localeCompare(b.client_name, "fr"))
         .map((client) => ({ id: client.id, label: client.client_name })),
@@ -163,59 +205,10 @@ export function DocumentsPageClient({
     [ownerOptions, draftFilters.clientIds],
   );
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLocaleLowerCase("fr");
-    const versionFilterActive = filters.versions.length > 0;
-
-    return visible.filter((item) => {
-      if (!versionFilterActive && !item.is_latest) return false;
-      if (
-        versionFilterActive &&
-        !filters.versions.includes(item.version_number)
-      ) {
-        return false;
-      }
-
-      if (
-        filters.typeIds.length > 0 &&
-        !filters.typeIds.includes(item.document_type.id)
-      ) {
-        return false;
-      }
-
-      if (filters.clientIds.length > 0) {
-        const wantsInterne = filters.clientIds.includes(OWNER_INTERNE_ID);
-        const selectedClientIds = filters.clientIds.filter(
-          (id) => id !== OWNER_INTERNE_ID,
-        );
-        const clientLinks = item.linked.filter((link) => link.kind === "client");
-        const isInterne = clientLinks.length === 0;
-        const matchesClient = selectedClientIds.some((id) =>
-          clientLinks.some((link) => link.id === id),
-        );
-        if (!((wantsInterne && isInterne) || matchesClient)) return false;
-      }
-
-      if (!q) return true;
-      const blob = [
-        item.document_name,
-        item.document_type.label,
-        ...item.linked.map((link) => link.name),
-        `v${item.version_number}`,
-      ]
-        .join(" ")
-        .toLocaleLowerCase("fr");
-      return blob.includes(q);
-    });
-  }, [visible, filters, query]);
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-
-  const hasActiveFilters =
-    filters.typeIds.length > 0 ||
-    filters.versions.length > 0 ||
-    filters.clientIds.length > 0;
+  const totalPages = Math.max(1, Math.ceil(totalCount / DOCUMENTS_PAGE_SIZE));
+  const emptyMessage = hasActiveFilters(filters)
+    ? "Aucun document ne correspond aux critères."
+    : "Aucun document pour le moment. Créez-en un pour commencer.";
 
   const openCreate = () => {
     void pushDrawer<{
@@ -259,17 +252,24 @@ export function DocumentsPageClient({
   };
 
   const openVersionHistory = (item: DocumentListItem) => {
-    const lineage = documents
-      .filter((doc) => doc.lineage_root_id === item.lineage_root_id)
-      .sort((a, b) => b.version_number - a.version_number);
-    void pushDrawer({
-      title: "Historique des versions",
-      content: (helpers) => (
-        <DocumentVersionHistoryDrawer versions={lineage} helpers={helpers} />
-      ),
-    }).then((restored) => {
-      if (restored) router.refresh();
-    });
+    void (async () => {
+      const result = await fetchDocumentLineage(item.lineage_root_id);
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
+      void pushDrawer({
+        title: "Historique des versions",
+        content: (helpers) => (
+          <DocumentVersionHistoryDrawer
+            versions={result.versions}
+            helpers={helpers}
+          />
+        ),
+      }).then((restored) => {
+        if (restored) router.refresh();
+      });
+    })();
   };
 
   const downloadDocument = async (item: DocumentListItem) => {
@@ -356,7 +356,6 @@ export function DocumentsPageClient({
       value={view}
       onValueChange={(value) => {
         setView(value as "cards" | "table");
-        setPage(1);
       }}
     >
       <PageHero
@@ -372,19 +371,17 @@ export function DocumentsPageClient({
                 type="search"
                 placeholder="Rechercher…"
                 value={query}
-                onChange={(event) => {
-                  setQuery(event.target.value);
-                  setPage(1);
-                }}
+                onChange={(event) => setQuery(event.target.value)}
                 className="pl-8"
                 aria-label="Recherche contextuelle documents"
+                disabled={isPending}
               />
             </div>
             <ListViewTabsSwitcher tabs={DOCUMENT_VIEW_TABS} showLabels={false} />
             <IconActionButton
               label="Filtres"
               onClick={() => {
-                setDraftFilters(filters);
+                setDraftFilters(toDialogFilters(filters));
                 setFilterOpen(true);
               }}
             >
@@ -405,15 +402,11 @@ export function DocumentsPageClient({
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 md:px-6">
         <ListViewTabsContent value="cards" className="flex-none">
-          {filtered.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              {query.trim() || hasActiveFilters
-                ? "Aucun document ne correspond aux critères."
-                : "Aucun document pour le moment. Créez-en un pour commencer."}
-            </p>
+          {visible.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{emptyMessage}</p>
           ) : (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              {pageItems.map((item) => (
+              {visible.map((item) => (
                 <Card
                   key={item.id}
                   className="flex h-full flex-col overflow-hidden transition-shadow hover:shadow-md"
@@ -471,19 +464,17 @@ export function DocumentsPageClient({
                 </tr>
               </thead>
               <tbody>
-                {pageItems.length === 0 ? (
+                {visible.length === 0 ? (
                   <tr>
                     <td
                       colSpan={7}
                       className="px-3 py-6 text-sm text-muted-foreground"
                     >
-                      {query.trim() || hasActiveFilters
-                        ? "Aucun document ne correspond aux critères."
-                        : "Aucun document pour le moment. Créez-en un pour commencer."}
+                      {emptyMessage}
                     </td>
                   </tr>
                 ) : (
-                  pageItems.map((item) => (
+                  visible.map((item) => (
                     <tr
                       key={item.id}
                       className="border-b last:border-0 hover:bg-muted/30"
@@ -519,12 +510,12 @@ export function DocumentsPageClient({
       </div>
 
       <ListPaginationFooter
-        count={filtered.length}
+        count={totalCount}
         countLabel="Nombre de documents"
-        page={page}
-        pageSize={PAGE_SIZE}
+        page={filters.page}
+        pageSize={DOCUMENTS_PAGE_SIZE}
         totalPages={totalPages}
-        onPageChange={setPage}
+        onPageChange={(page) => navigate({ ...filters, page })}
       />
 
       <Dialog open={filterOpen} onOpenChange={setFilterOpen}>
@@ -613,15 +604,32 @@ export function DocumentsPageClient({
             <Button
               type="button"
               variant="outline"
-              onClick={() => setDraftFilters(DEFAULT_FILTERS)}
+              onClick={() => {
+                setDraftFilters({
+                  typeIds: [],
+                  versions: [],
+                  clientIds: [],
+                });
+                navigate({
+                  ...filters,
+                  typeIds: [],
+                  versions: [],
+                  clientIds: [],
+                  page: 1,
+                });
+                setFilterOpen(false);
+              }}
             >
               Effacer
             </Button>
             <Button
               type="button"
               onClick={() => {
-                setFilters(draftFilters);
-                setPage(1);
+                navigate({
+                  ...filters,
+                  ...draftFilters,
+                  page: 1,
+                });
                 setFilterOpen(false);
               }}
             >

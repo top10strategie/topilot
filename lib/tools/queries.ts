@@ -1,4 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
+import {
+  TOOLS_OWNER_INTERNE_ID,
+  TOOLS_PAGE_SIZE,
+  type ToolsListFilters,
+} from "./list-filters";
 import type {
   LinkedToolItem,
   ToolAccessItem,
@@ -97,19 +102,173 @@ function mapListItem(row: ToolListRow): ToolListItem {
   };
 }
 
-export async function listTools(): Promise<ToolListItem[]> {
+type ToolsPageRpcRow = {
+  id: string;
+  tool_name: string;
+  url: string;
+  description: string | null;
+  categories: unknown;
+  clients: unknown;
+  subscriptions: unknown;
+  total_count: number;
+};
+
+function mapJsonCategories(raw: unknown): ToolCategoryItem[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((item) => {
+      if (!item || typeof item !== "object") return null;
+      const record = item as { id?: unknown; label?: unknown };
+      const id = typeof record.id === "string" ? record.id : "";
+      const label = typeof record.label === "string" ? record.label : "";
+      if (!id || !label) return null;
+      return { id, label };
+    })
+    .filter((item): item is ToolCategoryItem => Boolean(item))
+    .sort((a, b) => a.label.localeCompare(b.label, "fr"));
+}
+
+function mapJsonClients(raw: unknown): ToolClientRef[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((item) => {
+      if (!item || typeof item !== "object") return null;
+      const record = item as { id?: unknown; client_name?: unknown };
+      const id = typeof record.id === "string" ? record.id : "";
+      const client_name =
+        typeof record.client_name === "string" ? record.client_name : "";
+      if (!id || !client_name) return null;
+      return { id, client_name };
+    })
+    .filter((item): item is ToolClientRef => Boolean(item))
+    .sort((a, b) => a.client_name.localeCompare(b.client_name, "fr"));
+}
+
+function mapJsonSubscriptions(raw: unknown): ToolSubscriptionItem[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((item) => {
+      if (!item || typeof item !== "object") return null;
+      const record = item as {
+        id?: unknown;
+        title?: unknown;
+        subscription_plan?: unknown;
+        prices?: unknown;
+      };
+      const id = typeof record.id === "string" ? record.id : "";
+      const title = typeof record.title === "string" ? record.title : "";
+      const plan = record.subscription_plan;
+      if (
+        !id ||
+        !title ||
+        (plan !== "mensuel" && plan !== "annuel")
+      ) {
+        return null;
+      }
+      const pricesRaw = Array.isArray(record.prices) ? record.prices : [];
+      const prices = pricesRaw
+        .map((price) => {
+          if (!price || typeof price !== "object") return null;
+          const p = price as {
+            id?: unknown;
+            currency?: unknown;
+            amount_cents?: unknown;
+            valid_from?: unknown;
+            valid_to?: unknown;
+          };
+          const priceId = typeof p.id === "string" ? p.id : "";
+          const currency = typeof p.currency === "string" ? p.currency : "";
+          const amount =
+            typeof p.amount_cents === "number"
+              ? p.amount_cents
+              : Number(p.amount_cents);
+          const valid_from =
+            typeof p.valid_from === "string" ? p.valid_from : "";
+          if (!priceId || !currency || !Number.isFinite(amount) || !valid_from) {
+            return null;
+          }
+          return {
+            id: priceId,
+            currency,
+            amount_cents: amount,
+            valid_from,
+            valid_to:
+              typeof p.valid_to === "string" || p.valid_to === null
+                ? (p.valid_to as string | null)
+                : null,
+          };
+        })
+        .filter(
+          (
+            price,
+          ): price is ToolSubscriptionItem["prices"][number] => Boolean(price),
+        );
+
+      return {
+        id,
+        title,
+        subscription_plan: plan,
+        prices,
+      };
+    })
+    .filter((item): item is ToolSubscriptionItem => Boolean(item));
+}
+
+function mapToolsPageRpcRow(row: ToolsPageRpcRow): ToolListItem {
+  return {
+    id: row.id,
+    tool_name: row.tool_name,
+    url: row.url,
+    description: row.description,
+    categories: mapJsonCategories(row.categories),
+    clients: mapJsonClients(row.clients),
+    subscriptions: mapJsonSubscriptions(row.subscriptions),
+  };
+}
+
+export type ToolsPageResult = {
+  tools: ToolListItem[];
+  totalCount: number;
+};
+
+/**
+ * Page /tools filtrée + paginée (RPC `list_tools_page`).
+ */
+export async function listToolsPage(
+  filters: ToolsListFilters,
+): Promise<ToolsPageResult> {
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("tool")
-    .select(TOOL_LIST_SELECT)
-    .order("tool_name", { ascending: true });
+  const includeInterne = filters.clientIds.includes(TOOLS_OWNER_INTERNE_ID);
+  const clientIds = filters.clientIds.filter(
+    (id) => id !== TOOLS_OWNER_INTERNE_ID,
+  );
+
+  const { data, error } = await supabase.rpc("list_tools_page", {
+    p_page: filters.page,
+    p_page_size: TOOLS_PAGE_SIZE,
+    p_category_ids:
+      filters.categoryIds.length > 0 ? filters.categoryIds : null,
+    p_client_ids: clientIds.length > 0 ? clientIds : null,
+    p_include_interne: includeInterne,
+    p_cost_bucket: filters.costBucket,
+    p_with_subscription: filters.withSubscription,
+    p_without_subscription: filters.withoutSubscription,
+    p_query: filters.q || null,
+  });
 
   if (error) {
-    console.error("listTools:", error);
+    console.error("listToolsPage:", error);
     throw new Error(`Impossible de charger les outils : ${error.message}`);
   }
 
-  return ((data ?? []) as unknown as ToolListRow[]).map(mapListItem);
+  const rows = (data ?? []) as ToolsPageRpcRow[];
+  const totalCount =
+    rows.length > 0 ? Number(rows[0].total_count) || 0 : 0;
+
+  return {
+    tools: rows.map(mapToolsPageRpcRow),
+    totalCount,
+  };
 }
 
 type ToolAccessRow = {

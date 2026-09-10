@@ -4,26 +4,30 @@ import { PageHero } from "@/components/layout/page-hero";
 import { Skeleton } from "@/components/ui/skeleton";
 import { listBusinessCategories } from "@/lib/categories/queries";
 import { getCurrentCollaborator } from "@/lib/auth/get-current-collaborator";
-import { listClients } from "@/lib/clients/queries";
+import { listClientOptions } from "@/lib/clients/queries";
 import { listCollaborators } from "@/lib/collaborators/queries";
 import {
+  hasMissionsCategoryIdsParam,
+  MISSIONS_PAGE_SIZE,
+  parseMissionsListSearchParams,
+} from "@/lib/missions/list-filters";
+import {
   listMissionOpportunityOptions,
-  listMissions,
+  listMissionsPage,
 } from "@/lib/missions/queries";
 import { getPreferredMissionCategoryIds } from "@/lib/settings/queries";
 
 async function MissionsContent({
   searchParams,
 }: {
-  searchParams: Promise<{ teamId?: string; responsibleId?: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const params = await searchParams;
-  const initialTeamId = params.teamId?.trim() || "";
-  const initialResponsibleId = params.responsibleId?.trim() || "";
-  const fromTop10 = Boolean(initialTeamId || initialResponsibleId);
+  let filters = parseMissionsListSearchParams(params ?? {});
+  const fromTop10 = Boolean(filters.teamId || filters.responsibleId);
+  const categoryIdsInUrl = hasMissionsCategoryIdsParam(params ?? {});
 
   const [
-    missions,
     collaborators,
     clients,
     categories,
@@ -31,37 +35,44 @@ async function MissionsContent({
     currentCollaborator,
     storedPreferredCategoryIds,
   ] = await Promise.all([
-    listMissions(),
-    listCollaborators(),
-    listClients(),
+    listCollaborators({ includeAvatar: false }),
+    listClientOptions(),
     listBusinessCategories(),
     listMissionOpportunityOptions(),
     getCurrentCollaborator(),
     getPreferredMissionCategoryIds(),
   ]);
 
-  const categoryIdSet = new Set(categories.map((category) => category.id));
-  const preferredCategoryIds = fromTop10
-    ? []
-    : storedPreferredCategoryIds.filter((id) => categoryIdSet.has(id));
+  if (!categoryIdsInUrl && !fromTop10) {
+    const categoryIdSet = new Set(categories.map((category) => category.id));
+    const preferredCategoryIds = storedPreferredCategoryIds.filter((id) =>
+      categoryIdSet.has(id),
+    );
+    if (preferredCategoryIds.length > 0) {
+      filters = { ...filters, categoryIds: preferredCategoryIds };
+    }
+  }
+
+  let { missions, totalCount } = await listMissionsPage(filters);
+
+  if (filters.view !== "kanban") {
+    const totalPages = Math.max(1, Math.ceil(totalCount / MISSIONS_PAGE_SIZE));
+    if (filters.page > totalPages) {
+      filters = { ...filters, page: totalPages };
+      ({ missions, totalCount } = await listMissionsPage(filters));
+    }
+  }
 
   return (
     <MissionsPageClient
-      key={[
-        "missions",
-        initialTeamId,
-        initialResponsibleId,
-        ...preferredCategoryIds,
-      ].join(":")}
       missions={missions}
+      totalCount={totalCount}
+      filters={filters}
       collaborators={collaborators}
       clients={clients}
       categories={categories}
       opportunityOptions={opportunityOptions}
       currentCollaboratorId={currentCollaborator?.id ?? ""}
-      initialTeamId={initialTeamId}
-      initialResponsibleId={initialResponsibleId}
-      initialCategoryIds={preferredCategoryIds}
     />
   );
 }
@@ -85,7 +96,7 @@ function MissionsFallback() {
 export default function MissionsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ teamId?: string; responsibleId?: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   return (
     <Suspense fallback={<MissionsFallback />}>

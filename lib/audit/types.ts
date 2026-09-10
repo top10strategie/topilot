@@ -33,6 +33,7 @@ export type AuditLogListItem = {
 
 /** Filtres de la page /history. */
 export type AuditHistoryPageFilters = {
+  page?: number;
   dateFrom?: string;
   dateTo?: string;
   clientId?: string;

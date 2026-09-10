@@ -1,5 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
+import type { Json } from "@/lib/supabase/database.types";
 import { resolveVisualPublicUrl } from "@/lib/visuels/public-url";
+import {
+  OPPORTUNITIES_PAGE_SIZE,
+  type OpportunitiesListFilters,
+} from "./list-filters";
 import type {
   OpportunityCategoryItem,
   OpportunityContactOption,
@@ -149,7 +154,7 @@ function mapListItem(row: OpportunityListRow): OpportunityListItem {
 }
 
 /**
- * Liste toutes les opportunités pour /opportunities.
+ * Liste toutes les opportunités (autres pages / usages hors liste paginée).
  */
 export async function listOpportunities(): Promise<OpportunityListItem[]> {
   const supabase = await createClient();
@@ -167,6 +172,147 @@ export async function listOpportunities(): Promise<OpportunityListItem[]> {
 
   const rows = (data ?? []) as unknown as OpportunityListRow[];
   return rows.map(mapListItem);
+}
+
+type OpportunitiesPageRpcRow = {
+  id: string;
+  opportunity_name: string;
+  client_id: string;
+  contact_client_id: string | null;
+  collaborator_id: string;
+  price: number | string | null;
+  probability_confirmation: number | string;
+  average_price: number | string | null;
+  entry_average_price: number | string | null;
+  kanban_status: OpportunityKanbanStatus;
+  kanban_order: number | null;
+  is_active: boolean;
+  priority: OpportunityPriority;
+  due_date_at: string | null;
+  end_at: string | null;
+  closed_at: string | null;
+  client_name: string | null;
+  contact_first_name: string | null;
+  contact_last_name: string | null;
+  responsible_first_name: string | null;
+  responsible_last_name: string | null;
+  profile_picture_file_path: string | null;
+  profile_picture_is_visual: boolean | null;
+  categories: Json;
+  created_at: string;
+  total_count: number;
+};
+
+function mapPageRpcRow(row: OpportunitiesPageRpcRow): OpportunityListItem {
+  const categoriesRaw = Array.isArray(row.categories) ? row.categories : [];
+  const categories: OpportunityCategoryItem[] = categoriesRaw
+    .map((entry) => {
+      if (!entry || typeof entry !== "object") return null;
+      const obj = entry as { id?: unknown; label?: unknown };
+      if (typeof obj.id !== "string" || typeof obj.label !== "string") {
+        return null;
+      }
+      return { id: obj.id, label: obj.label };
+    })
+    .filter((c): c is OpportunityCategoryItem => Boolean(c));
+
+  return {
+    id: row.id,
+    opportunity_name: row.opportunity_name,
+    client_id: row.client_id,
+    contact_client_id: row.contact_client_id,
+    collaborator_id: row.collaborator_id,
+    price: toNumber(row.price),
+    probability_confirmation: toNumber(row.probability_confirmation) ?? 0,
+    average_price: toNumber(row.average_price),
+    entry_average_price: toNumber(row.entry_average_price),
+    kanban_status: row.kanban_status,
+    kanban_order: row.kanban_order,
+    is_active: row.is_active,
+    priority: row.priority,
+    due_date_at: row.due_date_at,
+    end_at: row.end_at,
+    closed_at: row.closed_at,
+    client: {
+      id: row.client_id,
+      client_name: row.client_name ?? "?",
+    },
+    contact:
+      row.contact_client_id &&
+      row.contact_first_name != null &&
+      row.contact_last_name != null
+        ? {
+            id: row.contact_client_id,
+            first_name: row.contact_first_name,
+            last_name: row.contact_last_name,
+          }
+        : null,
+    responsible: {
+      id: row.collaborator_id,
+      first_name: row.responsible_first_name ?? "?",
+      last_name: row.responsible_last_name ?? "?",
+      profile_picture_url: resolveVisualPublicUrl(
+        row.profile_picture_file_path
+          ? {
+              file_path: row.profile_picture_file_path,
+              is_visual: Boolean(row.profile_picture_is_visual),
+            }
+          : null,
+      ),
+    },
+    categories,
+  };
+}
+
+export type OpportunitiesPageResult = {
+  opportunities: OpportunityListItem[];
+  totalCount: number;
+};
+
+/**
+ * Liste /opportunities filtrée ; paginée sauf en mode board (Kanban).
+ */
+export async function listOpportunitiesPage(
+  filters: OpportunitiesListFilters,
+): Promise<OpportunitiesPageResult> {
+  const supabase = await createClient();
+  const board = filters.view === "kanban";
+  const { data, error } = await supabase.rpc("list_opportunities_page", {
+    p_page: filters.page,
+    p_page_size: OPPORTUNITIES_PAGE_SIZE,
+    p_board: board,
+    p_client_id: filters.clientId || null,
+    p_responsible_id: filters.responsibleId || null,
+    p_team_id: filters.teamId || null,
+    p_category_ids:
+      filters.categoryIds.length > 0 ? filters.categoryIds : null,
+    p_statuses: filters.statuses.length > 0 ? filters.statuses : null,
+    p_priority: filters.priority || null,
+    p_amount_bucket:
+      filters.amountBucket !== "all" ? filters.amountBucket : null,
+    p_probability_bucket:
+      filters.probabilityBucket !== "all"
+        ? filters.probabilityBucket
+        : null,
+    p_include_archived: filters.includeArchived,
+    p_query: filters.q || null,
+  });
+
+  if (error) {
+    console.error("listOpportunitiesPage:", error);
+    throw new Error(
+      `Impossible de charger les opportunités : ${error.message}`,
+    );
+  }
+
+  const rows = (data ?? []) as OpportunitiesPageRpcRow[];
+  const totalCount =
+    rows.length > 0 ? Number(rows[0].total_count) || 0 : 0;
+
+  return {
+    opportunities: rows.map(mapPageRpcRow),
+    totalCount,
+  };
 }
 
 /**
