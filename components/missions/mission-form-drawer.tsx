@@ -41,7 +41,7 @@ import { useTwoStepCreateForm } from "@/hooks/use-two-step-create-form";
 import type { CategoryItem } from "@/lib/categories/types";
 import { getCollaboratorFullName } from "@/lib/collaborators/labels";
 import type { CollaboratorListItem } from "@/lib/collaborators/types";
-import type { ClientListItem } from "@/lib/clients/types";
+import type { ClientOption } from "@/lib/clients/types";
 import { todayParisYmd } from "@/lib/dates/paris";
 import {
   getMissionKanbanStatusLabel,
@@ -60,7 +60,7 @@ type MissionFormDrawerProps = {
   mode: "create" | "edit";
   mission?: MissionDetail;
   collaborators: CollaboratorListItem[];
-  clients: ClientListItem[];
+  clients: ClientOption[];
   availableCategories: CategoryItem[];
   opportunityOptions: MissionOpportunityOption[];
   currentCollaboratorId: string;
@@ -76,7 +76,7 @@ type MissionFormDrawerProps = {
   };
 };
 
-type LocalClient = Pick<ClientListItem, "id" | "client_name">;
+type LocalClient = ClientOption;
 
 /**
  * Tiroir Nouvelle mission (création 2 temps) / Édition (save unique).

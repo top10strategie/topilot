@@ -20,7 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { CategoryItem } from "@/lib/categories/types";
-import type { ClientDetail, ClientListItem } from "@/lib/clients/types";
+import type { ClientDetail, ClientOption } from "@/lib/clients/types";
 import type { CollaboratorListItem } from "@/lib/collaborators/types";
 import { buildMissionDuplicatePrefill } from "@/lib/crm/duplicate-prefill";
 import { getEndDateToneClass } from "@/lib/dates/end-date-tone";
@@ -39,7 +39,7 @@ import type {
 type MissionDetailPageClientProps = {
   mission: MissionDetail;
   collaborators: CollaboratorListItem[];
-  clients: ClientListItem[];
+  clients: ClientOption[];
   categories: CategoryItem[];
   opportunityOptions: MissionOpportunityOption[];
   currentCollaboratorId: string;

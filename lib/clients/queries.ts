@@ -1,11 +1,16 @@
 import { createClient } from "@/lib/supabase/server";
 import { resolveVisualPublicUrl } from "@/lib/visuels/public-url";
+import {
+  CLIENTS_PAGE_SIZE,
+  type ClientsListFilters,
+} from "./list-filters";
 import type {
   ClientCategoryItem,
   ClientDetail,
   ClientDocumentItem,
   ClientListItem,
   ClientMainContactItem,
+  ClientOption,
   ClientResponsibleItem,
   ContactClientItem,
 } from "./types";
@@ -18,20 +23,6 @@ type DocumentVisualRow = {
   storage_type?: string;
   url?: string | null;
 };
-
-function mapResponsible(row: {
-  id: string;
-  first_name: string;
-  last_name: string;
-  profile_picture: DocumentVisualRow | null;
-}): ClientResponsibleItem {
-  return {
-    id: row.id,
-    first_name: row.first_name,
-    last_name: row.last_name,
-    profile_picture_url: resolveVisualPublicUrl(row.profile_picture),
-  };
-}
 
 function mapContact(row: {
   id: string;
@@ -63,34 +54,6 @@ function mapContact(row: {
   };
 }
 
-const CLIENT_LIST_SELECT = `
-  id,
-  client_name,
-  website,
-  address_city,
-  is_active,
-  facilitator,
-  main_collaborator_id,
-  logo:logo_id ( id, file_path, is_visual ),
-  main_collaborator:main_collaborator_id (
-    id,
-    first_name,
-    last_name,
-    profile_picture:profile_picture_id ( id, file_path, is_visual )
-  ),
-  client_category (
-    category:category_business!category_id ( id, label, is_private )
-  ),
-  contact_client (
-    id,
-    first_name,
-    last_name,
-    phone_number,
-    email_address,
-    is_main
-  )
-`;
-
 type ClientListRow = {
   id: string;
   client_name: string;
@@ -104,7 +67,7 @@ type ClientListRow = {
     id: string;
     first_name: string;
     last_name: string;
-    profile_picture: DocumentVisualRow | null;
+    profile_picture?: DocumentVisualRow | null;
   } | null;
   client_category: Array<{
     category: { id: string; label: string } | null;
@@ -117,13 +80,11 @@ type ClientListRow = {
     email_address: string | null;
     is_main: boolean;
   }> | null;
+  mission: Array<{ count: number }> | null;
+  opportunity: Array<{ count: number }> | null;
 };
 
-function mapListItem(
-  row: ClientListRow,
-  missionCount = 0,
-  opportunityCount = 0,
-): ClientListItem {
+function mapListItem(row: ClientListRow): ClientListItem {
   const categories: ClientCategoryItem[] = (row.client_category ?? [])
     .map((link) => link.category)
     .filter((c): c is { id: string; label: string } => Boolean(c))
@@ -144,8 +105,15 @@ function mapListItem(
       }
     : null;
 
-  const responsible = row.main_collaborator
-    ? mapResponsible(row.main_collaborator)
+  const responsible: ClientResponsibleItem = row.main_collaborator
+    ? {
+        id: row.main_collaborator.id,
+        first_name: row.main_collaborator.first_name,
+        last_name: row.main_collaborator.last_name,
+        profile_picture_url: resolveVisualPublicUrl(
+          row.main_collaborator.profile_picture ?? null,
+        ),
+      }
     : {
         id: row.main_collaborator_id,
         first_name: "?",
@@ -164,8 +132,8 @@ function mapListItem(
     categories,
     responsible,
     main_contact,
-    mission_count: missionCount,
-    opportunity_count: opportunityCount,
+    mission_count: row.mission?.[0]?.count ?? 0,
+    opportunity_count: row.opportunity?.[0]?.count ?? 0,
   };
 }
 
@@ -205,30 +173,172 @@ async function loadEntityCounts(
 }
 
 /**
- * Liste tous les clients (actifs et inactifs) pour la page /clients.
+ * Options légères id + nom (filtres / selects hors page /clients).
  */
-export async function listClients(): Promise<ClientListItem[]> {
+export async function listClientOptions(): Promise<ClientOption[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("client")
-    .select(CLIENT_LIST_SELECT)
+    .select("id, client_name")
     .order("client_name", { ascending: true });
 
   if (error) {
-    console.error("listClients:", error);
+    console.error("listClientOptions:", error);
     throw new Error(`Impossible de charger les clients : ${error.message}`);
   }
 
-  const rows = (data ?? []) as unknown as ClientListRow[];
-  const counts = await loadEntityCounts(rows.map((r) => r.id));
+  return (data ?? []).map((row) => ({
+    id: row.id as string,
+    client_name: row.client_name as string,
+  }));
+}
 
-  return rows.map((row) =>
-    mapListItem(
-      row,
-      counts.missions.get(row.id) ?? 0,
-      counts.opportunities.get(row.id) ?? 0,
+/** Villes distinctes pour le filtre /clients. */
+export async function listClientCities(): Promise<string[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("client")
+    .select("address_city")
+    .not("address_city", "is", null)
+    .order("address_city", { ascending: true });
+
+  if (error) {
+    console.error("listClientCities:", error);
+    throw new Error(`Impossible de charger les villes : ${error.message}`);
+  }
+
+  const cities = new Set<string>();
+  for (const row of data ?? []) {
+    const city = (row.address_city as string | null)?.trim();
+    if (city) cities.add(city);
+  }
+  return [...cities].sort((a, b) => a.localeCompare(b, "fr"));
+}
+
+type ClientsPageRpcRow = {
+  id: string;
+  client_name: string;
+  website: string;
+  address_city: string | null;
+  is_active: boolean;
+  facilitator: boolean;
+  logo_file_path: string | null;
+  logo_is_visual: boolean | null;
+  responsible_id: string | null;
+  responsible_first_name: string | null;
+  responsible_last_name: string | null;
+  main_contact_id: string | null;
+  main_contact_first_name: string | null;
+  main_contact_last_name: string | null;
+  main_contact_phone: string | null;
+  main_contact_email: string | null;
+  categories: unknown;
+  mission_count: number;
+  opportunity_count: number;
+  total_count: number;
+};
+
+function mapPageRpcRow(row: ClientsPageRpcRow): ClientListItem {
+  const rawCategories = row.categories;
+  const categories: ClientCategoryItem[] = Array.isArray(rawCategories)
+    ? rawCategories
+        .map((item) => {
+          if (!item || typeof item !== "object") return null;
+          const record = item as { id?: unknown; label?: unknown };
+          const id = typeof record.id === "string" ? record.id : "";
+          const label = typeof record.label === "string" ? record.label : "";
+          if (!id || !label) return null;
+          return { id, label };
+        })
+        .filter((item): item is ClientCategoryItem => Boolean(item))
+        .sort((a, b) => a.label.localeCompare(b.label, "fr"))
+    : [];
+
+  const responsible: ClientResponsibleItem = row.responsible_id
+    ? {
+        id: row.responsible_id,
+        first_name: row.responsible_first_name ?? "?",
+        last_name: row.responsible_last_name ?? "?",
+        profile_picture_url: null,
+      }
+    : {
+        id: "",
+        first_name: "?",
+        last_name: "?",
+        profile_picture_url: null,
+      };
+
+  const main_contact: ClientMainContactItem | null = row.main_contact_id
+    ? {
+        id: row.main_contact_id,
+        first_name: row.main_contact_first_name ?? "",
+        last_name: row.main_contact_last_name ?? "",
+        phone_number: row.main_contact_phone,
+        email_address: row.main_contact_email,
+      }
+    : null;
+
+  return {
+    id: row.id,
+    client_name: row.client_name,
+    website: row.website,
+    address_city: row.address_city,
+    is_active: row.is_active,
+    facilitator: row.facilitator,
+    logo_url: resolveVisualPublicUrl(
+      row.logo_file_path
+        ? {
+            file_path: row.logo_file_path,
+            is_visual: Boolean(row.logo_is_visual),
+          }
+        : null,
     ),
-  );
+    categories,
+    responsible,
+    main_contact,
+    mission_count: Number(row.mission_count) || 0,
+    opportunity_count: Number(row.opportunity_count) || 0,
+  };
+}
+
+export type ClientsPageResult = {
+  clients: ClientListItem[];
+  totalCount: number;
+};
+
+/**
+ * Page /clients filtrée + paginée (RPC `list_clients_page`).
+ */
+export async function listClientsPage(
+  filters: ClientsListFilters,
+): Promise<ClientsPageResult> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("list_clients_page", {
+    p_page: filters.page,
+    p_page_size: CLIENTS_PAGE_SIZE,
+    p_status: filters.status,
+    p_responsible_id: filters.responsibleId || null,
+    p_team_id: filters.teamId || null,
+    p_city: filters.city || null,
+    p_category_ids:
+      filters.categoryIds.length > 0 ? filters.categoryIds : null,
+    p_mission_bucket: filters.missionBucket,
+    p_query: filters.q || null,
+  });
+
+  if (error) {
+    console.error("listClientsPage:", error);
+    throw new Error(`Impossible de charger les clients : ${error.message}`);
+  }
+
+  const rows = (data ?? []) as ClientsPageRpcRow[];
+  const totalCount =
+    rows.length > 0 ? Number(rows[0].total_count) || 0 : 0;
+
+  return {
+    clients: rows.map(mapPageRpcRow),
+    totalCount,
+  };
 }
 
 /**
@@ -332,11 +442,11 @@ export async function getClientById(id: string): Promise<ClientDetail | null> {
   };
 
   const counts = await loadEntityCounts([row.id]);
-  const base = mapListItem(
-    row,
-    counts.missions.get(row.id) ?? 0,
-    counts.opportunities.get(row.id) ?? 0,
-  );
+  const base = mapListItem({
+    ...row,
+    mission: [{ count: counts.missions.get(row.id) ?? 0 }],
+    opportunity: [{ count: counts.opportunities.get(row.id) ?? 0 }],
+  });
 
   const contacts = (row.contact_client ?? [])
     .map(mapContact)

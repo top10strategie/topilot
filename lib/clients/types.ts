@@ -57,6 +57,9 @@ export type ClientListItem = {
   opportunity_count: number;
 };
 
+/** Option légère pour selects / filtres (hors grille /clients). */
+export type ClientOption = Pick<ClientListItem, "id" | "client_name">;
+
 export type ClientDetail = ClientListItem & {
   address_street: string | null;
   address_zip: string | null;

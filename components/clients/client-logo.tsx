@@ -46,6 +46,8 @@ export function ClientLogo({
         <img
           src={src}
           alt=""
+          loading="lazy"
+          decoding="async"
           className="h-auto max-h-full w-auto max-w-full object-contain"
         />
       </div>

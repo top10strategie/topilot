@@ -1,8 +1,14 @@
 import { getSupabaseUrl } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
+import {
+  DOCUMENTS_OWNER_INTERNE_ID,
+  DOCUMENTS_PAGE_SIZE,
+  type DocumentsListFilters,
+} from "./list-filters";
 import type {
   DocumentLinkOption,
   DocumentLinkedEntity,
+  DocumentLinkedEntityKind,
   DocumentListItem,
   DocumentStorageType,
   DocumentTypeRef,
@@ -281,20 +287,159 @@ async function fetchLatestVersionMap(
   return map;
 }
 
+type DocumentsPageRpcRow = {
+  id: string;
+  document_name: string;
+  document_type_id: string;
+  document_type_label: string;
+  storage_type: DocumentStorageType;
+  file_path: string | null;
+  url: string | null;
+  is_visual: boolean;
+  version_number: number;
+  parent_document_id: string | null;
+  lineage_root_id: string;
+  is_latest: boolean;
+  created_at: string;
+  updated_at: string | null;
+  linked: unknown;
+  total_count: number;
+};
+
+const LINKED_KINDS = new Set<DocumentLinkedEntityKind>([
+  "client",
+  "opportunity",
+  "mission",
+  "collaborator",
+  "contact",
+]);
+
+function mapLinkedFromRpc(raw: unknown): DocumentLinkedEntity[] {
+  if (!Array.isArray(raw)) return [];
+  const linked: DocumentLinkedEntity[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const record = item as {
+      kind?: unknown;
+      id?: unknown;
+      name?: unknown;
+    };
+    const kind = record.kind;
+    const id = typeof record.id === "string" ? record.id : "";
+    const name = typeof record.name === "string" ? record.name : "";
+    if (
+      typeof kind !== "string" ||
+      !LINKED_KINDS.has(kind as DocumentLinkedEntityKind) ||
+      !id ||
+      !name
+    ) {
+      continue;
+    }
+    pushUnique(linked, {
+      kind: kind as DocumentLinkedEntityKind,
+      id,
+      name,
+    });
+  }
+  return linked;
+}
+
+function mapPageRpcRow(row: DocumentsPageRpcRow): DocumentListItem {
+  return {
+    id: row.id,
+    document_name: row.document_name,
+    document_type: {
+      id: row.document_type_id,
+      label: row.document_type_label || "—",
+    },
+    storage_type: row.storage_type,
+    file_path: row.file_path,
+    url: row.url,
+    is_visual: row.is_visual,
+    preview_url: resolvePreviewUrl(row),
+    version_number: row.version_number,
+    parent_document_id: row.parent_document_id,
+    lineage_root_id: row.lineage_root_id,
+    is_latest: row.is_latest,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    linked: mapLinkedFromRpc(row.linked),
+  };
+}
+
+export type DocumentsPageResult = {
+  documents: DocumentListItem[];
+  totalCount: number;
+};
+
 /**
- * Liste tous les documents (toutes versions). Le filtrage « latest only »
- * se fait côté UI par défaut.
+ * Page /documents filtrée + paginée (RPC `list_documents_page`).
  */
-export async function listDocuments(): Promise<DocumentListItem[]> {
+export async function listDocumentsPage(
+  filters: DocumentsListFilters,
+): Promise<DocumentsPageResult> {
+  const supabase = await createClient();
+  const includeInterne = filters.clientIds.includes(DOCUMENTS_OWNER_INTERNE_ID);
+  const clientIds = filters.clientIds.filter(
+    (id) => id !== DOCUMENTS_OWNER_INTERNE_ID,
+  );
+
+  const { data, error } = await supabase.rpc("list_documents_page", {
+    p_page: filters.page,
+    p_page_size: DOCUMENTS_PAGE_SIZE,
+    p_type_ids: filters.typeIds.length > 0 ? filters.typeIds : null,
+    p_versions: filters.versions.length > 0 ? filters.versions : null,
+    p_client_ids: clientIds.length > 0 ? clientIds : null,
+    p_include_interne: includeInterne,
+    p_query: filters.q || null,
+  });
+
+  if (error) {
+    console.error("listDocumentsPage:", error);
+    throw new Error(`Impossible de charger les documents : ${error.message}`);
+  }
+
+  const rows = (data ?? []) as DocumentsPageRpcRow[];
+  const totalCount =
+    rows.length > 0 ? Number(rows[0].total_count) || 0 : 0;
+
+  return {
+    documents: rows.map(mapPageRpcRow),
+    totalCount,
+  };
+}
+
+/** Numéros de version distincts (options filtre dialog). */
+export async function listDistinctDocumentVersions(): Promise<number[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("list_document_version_numbers");
+
+  if (error) {
+    console.error("listDistinctDocumentVersions:", error);
+    return [];
+  }
+
+  return (data ?? [])
+    .map((value) => Number(value))
+    .filter((n) => Number.isFinite(n) && n > 0);
+}
+
+/** Toutes les versions d'une lignée (historique tiroir). */
+export async function listDocumentLineage(
+  lineageRootId: string,
+): Promise<DocumentListItem[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("document")
     .select(DOCUMENT_SELECT)
-    .order("created_at", { ascending: false });
+    .or(`id.eq.${lineageRootId},parent_document_id.eq.${lineageRootId}`)
+    .order("version_number", { ascending: false });
 
   if (error) {
-    console.error("listDocuments:", error);
-    throw new Error(`Impossible de charger les documents : ${error.message}`);
+    console.error("listDocumentLineage:", error);
+    throw new Error(
+      `Impossible de charger l'historique : ${error.message}`,
+    );
   }
 
   const rows = (data ?? []) as unknown as DocumentRow[];

@@ -1,5 +1,45 @@
 # Suivi des actions — TOPilot
 
+## **[2026-09-10] — Perf documents + pagination historique**
+
+**Type :** `perf`
+**Fichiers concernés :** `supabase/migrations/20260910140000_list_documents_page_perf.sql`, `lib/documents/queries.ts`, `lib/audit/{list-filters,queries,types}.ts`, `actions/audit-logs.ts`, `app/(app)/history/page.tsx`, `components/audit/history-page-client.tsx`, `lib/supabase/database.types.ts`, `suivi.md`
+
+### Description
+
+`/documents` : `linked` calculé seulement après `LIMIT` ; versions via RPC `list_document_version_numbers` (DISTINCT) ; `PAGE_SIZE` 24. `/history` : pagination serveur 50 événements/page (au lieu du plafond 500), compteur exact + pied de page.
+
+---
+## **[2026-09-10] — Pagination serveur missions / opportunités / documents / outils**
+
+**Type :** `perf`
+**Fichiers concernés :** `supabase/migrations/2026091013{0000,1000,2000,3000}_list_*_page.sql`, `lib/{missions,opportunities,documents,tools}/list-filters.ts`, `lib/{missions,opportunities,documents,tools}/queries.ts`, `lib/supabase/database.types.ts`, `app/(app)/{missions,opportunities,documents,tools}/page.tsx`, `components/{missions,opportunities,documents,tools}/*-page-client.tsx`, `actions/documents.ts`, `suivi.md`
+
+### Description
+
+Même pattern que `/clients` : filtres + page dans l’URL, RPC `list_*_page` (`SECURITY INVOKER`). Missions/opportunités : mode `p_board` (jeu filtré complet en Kanban, pagination cartes/tableau). Documents : `is_latest` / lignée calculés en SQL (`PAGE_SIZE` 24). Outils : buckets coût + abonnement (`PAGE_SIZE` 24). Les `list*` full restent pour accueil, admin et liens entité.
+
+---
+## **[2026-09-10] — Pagination serveur /clients**
+
+**Type :** `perf`
+**Fichiers concernés :** `supabase/migrations/20260910120000_list_clients_page.sql`, `lib/clients/{list-filters,queries}.ts`, `lib/supabase/database.types.ts`, `app/(app)/clients/page.tsx`, `components/clients/clients-page-client.tsx`, `suivi.md`
+
+### Description
+
+`/clients` lit les filtres/page depuis l’URL et charge uniquement la page courante via RPC `list_clients_page` (status, responsable, pôle, ville, catégories AND, bucket missions, recherche). Villes via `listClientCities`. Plus de filtre/slice sur tout le dataset client.
+
+---
+## **[2026-09-10] — Perf liste /clients**
+
+**Type :** `perf`
+**Fichiers concernés :** `lib/clients/{queries,types}.ts`, `lib/collaborators/queries.ts`, `app/(app)/clients/page.tsx`, pages CRM/outils/docs/history, `components/**` (props `ClientOption`), `components/clients/client-logo.tsx`, `suivi.md`
+
+### Description
+
+La pagination UI (24) ne limitait pas le fetch : `listClients` chargeait tous les clients + tous les contacts + toutes les lignes mission/opportunity pour compter. Correctifs : counts PostgREST embeddés (`mission(count)`, `opportunity(count)`), contacts filtrés `is_main`, select allégé (pas d’avatar responsable), `listClientOptions` pour les selects des autres pages, collaborateurs sans avatar sur `/clients`, `loading=lazy` sur les logos.
+
+---
 ## **[2026-09-09] — Auto-sélection logo/avatar après création document**
 
 **Type :** `fix`

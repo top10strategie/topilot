@@ -36,7 +36,7 @@ import type { CategoryItem } from "@/lib/categories/types";
 import { getCollaboratorFullName } from "@/lib/collaborators/labels";
 import type { CollaboratorListItem } from "@/lib/collaborators/types";
 import { getContactFullName } from "@/lib/clients/labels";
-import type { ClientListItem } from "@/lib/clients/types";
+import type { ClientOption } from "@/lib/clients/types";
 import {
   formatOpportunityPrice,
   getOpportunityKanbanStatusLabel,
@@ -57,7 +57,7 @@ type OpportunityFormDrawerProps = {
   mode: "create" | "edit";
   opportunity?: OpportunityDetail;
   collaborators: CollaboratorListItem[];
-  clients: ClientListItem[];
+  clients: ClientOption[];
   contacts: OpportunityContactOption[];
   availableCategories: CategoryItem[];
   canManagePrivacy?: boolean;
@@ -66,7 +66,7 @@ type OpportunityFormDrawerProps = {
   duplicatePrefill?: OpportunityDuplicatePrefill;
 };
 
-type LocalClient = Pick<ClientListItem, "id" | "client_name">;
+type LocalClient = ClientOption;
 type LocalContact = OpportunityContactOption;
 
 /**
