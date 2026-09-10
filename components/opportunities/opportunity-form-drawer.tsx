@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, type FormEvent } from "react";
+import { flushSync } from "react-dom";
 import { FolderSimplePlus, UserPlus } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { createBusinessCategory, updateBusinessCategory } from "@/actions/categories";
@@ -11,7 +12,10 @@ import {
 } from "@/actions/opportunities";
 import { CategoryMultiCombobox } from "@/components/categories/category-multi-combobox";
 import { LabelEntityFormDrawer } from "@/components/categories/label-entity-form-drawer";
-import { ClientFormDrawer } from "@/components/clients/client-form-drawer";
+import {
+  ClientFormDrawer,
+  type ClientFormResult,
+} from "@/components/clients/client-form-drawer";
 import {
   ContactFormDrawer,
   type ContactFormResult,
@@ -159,6 +163,8 @@ export function OpportunityFormDrawer({
   const [contacts, setContacts] = useState<LocalContact[]>(() => [
     ...initialContacts,
   ]);
+  const [clientSelectEpoch, setClientSelectEpoch] = useState(0);
+  const [contactSelectEpoch, setContactSelectEpoch] = useState(0);
 
   const [categories, setCategories] = useState<OpportunityCategoryItem[]>(
     () => {
@@ -212,6 +218,81 @@ export function OpportunityFormDrawer({
     });
   };
 
+  const applyClient = (created: ClientFormResult) => {
+    const preferredContactId =
+      created.contacts.find((c) => c.is_main)?.id ??
+      (created.contacts.length === 1 ? created.contacts[0].id : "");
+
+    flushSync(() => {
+      setClients((prev) => {
+        if (prev.some((c) => c.id === created.id)) return prev;
+        return [
+          ...prev,
+          { id: created.id, client_name: created.client_name },
+        ].sort((a, b) => a.client_name.localeCompare(b.client_name, "fr"));
+      });
+      setContacts((prev) => {
+        const incomingIds = new Set(created.contacts.map((c) => c.id));
+        const withoutIncoming = prev.filter((c) => !incomingIds.has(c.id));
+        const merged = [
+          ...withoutIncoming,
+          ...created.contacts.map((c) => ({
+            id: c.id,
+            client_id: created.id,
+            first_name: c.first_name,
+            last_name: c.last_name,
+            is_main: c.is_main,
+          })),
+        ];
+        if (!created.contacts.some((c) => c.is_main)) return merged;
+        return merged.map((c) =>
+          c.client_id === created.id && !incomingIds.has(c.id)
+            ? { ...c, is_main: false }
+            : c,
+        );
+      });
+      setClientId(created.id);
+      setContactClientId(preferredContactId);
+      setClientSelectEpoch((n) => n + 1);
+      setContactSelectEpoch((n) => n + 1);
+    });
+  };
+
+  const injectClient = (created: ClientFormResult) => {
+    applyClient(created);
+    toast.success("Client créé et sélectionné.");
+  };
+
+  const applyContact = (created: ContactFormResult, forClientId: string) => {
+    flushSync(() => {
+      setContacts((prev) => {
+        const next = prev.map((c) =>
+          c.client_id === forClientId && created.is_main
+            ? { ...c, is_main: false }
+            : c,
+        );
+        if (next.some((c) => c.id === created.id)) return next;
+        return [
+          ...next,
+          {
+            id: created.id,
+            client_id: forClientId,
+            first_name: created.first_name,
+            last_name: created.last_name,
+            is_main: created.is_main,
+          },
+        ];
+      });
+      setContactClientId(created.id);
+      setContactSelectEpoch((n) => n + 1);
+    });
+  };
+
+  const injectContact = (created: ContactFormResult, forClientId: string) => {
+    applyContact(created, forClientId);
+    toast.success("Contact créé et sélectionné.");
+  };
+
   const openCreateCategory = async () => {
     const created = await pushDrawer<{ id: string; label: string }>({
       title: "Nouvelle catégorie",
@@ -236,7 +317,7 @@ export function OpportunityFormDrawer({
   };
 
   const openCreateClient = async () => {
-    const created = await pushDrawer<{ id: string; client_name: string }>({
+    const created = await pushDrawer<ClientFormResult>({
       title: "Nouveau client",
       content: (nested) => (
         <ClientFormDrawer
@@ -244,20 +325,17 @@ export function OpportunityFormDrawer({
           collaborators={collaborators}
           availableCategories={availableCategories}
           canManagePrivacy={canManagePrivacy}
-          helpers={nested}
+          helpers={{
+            dismiss: nested.dismiss,
+            resolve: (value) => {
+              injectClient(value);
+              nested.resolve(value);
+            },
+          }}
         />
       ),
     });
-    if (created) {
-      setClients((prev) => {
-        if (prev.some((c) => c.id === created.id)) return prev;
-        return [...prev, created].sort((a, b) =>
-          a.client_name.localeCompare(b.client_name, "fr"),
-        );
-      });
-      setClientId(created.id);
-      setContactClientId("");
-    }
+    if (created) applyClient(created);
   };
 
   const openCreateContact = async () => {
@@ -265,38 +343,25 @@ export function OpportunityFormDrawer({
       toast.error("Sélectionnez d'abord un client.");
       return;
     }
+    const forClientId = clientId;
     const created = await pushDrawer<ContactFormResult>({
       title: "Nouveau contact",
       content: (nested) => (
         <ContactFormDrawer
           mode="create"
-          clientId={clientId}
+          clientId={forClientId}
           contactCount={clientContacts.length}
-          helpers={nested}
+          helpers={{
+            dismiss: nested.dismiss,
+            resolve: (value) => {
+              injectContact(value, forClientId);
+              nested.resolve(value);
+            },
+          }}
         />
       ),
     });
-    if (created) {
-      setContacts((prev) => {
-        const next = prev.map((c) =>
-          c.client_id === clientId && created.is_main
-            ? { ...c, is_main: false }
-            : c,
-        );
-        if (next.some((c) => c.id === created.id)) return next;
-        return [
-          ...next,
-          {
-            id: created.id,
-            client_id: clientId,
-            first_name: created.first_name,
-            last_name: created.last_name,
-            is_main: created.is_main,
-          },
-        ];
-      });
-      setContactClientId(created.id);
-    }
+    if (created) applyContact(created, forClientId);
   };
 
   const handleClientChange = (nextClientId: string) => {
@@ -419,6 +484,7 @@ export function OpportunityFormDrawer({
               </Button>
             </div>
             <Select
+              key={clientSelectEpoch}
               value={clientId || "__unset__"}
               onValueChange={(value) =>
                 handleClientChange(value === "__unset__" ? "" : value)
@@ -463,6 +529,7 @@ export function OpportunityFormDrawer({
               </Button>
             </div>
             <Select
+              key={contactSelectEpoch}
               value={contactClientId || "none"}
               onValueChange={(value) =>
                 setContactClientId(value === "none" ? "" : value)

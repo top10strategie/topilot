@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition, type FormEvent } from "react";
+import { useMemo, useRef, useState, useTransition, type FormEvent } from "react";
 import { FolderSimplePlus, UserPlus } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { createBusinessCategory, updateBusinessCategory } from "@/actions/categories";
@@ -43,19 +43,27 @@ import type {
 } from "@/lib/clients/types";
 import type { VisualDocumentOption } from "@/lib/documents/types";
 
+export type ClientFormContactResult = Pick<
+  ContactClientItem,
+  "id" | "first_name" | "last_name" | "is_main"
+>;
+
+export type ClientFormResult = {
+  id: string;
+  client_name: string;
+  contacts: ClientFormContactResult[];
+};
+
 type ClientFormDrawerProps = {
   mode: "create" | "edit";
   client?: ClientDetail;
   collaborators: CollaboratorListItem[];
   availableCategories: CategoryItem[];
   canManagePrivacy?: boolean;
-  helpers: DrawerHelpers<{ id: string; client_name: string }>;
+  helpers: DrawerHelpers<ClientFormResult>;
 };
 
-type LocalContact = Pick<
-  ContactClientItem,
-  "id" | "first_name" | "last_name" | "is_main"
->;
+type LocalContact = ClientFormContactResult;
 
 /**
  * Tiroir Nouveau client (création 2 temps) / Édition Client (save unique).
@@ -135,6 +143,8 @@ export function ClientFormDrawer({
       is_main: c.is_main,
     })),
   );
+  const contactsRef = useRef(contacts);
+  contactsRef.current = contacts;
 
   const [fieldErrors, setFieldErrors] = useState<
     Partial<Record<string, string>>
@@ -177,6 +187,24 @@ export function ClientFormDrawer({
     if (created) injectCategory(created);
   };
 
+  const injectContact = (created: ContactFormResult) => {
+    setContacts((prev) => {
+      const next = prev.map((c) =>
+        created.is_main ? { ...c, is_main: false } : c,
+      );
+      if (next.some((c) => c.id === created.id)) return next;
+      return [
+        ...next,
+        {
+          id: created.id,
+          first_name: created.first_name,
+          last_name: created.last_name,
+          is_main: created.is_main,
+        },
+      ];
+    });
+  };
+
   const openCreateContact = async () => {
     if (!clientId) {
       toast.error("Enregistrez d'abord l'identification du client.");
@@ -189,27 +217,17 @@ export function ClientFormDrawer({
           mode="create"
           clientId={clientId}
           contactCount={contacts.length}
-          helpers={nested}
+          helpers={{
+            dismiss: nested.dismiss,
+            resolve: (value) => {
+              injectContact(value);
+              nested.resolve(value);
+            },
+          }}
         />
       ),
     });
-    if (created) {
-      setContacts((prev) => {
-        const next = prev.map((c) =>
-          created.is_main ? { ...c, is_main: false } : c,
-        );
-        if (next.some((c) => c.id === created.id)) return next;
-        return [
-          ...next,
-          {
-            id: created.id,
-            first_name: created.first_name,
-            last_name: created.last_name,
-            is_main: created.is_main,
-          },
-        ];
-      });
-    }
+    if (created) injectContact(created);
   };
 
   const handleSaveIdentification = (event: FormEvent) => {
@@ -281,7 +299,16 @@ export function ClientFormDrawer({
       toast.success(
         mode === "create" ? "Client enregistré." : "Client mis à jour.",
       );
-      helpers.resolve({ id: result.id, client_name: clientName.trim() });
+      helpers.resolve({
+        id: result.id,
+        client_name: clientName.trim(),
+        contacts: contactsRef.current.map((c) => ({
+          id: c.id,
+          first_name: c.first_name,
+          last_name: c.last_name,
+          is_main: c.is_main,
+        })),
+      });
     });
   };
 
