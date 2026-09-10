@@ -13,7 +13,7 @@ async function ClientsContent({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const params = await searchParams;
-  let filters = parseClientsListSearchParams(params);
+  let filters = parseClientsListSearchParams(params ?? {});
 
   let [{ clients, totalCount }, collaborators, categories, cities] =
     await Promise.all([

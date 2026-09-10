@@ -60,8 +60,14 @@ function parseUuidList(raw: string | undefined): string[] {
 export function parseClientsListSearchParams(
   params:
     | URLSearchParams
-    | Record<string, string | string[] | undefined>,
+    | Record<string, string | string[] | undefined>
+    | null
+    | undefined,
 ): ClientsListFilters {
+  if (!params) {
+    return { ...DEFAULT_CLIENTS_LIST_FILTERS };
+  }
+
   const get = (key: string): string | undefined => {
     if (params instanceof URLSearchParams) {
       return params.get(key) ?? undefined;
@@ -86,22 +92,23 @@ export function parseClientsListSearchParams(
 
 /** Query string sans `?` (omets les valeurs par défaut pour des URLs courtes). */
 export function serializeClientsListSearchParams(
-  filters: ClientsListFilters,
+  filters: ClientsListFilters | null | undefined,
 ): string {
+  const value = filters ?? DEFAULT_CLIENTS_LIST_FILTERS;
   const sp = new URLSearchParams();
-  if (filters.page > 1) sp.set("page", String(filters.page));
-  if (filters.q.trim()) sp.set("q", filters.q.trim());
-  if (filters.status !== DEFAULT_CLIENTS_LIST_FILTERS.status) {
-    sp.set("status", filters.status);
+  if (value.page > 1) sp.set("page", String(value.page));
+  if (value.q.trim()) sp.set("q", value.q.trim());
+  if (value.status !== DEFAULT_CLIENTS_LIST_FILTERS.status) {
+    sp.set("status", value.status);
   }
-  if (filters.responsibleId) sp.set("responsibleId", filters.responsibleId);
-  if (filters.teamId) sp.set("teamId", filters.teamId);
-  if (filters.city) sp.set("city", filters.city);
-  if (filters.categoryIds.length > 0) {
-    sp.set("categoryIds", filters.categoryIds.join(","));
+  if (value.responsibleId) sp.set("responsibleId", value.responsibleId);
+  if (value.teamId) sp.set("teamId", value.teamId);
+  if (value.city) sp.set("city", value.city);
+  if (value.categoryIds.length > 0) {
+    sp.set("categoryIds", value.categoryIds.join(","));
   }
-  if (filters.missionBucket !== DEFAULT_CLIENTS_LIST_FILTERS.missionBucket) {
-    sp.set("missionBucket", filters.missionBucket);
+  if (value.missionBucket !== DEFAULT_CLIENTS_LIST_FILTERS.missionBucket) {
+    sp.set("missionBucket", value.missionBucket);
   }
   return sp.toString();
 }

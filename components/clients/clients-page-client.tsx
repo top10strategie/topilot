@@ -80,7 +80,7 @@ const CLIENT_VIEW_TABS: ListViewTab[] = [
 type ClientsPageClientProps = {
   clients: ClientListItem[];
   totalCount: number;
-  filters: ClientsListFilters;
+  filters?: ClientsListFilters;
   cities: string[];
   collaborators: CollaboratorListItem[];
   categories: CategoryItem[];
@@ -122,11 +122,12 @@ function hasActiveFilters(filters: ClientsListFilters): boolean {
 export function ClientsPageClient({
   clients,
   totalCount,
-  filters,
+  filters: filtersProp,
   cities,
   collaborators,
   categories,
 }: ClientsPageClientProps) {
+  const filters = filtersProp ?? DEFAULT_CLIENTS_LIST_FILTERS;
   const router = useRouter();
   const { pushDrawer } = useDrawerStack();
   const [isPending, startTransition] = useTransition();
