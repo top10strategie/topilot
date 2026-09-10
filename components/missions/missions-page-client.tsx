@@ -8,7 +8,6 @@ import {
   useTransition,
   type MouseEvent,
 } from "react";
-import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -28,6 +27,7 @@ import {
   type ListViewTab,
 } from "@/components/layout/list-view-tabs";
 import { MissionFormDrawer } from "@/components/missions/mission-form-drawer";
+import { MissionsKanban } from "@/components/missions/missions-kanban";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -74,14 +74,6 @@ import type {
   MissionScope,
 } from "@/lib/missions/types";
 import { cn } from "@/lib/utils";
-
-const MissionsKanban = dynamic(
-  () =>
-    import("@/components/missions/missions-kanban").then((m) => ({
-      default: m.MissionsKanban,
-    })),
-  { ssr: false },
-);
 
 const MISSION_VIEW_TABS: ListViewTab[] = [
   {

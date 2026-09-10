@@ -8,7 +8,6 @@ import {
   useTransition,
   type MouseEvent,
 } from "react";
-import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -28,6 +27,7 @@ import {
   type ListViewTab,
 } from "@/components/layout/list-view-tabs";
 import { OpportunityFormDrawer } from "@/components/opportunities/opportunity-form-drawer";
+import { OpportunitiesKanban } from "@/components/opportunities/opportunities-kanban";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -76,14 +76,6 @@ import type {
   OpportunityPriority,
 } from "@/lib/opportunities/types";
 import { cn } from "@/lib/utils";
-
-const OpportunitiesKanban = dynamic(
-  () =>
-    import("@/components/opportunities/opportunities-kanban").then((m) => ({
-      default: m.OpportunitiesKanban,
-    })),
-  { ssr: false },
-);
 
 const OPPORTUNITY_VIEW_TABS: ListViewTab[] = [
   {
