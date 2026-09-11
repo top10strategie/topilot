@@ -611,8 +611,8 @@ export function OpportunitiesPageClient({
                   <Card className="h-full transition-colors hover:bg-muted/40">
                     <CardHeader className="space-y-2 p-4 pb-2">
                       <div className="flex items-start justify-between gap-2">
-                        <CardTitle className="min-w-0 text-base leading-snug">
-                          {item.opportunity_name}
+                        <CardTitle className="min-w-0 text-base leading-snug uppercase">
+                          {item.client.client_name}
                         </CardTitle>
                         <IconActionButton
                           label="Dupliquer l'opportunité"
@@ -622,32 +622,30 @@ export function OpportunitiesPageClient({
                           <CopySimple className="size-4" />
                         </IconActionButton>
                       </div>
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-                          {item.categories.length === 0 ? (
-                            <span className="text-xs text-muted-foreground">
-                              —
-                            </span>
-                          ) : (
-                            item.categories.slice(0, 3).map((category) => (
-                              <Badge key={category.id} variant="secondary">
-                                {category.label}
-                              </Badge>
-                            ))
-                          )}
-                        </div>
-                        <span className="shrink-0 text-xs text-muted-foreground">
-                          {getOpportunityPriorityLabel(item.priority)}
-                        </span>
+                      <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                        {item.categories.length === 0 ? (
+                          <span className="text-xs text-muted-foreground">
+                            —
+                          </span>
+                        ) : (
+                          item.categories.slice(0, 3).map((category) => (
+                            <Badge key={category.id} variant="secondary">
+                              {category.label}
+                            </Badge>
+                          ))
+                        )}
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-1 p-4 pt-2 text-xs text-muted-foreground">
+                      <p className="truncate text-sm font-semibold text-foreground">
+                        {item.opportunity_name}
+                      </p>
                       <div className="flex items-baseline justify-between gap-2">
                         <span className="min-w-0 truncate">
-                          {item.client.client_name}
-                        </span>
-                        <span className="shrink-0 text-right">
                           {getOpportunityResponsibleName(item.responsible)}
+                        </span>
+                        <span className="shrink-0">
+                          {getOpportunityPriorityLabel(item.priority)}
                         </span>
                       </div>
                       <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
@@ -685,8 +683,8 @@ export function OpportunitiesPageClient({
             <table className="w-full min-w-[960px] text-left text-sm">
               <thead className="border-b bg-muted/40 text-xs text-muted-foreground">
                 <tr>
-                  <th className="px-3 py-2 font-medium">Nom</th>
                   <th className="px-3 py-2 font-medium">Client</th>
+                  <th className="px-3 py-2 font-medium">Nom</th>
                   <th className="px-3 py-2 font-medium">Responsable</th>
                   <th className="px-3 py-2 font-medium">Statut</th>
                   <th className="px-3 py-2 font-medium">Urgence</th>
@@ -716,10 +714,10 @@ export function OpportunitiesPageClient({
                       className="cursor-pointer border-b last:border-0 hover:bg-muted/30"
                       onClick={() => router.push(`/opportunities/${item.id}`)}
                     >
-                      <td className="px-3 py-2 font-medium">
-                        {item.opportunity_name}
+                      <td className="px-3 py-2 font-medium uppercase">
+                        {item.client.client_name}
                       </td>
-                      <td className="px-3 py-2">{item.client.client_name}</td>
+                      <td className="px-3 py-2">{item.opportunity_name}</td>
                       <td className="px-3 py-2">
                         {getOpportunityResponsibleName(item.responsible)}
                       </td>

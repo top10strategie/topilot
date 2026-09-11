@@ -55,6 +55,7 @@ npm run dev
 
 ## Aller plus loin
 
+- Documentation technique (wiki / reprise de main) : [`docs/wiki/documentation-technique.html`](docs/wiki/documentation-technique.html)
 - Suivi des livraisons : [`suivi.md`](suivi.md)
 - Règles et contexte projet : [`.cursor/rules/`](.cursor/rules/)
 - Migrations SQL : [`supabase/migrations/`](supabase/migrations/)

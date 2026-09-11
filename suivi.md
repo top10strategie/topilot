@@ -1,5 +1,25 @@
 # Suivi des actions — TOPilot
 
+## **[2026-09-11] — Doc technique wiki : un seul fichier TipTap**
+
+**Type :** `docs`
+**Fichiers concernés :** `docs/wiki/documentation-technique.html`, `docs/wiki/README.md`, `README.md`, `suivi.md` ; suppression des `docs/wiki/0*.md`
+
+### Description
+
+Fusion des pages wiki en un document HTML unique compatible avec l’éditeur TipTap (h1–h3, listes, gras/italique) : pas de tableaux ni de liens. Publication : ouvrir le HTML, copier-coller dans le wiki TOPilot.
+
+---
+## **[2026-09-11] — Documentation technique wiki (reprise de main)**
+
+**Type :** `docs`
+**Fichiers concernés :** `docs/wiki/*`, `README.md`, `suivi.md`
+
+### Description
+
+Rédaction d’une documentation technique destinée aux collaborateurs qui reprennent le projet.
+
+---
 ## **[2026-09-10] — Perf documents + pagination historique**
 
 **Type :** `perf`
