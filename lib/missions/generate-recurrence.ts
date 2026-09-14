@@ -20,14 +20,19 @@ function addDaysYmd(ymd: string, days: number): string {
   return date.toISOString().slice(0, 10);
 }
 
-function frequencyMonths(frequency: MissionRecurrenceFrequency): number {
+function nextOccurrenceStart(
+  anchor: string,
+  frequency: MissionRecurrenceFrequency,
+): string {
   switch (frequency) {
+    case "hebdomadaire":
+      return addDaysYmd(anchor, 7);
     case "mensuelle":
-      return 1;
+      return addMonthsYmd(anchor, 1);
     case "trimestrielle":
-      return 3;
+      return addMonthsYmd(anchor, 3);
     case "annuelle":
-      return 12;
+      return addMonthsYmd(anchor, 12);
   }
 }
 
@@ -111,10 +116,7 @@ export async function generateDueMissionOccurrences(): Promise<MissionRecurrence
       }
 
       const anchor = last.start_at ?? series.starts_on;
-      const nextStart = addMonthsYmd(
-        anchor,
-        frequencyMonths(series.frequency),
-      );
+      const nextStart = nextOccurrenceStart(anchor, series.frequency);
 
       if (series.ends_on && nextStart > series.ends_on) {
         summary.skipped += 1;

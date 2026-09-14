@@ -15,6 +15,7 @@ export const MISSION_KANBAN_STATUSES: MissionKanbanStatus[] = [
 export const MISSION_SCOPES: MissionScope[] = ["client", "interne"];
 
 export const MISSION_RECURRENCE_FREQUENCIES: MissionRecurrenceFrequency[] = [
+  "hebdomadaire",
   "mensuelle",
   "trimestrielle",
   "annuelle",
@@ -34,6 +35,7 @@ const SCOPE_LABELS: Record<MissionScope, string> = {
 
 const RECURRENCE_FREQUENCY_LABELS: Record<MissionRecurrenceFrequency, string> =
   {
+    hebdomadaire: "Hebdomadaire",
     mensuelle: "Mensuelle",
     trimestrielle: "Trimestrielle",
     annuelle: "Annuelle",
