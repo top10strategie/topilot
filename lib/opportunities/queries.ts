@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { Json } from "@/lib/supabase/database.types";
 import { resolveVisualPublicUrl } from "@/lib/visuels/public-url";
 import {
+  DEFAULT_OPPORTUNITIES_LIST_FILTERS,
   OPPORTUNITIES_PAGE_SIZE,
   type OpportunitiesListFilters,
 } from "./list-filters";
@@ -313,6 +314,26 @@ export async function listOpportunitiesPage(
     opportunities: rows.map(mapPageRpcRow),
     totalCount,
   };
+}
+
+/**
+ * Board accueil : responsable = session, hors Gagné / Perdue.
+ */
+export async function listHomeOpportunitiesBoard(
+  collaboratorId: string,
+): Promise<OpportunityListItem[]> {
+  const { opportunities } = await listOpportunitiesPage({
+    ...DEFAULT_OPPORTUNITIES_LIST_FILTERS,
+    view: "kanban",
+    responsibleId: collaboratorId,
+    statuses: [
+      "suspect",
+      "prospect",
+      "besoin_specifie",
+      "proposition_envoyee",
+    ],
+  });
+  return opportunities;
 }
 
 /**

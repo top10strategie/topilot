@@ -27,7 +27,7 @@ import {
   type ListViewTab,
 } from "@/components/layout/list-view-tabs";
 import { MissionFormDrawer } from "@/components/missions/mission-form-drawer";
-import { MissionsKanban } from "@/components/missions/missions-kanban";
+import { MissionsKanban } from "@/components/missions/missions-kanban-lazy";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -549,6 +549,7 @@ export function MissionsPageClient({
                 navigate({
                   ...DEFAULT_MISSIONS_LIST_FILTERS,
                   view: filters.view,
+                  skipPreferredCategories: true,
                 });
               }}
             >
@@ -563,6 +564,7 @@ export function MissionsPageClient({
                   ...draftFilters,
                   q: query.trim(),
                   page: 1,
+                  skipPreferredCategories: draftFilters.categoryIds.length === 0,
                 });
               }}
             >

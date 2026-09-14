@@ -1,34 +1,39 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { updateOpportunitiesKanban } from "@/actions/opportunities";
-import { EntityKanban } from "@/components/layout/entity-kanban";
+import { EntityKanbanReadonly } from "@/components/layout/entity-kanban-readonly";
 import { OpportunityKanbanCardContent } from "@/components/opportunities/opportunity-kanban-card";
 import {
   formatOpportunityPrice,
   getOpportunityKanbanStatusLabel,
-  OPPORTUNITY_KANBAN_STATUSES,
 } from "@/lib/opportunities/labels";
 import type {
   OpportunityKanbanStatus,
   OpportunityListItem,
 } from "@/lib/opportunities/types";
 
-type Board = Record<OpportunityKanbanStatus, OpportunityListItem[]>;
+const HOME_OPPORTUNITY_COLUMNS: OpportunityKanbanStatus[] = [
+  "suspect",
+  "prospect",
+  "besoin_specifie",
+  "proposition_envoyee",
+];
 
-function emptyBoard(): Board {
-  return {
+type HomeStatus =
+  | "suspect"
+  | "prospect"
+  | "besoin_specifie"
+  | "proposition_envoyee";
+
+type HomeBoard = Record<HomeStatus, OpportunityListItem[]>;
+
+function buildHomeBoard(items: OpportunityListItem[]): HomeBoard {
+  const board: HomeBoard = {
     suspect: [],
     prospect: [],
     besoin_specifie: [],
     proposition_envoyee: [],
-    gagne: [],
-    perdue: [],
   };
-}
-
-function buildBoard(items: OpportunityListItem[]): Board {
-  const board = emptyBoard();
   const sorted = [...items].sort((a, b) => {
     const orderA = a.kanban_order ?? Number.MAX_SAFE_INTEGER;
     const orderB = b.kanban_order ?? Number.MAX_SAFE_INTEGER;
@@ -36,7 +41,14 @@ function buildBoard(items: OpportunityListItem[]): Board {
     return a.opportunity_name.localeCompare(b.opportunity_name, "fr");
   });
   for (const item of sorted) {
-    board[item.kanban_status].push(item);
+    if (
+      item.kanban_status === "suspect" ||
+      item.kanban_status === "prospect" ||
+      item.kanban_status === "besoin_specifie" ||
+      item.kanban_status === "proposition_envoyee"
+    ) {
+      board[item.kanban_status].push(item);
+    }
   }
   return board;
 }
@@ -55,20 +67,21 @@ function columnPriceTotals(items: OpportunityListItem[]): {
   return { priceSum, averagePriceSum };
 }
 
-type OpportunitiesKanbanProps = {
+type OpportunitiesHomeKanbanProps = {
   items: OpportunityListItem[];
 };
 
-/** Vue Kanban opportunités — shell générique + totaux colonne + carte domaine. */
-export function OpportunitiesKanban({ items }: OpportunitiesKanbanProps) {
+/** Kanban accueil opportunités — lecture seule, sans Gagné/Perdue, hauteur compacte. */
+export function OpportunitiesHomeKanban({
+  items,
+}: OpportunitiesHomeKanbanProps) {
   const router = useRouter();
 
   return (
-    <EntityKanban
-      dndId="opportunities-kanban"
-      columnIds={OPPORTUNITY_KANBAN_STATUSES}
+    <EntityKanbanReadonly
+      columnIds={HOME_OPPORTUNITY_COLUMNS}
       items={items}
-      buildBoard={buildBoard}
+      buildBoard={buildHomeBoard}
       getColumnTitle={getOpportunityKanbanStatusLabel}
       renderColumnMeta={(columnItems) => {
         const totals = columnPriceTotals(columnItems);
@@ -82,8 +95,8 @@ export function OpportunitiesKanban({ items }: OpportunitiesKanbanProps) {
       }}
       renderCard={(item) => <OpportunityKanbanCardContent item={item} />}
       onOpenItem={(id) => router.push(`/opportunities/${id}`)}
-      persistUpdates={updateOpportunitiesKanban}
       countLabel="Nombre d'opportunités"
+      boardClassName="h-[28rem]"
     />
   );
 }
