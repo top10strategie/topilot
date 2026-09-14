@@ -10,8 +10,8 @@ import {
   isHomeWidgetId,
   type HomeWidgetId,
 } from "@/lib/analyses/types";
-import { listMissions } from "@/lib/missions/queries";
-import { listOpportunities } from "@/lib/opportunities/queries";
+import { listHomeMissionsBoard } from "@/lib/missions/queries";
+import { listHomeOpportunitiesBoard } from "@/lib/opportunities/queries";
 import { getOwnProfile } from "@/lib/settings/queries";
 
 function resolveHomeWidgets(
@@ -42,8 +42,10 @@ async function HomeContent() {
 
   const [analyses, opportunities, missions] = await Promise.all([
     needAnalyses ? loadAnalysesPayload() : Promise.resolve(emptyAnalysesPayload()),
-    needOpportunities ? listOpportunities() : Promise.resolve([]),
-    needMissions ? listMissions() : Promise.resolve([]),
+    needOpportunities
+      ? listHomeOpportunitiesBoard(profile.id)
+      : Promise.resolve([]),
+    needMissions ? listHomeMissionsBoard(profile.id) : Promise.resolve([]),
   ]);
 
   return (
@@ -51,7 +53,7 @@ async function HomeContent() {
       analyses={analyses}
       opportunities={opportunities}
       missions={missions}
-      initialWidgets={profile.home_widgets}
+      initialWidgets={widgets}
       role={profile.role}
     />
   );

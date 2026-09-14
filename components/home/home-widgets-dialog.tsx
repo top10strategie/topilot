@@ -58,14 +58,15 @@ export function HomeWidgetsDialog({
   };
 
   const confirm = () => {
+    const toSave = [...selected];
     startTransition(async () => {
-      const result = await updateHomeWidgets(selected);
+      const result = await updateHomeWidgets(toSave);
       if (!result.success) {
         toast.error(result.error);
         return;
       }
       toast.success("Page d'accueil mise à jour.");
-      onSaved(selected);
+      onSaved(toSave);
       onOpenChange(false);
     });
   };

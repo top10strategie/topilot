@@ -20,6 +20,8 @@ export type MissionsListFilters = {
   startTo: string;
   endFrom: string;
   endTo: string;
+  /** Opt-out des préférences catégories (URL `skipPreferredCategories=1`). */
+  skipPreferredCategories: boolean;
 };
 
 export const DEFAULT_MISSIONS_LIST_FILTERS: MissionsListFilters = {
@@ -36,6 +38,7 @@ export const DEFAULT_MISSIONS_LIST_FILTERS: MissionsListFilters = {
   startTo: "",
   endFrom: "",
   endTo: "",
+  skipPreferredCategories: false,
 };
 
 const VALID_STATUSES = new Set<MissionKanbanStatus>([
@@ -80,6 +83,16 @@ function parseScope(raw: string | undefined): MissionScope | "" {
   return "";
 }
 
+function parseSkipPreferredCategories(raw: string | undefined): boolean {
+  if (!raw) return false;
+  const normalized = raw.trim().toLowerCase();
+  return (
+    normalized === "1" ||
+    normalized === "true" ||
+    normalized === "yes"
+  );
+}
+
 /**
  * Lit les searchParams Next (`Record` ou `URLSearchParams`).
  */
@@ -118,6 +131,9 @@ export function parseMissionsListSearchParams(
     startTo: (get("startTo") ?? "").trim(),
     endFrom: (get("endFrom") ?? "").trim(),
     endTo: (get("endTo") ?? "").trim(),
+    skipPreferredCategories: parseSkipPreferredCategories(
+      get("skipPreferredCategories"),
+    ),
   };
 }
 
@@ -146,6 +162,9 @@ export function serializeMissionsListSearchParams(
   if (value.startTo) sp.set("startTo", value.startTo);
   if (value.endFrom) sp.set("endFrom", value.endFrom);
   if (value.endTo) sp.set("endTo", value.endTo);
+  if (value.skipPreferredCategories) {
+    sp.set("skipPreferredCategories", "1");
+  }
   return sp.toString();
 }
 

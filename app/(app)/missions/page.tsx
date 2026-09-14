@@ -43,7 +43,7 @@ async function MissionsContent({
     getPreferredMissionCategoryIds(),
   ]);
 
-  if (!categoryIdsInUrl && !fromTop10) {
+  if (!categoryIdsInUrl && !fromTop10 && !filters.skipPreferredCategories) {
     const categoryIdSet = new Set(categories.map((category) => category.id));
     const preferredCategoryIds = storedPreferredCategoryIds.filter((id) =>
       categoryIdSet.has(id),

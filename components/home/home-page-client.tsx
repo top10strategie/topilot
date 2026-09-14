@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { GearSix } from "@phosphor-icons/react";
 import { HomeWidgetRenderer } from "@/components/home/home-widget-renderer";
 import { HomeWidgetsDialog } from "@/components/home/home-widgets-dialog";
@@ -42,10 +43,16 @@ export function HomePageClient({
   initialWidgets,
   role,
 }: HomePageClientProps) {
+  const router = useRouter();
   const [widgets, setWidgets] = useState<HomeWidgetId[]>(() =>
     filterWidgetsForRole(initialWidgets, role),
   );
   const [dialogOpen, setDialogOpen] = useState(false);
+
+  // Source de vérité serveur (après save / revalidate) — pas de widgets « fantômes ».
+  useEffect(() => {
+    setWidgets(filterWidgetsForRole(initialWidgets, role));
+  }, [initialWidgets, role]);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -85,9 +92,10 @@ export function HomePageClient({
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         initialSelected={widgets}
-        onSaved={(selected) =>
-          setWidgets(filterWidgetsForRole(selected, role))
-        }
+        onSaved={(selected) => {
+          setWidgets(filterWidgetsForRole(selected, role));
+          router.refresh();
+        }}
         role={role}
       />
     </div>
