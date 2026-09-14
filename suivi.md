@@ -1,5 +1,15 @@
 # Suivi des actions — TOPilot
 
+## **[2026-09-14] — Fix logout : fermer la modale + navigation dure**
+
+**Type :** `fix`
+**Fichiers concernés :** `actions/auth.ts`, `components/layout/logout-dialog.tsx`, `suivi.md`
+
+### Description
+
+Après déconnexion, la Dialog Radix restait montée (portail `body`) via le soft redirect ; elle réapparaissait au login. `setOpen(false)` puis `window.location.assign(LOGIN_PATH)` — pas de `router.refresh()`.
+
+---
 ## **[2026-09-14] — Fix logout : plus de refresh RSC en anon**
 
 **Type :** `fix`

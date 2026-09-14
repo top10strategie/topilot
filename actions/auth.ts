@@ -1,23 +1,26 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { LOGIN_PATH } from "@/lib/auth/constants";
 
 /**
  * Coupe la session côté cookies serveur — évite d’embarquer
  * `@supabase/ssr` browser client dans le shell app (LogoutDialog).
- * Redirige immédiatement vers login pour ne pas re-rendre la page
- * courante en `anon` (sinon permission denied sur les helpers RLS).
+ * La navigation vers login est faite côté client en dur (`location.assign`)
+ * pour démonter la modale / le portail Radix et ne pas re-rendre la page
+ * protégée en `anon`.
  */
-export async function signOutAction(): Promise<never> {
+export async function signOutAction(): Promise<{
+  success: boolean;
+  error?: string;
+}> {
   const supabase = await createClient();
   const { error } = await supabase.auth.signOut();
   if (error) {
     console.error("signOutAction:", error.message);
+    return { success: false, error: error.message };
   }
-  redirect(LOGIN_PATH);
+  return { success: true };
 }
 
 /**

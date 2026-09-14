@@ -42,20 +42,18 @@ export function LogoutDialog({
   const handleLogout = async () => {
     setIsLoading(true);
     try {
-      // redirect() Server Action — ne pas router.refresh() la page protégée
-      // une fois la session coupée (permission denied helpers RLS en anon).
-      await signOutAction();
-    } catch (error) {
-      const digest =
-        error && typeof error === "object" && "digest" in error
-          ? String((error as { digest?: unknown }).digest)
-          : "";
-      if (digest.startsWith("NEXT_REDIRECT")) {
+      const result = await signOutAction();
+      if (!result.success) {
+        toast.error(result.error ?? "Impossible de se déconnecter.");
         return;
       }
+      // Ferme la modale puis navigation dure : démonte le portail Radix
+      // et évite un refresh RSC de la page protégée en anon.
+      setOpen(false);
+      window.location.assign(LOGIN_PATH);
+    } catch (error) {
       console.error("signOutAction:", error);
       toast.error("Impossible de se déconnecter.");
-      window.location.assign(LOGIN_PATH);
     } finally {
       setIsLoading(false);
     }
