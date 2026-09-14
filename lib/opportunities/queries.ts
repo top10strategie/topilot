@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { Json } from "@/lib/supabase/database.types";
 import { resolveVisualPublicUrl } from "@/lib/visuels/public-url";
 import {
+  DEFAULT_OPPORTUNITIES_LIST_FILTERS,
   OPPORTUNITIES_PAGE_SIZE,
   type OpportunitiesListFilters,
 } from "./list-filters";
@@ -153,27 +154,6 @@ function mapListItem(row: OpportunityListRow): OpportunityListItem {
   };
 }
 
-/**
- * Liste toutes les opportunités (autres pages / usages hors liste paginée).
- */
-export async function listOpportunities(): Promise<OpportunityListItem[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("opportunity")
-    .select(OPPORTUNITY_LIST_SELECT)
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    console.error("listOpportunities:", error);
-    throw new Error(
-      `Impossible de charger les opportunités : ${error.message}`,
-    );
-  }
-
-  const rows = (data ?? []) as unknown as OpportunityListRow[];
-  return rows.map(mapListItem);
-}
-
 type OpportunitiesPageRpcRow = {
   id: string;
   opportunity_name: string;
@@ -313,6 +293,26 @@ export async function listOpportunitiesPage(
     opportunities: rows.map(mapPageRpcRow),
     totalCount,
   };
+}
+
+/**
+ * Board accueil : responsable = session, hors Gagné / Perdue.
+ */
+export async function listHomeOpportunitiesBoard(
+  collaboratorId: string,
+): Promise<OpportunityListItem[]> {
+  const { opportunities } = await listOpportunitiesPage({
+    ...DEFAULT_OPPORTUNITIES_LIST_FILTERS,
+    view: "kanban",
+    responsibleId: collaboratorId,
+    statuses: [
+      "suspect",
+      "prospect",
+      "besoin_specifie",
+      "proposition_envoyee",
+    ],
+  });
+  return opportunities;
 }
 
 /**

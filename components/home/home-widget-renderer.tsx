@@ -6,8 +6,8 @@ import {
   AnalysisLineChart,
 } from "@/components/analyses/analysis-bar-chart-lazy";
 import { AnalysisKpiGrid } from "@/components/analyses/analysis-kpi-grid";
-import { MissionsKanban } from "@/components/missions/missions-kanban";
-import { OpportunitiesKanban } from "@/components/opportunities/opportunities-kanban";
+import { MissionsHomeKanban } from "@/components/missions/missions-home-kanban-lazy";
+import { OpportunitiesHomeKanban } from "@/components/opportunities/opportunities-home-kanban-lazy";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { AnalysesPayload, HomeWidgetId } from "@/lib/analyses/types";
 import {
@@ -68,7 +68,7 @@ export function HomeWidgetRenderer({
         <WidgetShell title={title}>
           <Card>
             <CardContent className="pt-4">
-              <OpportunitiesKanban items={opportunities} />
+              <OpportunitiesHomeKanban items={opportunities} />
             </CardContent>
           </Card>
         </WidgetShell>
@@ -78,7 +78,7 @@ export function HomeWidgetRenderer({
         <WidgetShell title={title}>
           <Card>
             <CardContent className="pt-4">
-              <MissionsKanban items={missions} />
+              <MissionsHomeKanban items={missions} />
             </CardContent>
           </Card>
         </WidgetShell>

@@ -3,6 +3,7 @@ import { endOfCurrentIsoWeekParis } from "@/lib/dates/paris-week";
 import type { Json } from "@/lib/supabase/database.types";
 import { resolveVisualPublicUrl } from "@/lib/visuels/public-url";
 import {
+  DEFAULT_MISSIONS_LIST_FILTERS,
   MISSIONS_PAGE_SIZE,
   type MissionsListFilters,
 } from "./list-filters";
@@ -307,6 +308,20 @@ export async function listMissionsPage(
     missions: rows.map(mapPageRpcRow),
     totalCount,
   };
+}
+
+/** Board accueil : responsable = session, colonnes À faire / En cours. */
+export async function listHomeMissionsBoard(
+  collaboratorId: string,
+): Promise<MissionListItem[]> {
+  const { missions } = await listMissionsPage({
+    ...DEFAULT_MISSIONS_LIST_FILTERS,
+    view: "kanban",
+    responsibleId: collaboratorId,
+    statuses: ["a_faire", "en_cours"],
+    skipPreferredCategories: true,
+  });
+  return missions;
 }
 
 export async function listMissionsByOpportunityId(
