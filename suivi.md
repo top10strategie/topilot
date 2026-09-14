@@ -1,5 +1,15 @@
 # Suivi des actions — TOPilot
 
+## **[2026-09-14] — Fix logout : plus de refresh RSC en anon**
+
+**Type :** `fix`
+**Fichiers concernés :** `actions/auth.ts`, `components/layout/logout-dialog.tsx`, `supabase/migrations/20260914150000_revoke_anon_list_page_rpcs.sql`, `suivi.md`
+
+### Description
+
+Après `signOutAction`, `router.refresh()` re-rendait `/missions` sans session → `permission denied` sur `is_active_collaborator` / `can_access_*`. Déconnexion via `redirect(LOGIN_PATH)` ; révocation EXECUTE `anon` sur `list_*_page`.
+
+---
 ## **[2026-09-14] — Plan d’action perf / chargement**
 
 **Type :** `perf`

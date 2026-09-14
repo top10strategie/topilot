@@ -1,7 +1,6 @@
 "use client";
 
 import { SignOut } from "@phosphor-icons/react";
-import { useRouter } from "next/navigation";
 import { useState, type ComponentProps } from "react";
 import { toast } from "sonner";
 import { signOutAction } from "@/actions/auth";
@@ -15,6 +14,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { LOGIN_PATH } from "@/lib/auth/constants";
 import { cn } from "@/lib/utils";
 
 type LogoutDialogProps = {
@@ -36,21 +36,26 @@ export function LogoutDialog({
   triggerClassName,
   triggerLabel = "Déconnexion",
 }: LogoutDialogProps) {
-  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleLogout = async () => {
     setIsLoading(true);
     try {
-      const result = await signOutAction();
-      if (!result.success) {
-        toast.error(result.error ?? "Impossible de se déconnecter.");
+      // redirect() Server Action — ne pas router.refresh() la page protégée
+      // une fois la session coupée (permission denied helpers RLS en anon).
+      await signOutAction();
+    } catch (error) {
+      const digest =
+        error && typeof error === "object" && "digest" in error
+          ? String((error as { digest?: unknown }).digest)
+          : "";
+      if (digest.startsWith("NEXT_REDIRECT")) {
         return;
       }
-      setOpen(false);
-      router.push("/auth/login");
-      router.refresh();
+      console.error("signOutAction:", error);
+      toast.error("Impossible de se déconnecter.");
+      window.location.assign(LOGIN_PATH);
     } finally {
       setIsLoading(false);
     }
