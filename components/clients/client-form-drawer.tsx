@@ -35,7 +35,7 @@ import type { CategoryItem } from "@/lib/categories/types";
 import { CLIENT_LOGO_TYPE_LABEL } from "@/lib/clients/visuals";
 import { getCollaboratorFullName } from "@/lib/collaborators/labels";
 import type { CollaboratorListItem } from "@/lib/collaborators/types";
-import { getContactFullName } from "@/lib/clients/labels";
+import { formatClientName, getContactFullName } from "@/lib/clients/labels";
 import type {
   ClientCategoryItem,
   ClientDetail,
@@ -235,8 +235,10 @@ export function ClientFormDrawer({
     setFieldErrors({});
 
     startTransition(async () => {
+      const normalizedName = formatClientName(clientName);
+      setClientName(normalizedName);
       const formData = new FormData();
-      formData.set("client_name", clientName);
+      formData.set("client_name", normalizedName);
       formData.set("website", website);
       formData.set("main_collaborator_id", responsibleId);
       if (logoId) formData.set("logo_id", logoId);
@@ -269,8 +271,10 @@ export function ClientFormDrawer({
 
     setFieldErrors({});
     startTransition(async () => {
+      const normalizedName = formatClientName(clientName);
+      setClientName(normalizedName);
       const formData = new FormData();
-      formData.set("client_name", clientName);
+      formData.set("client_name", normalizedName);
       formData.set("website", website);
       formData.set("main_collaborator_id", responsibleId);
       formData.set("address_street", addressStreet);
@@ -301,7 +305,7 @@ export function ClientFormDrawer({
       );
       helpers.resolve({
         id: result.id,
-        client_name: clientName.trim(),
+        client_name: normalizedName,
         contacts: contactsRef.current.map((c) => ({
           id: c.id,
           first_name: c.first_name,
@@ -340,6 +344,7 @@ export function ClientFormDrawer({
               id="client_name"
               value={clientName}
               onChange={(event) => setClientName(event.target.value)}
+              onBlur={() => setClientName(formatClientName(clientName))}
               disabled={isPending}
               required
               autoFocus

@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <title>Documentation technique — TOPilot</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 48rem; margin: 2rem auto; padding: 0 1rem; line-height: 1.55; }
+    h1 { font-size: 1.5rem; }
+    h2 { font-size: 1.25rem; margin-top: 1.75rem; }
+    h3 { font-size: 1.05rem; margin-top: 1.25rem; }
+    ul, ol { padding-left: 1.25rem; }
+  </style>
+</head>
+<body>
+<h1>Documentation technique — TOPilot</h1>
+<p>Guide de reprise de main pour les collaborateurs techniques. Dernière mise à jour : septembre 2026.</p>
+<p>Cette page décrit comment le projet est construit et comment le faire évoluer. Ce n’est pas le mode d’emploi métier des écrans.</p>
+<h2>Sommaire</h2>
+<ol>
+<li>Présentation et stack</li>
+<li>Démarrage local</li>
+<li>Architecture applicative</li>
+<li>Modèle de données</li>
+<li>Sécurité, authentification et RLS</li>
+<li>Règles métier</li>
+<li>Modules et routes</li>
+<li>CI/CD et opérations</li>
+<li>Conventions de contribution</li>
+</ol>
+<h2>Présentation et stack</h2>
+<p>TOPilot est l’outil interne de gestion d’agence de Top 10 Stratégie (environ 11 utilisateurs). Il centralise clients, opportunités, missions, outils (toolbox), documents et wiki, pour limiter la dispersion des outils du quotidien.</p>
+<p>Les opportunités et les missions sont le cœur du produit. L’interface est en français. Création et édition passent par des tiroirs latéraux droits.</p>
+<h3>Stack</h3>
+<ul>
+<li>Next.js 16 (App Router), React 19, TypeScript strict</li>
+<li>Supabase : Auth, Postgres, RLS, Storage, Vault</li>
+<li>Tailwind CSS 4, shadcn/ui, Phosphor Icons</li>
+<li>DnD Kit (kanbans), Tiptap (wiki), Recharts (analyses)</li>
+<li>Hébergement Vercel, gestionnaire de paquets npm uniquement</li>
+</ul>
+<h3>Sources de vérité dans le dépôt</h3>
+<ul>
+<li>Présentation produit courte : README.md</li>
+<li>Journal des livraisons : suivi.md</li>
+<li>Spec produit, UX, base et sécurité : dossier .cursor/rules/</li>
+<li>Migrations SQL : dossier supabase/migrations/</li>
+<li>Types générés Postgres : lib/supabase/database.types.ts</li>
+</ul>
+<p>Les fichiers .cursor/rules/ restent la spécification détaillée. Ce document en extrait l’essentiel pour une reprise de projet.</p>
+<p>Point critique : un seul projet Supabase sert à la fois au développement et à la production. Les tests manuels destructifs impactent les données réelles.</p>
+<h2>Démarrage local</h2>
+<h3>Prérequis</h3>
+<ul>
+<li>Node.js 20 ou plus (la CI utilise Node 22)</li>
+<li>npm (lockfile unique package-lock.json, jamais yarn ni pnpm)</li>
+<li>Accès au projet Supabase TOPilot (URL et clés)</li>
+<li>Accès au dépôt GitHub et aux variables Vercel si déploiement</li>
+</ul>
+<h3>Variables d’environnement</h3>
+<p>Copier .env.example vers .env.local puis renseigner :</p>
+<ul>
+<li>NEXT_PUBLIC_SUPABASE_URL — public — URL du projet Supabase</li>
+<li>NEXT_PUBLIC_SUPABASE_ANON_KEY — public — clé anon / publishable (RLS appliquée)</li>
+<li>SUPABASE_SERVICE_ROLE_KEY — serveur uniquement — contourne la RLS (Vault, admin, Storage, must_change_password)</li>
+<li>CRON_SECRET — serveur — Bearer attendu par les routes /api/cron/</li>
+<li>NEXT_PUBLIC_SITE_URL — optionnel — origine pour les liens d’invitation Auth (en local : http://localhost:3000)</li>
+</ul>
+<p>Ne jamais committer .env.local. Ne jamais utiliser la service role dans un composant client.</p>
+<h3>Installation et commandes</h3>
+<ul>
+<li>npm install</li>
+<li>npm run dev — serveur de développement (souvent http://localhost:3000)</li>
+<li>npm run build — build production</li>
+<li>npm run start — serveur production après build</li>
+<li>npm run lint — ESLint</li>
+<li>npm run typecheck — vérification TypeScript</li>
+<li>npm run knip — détection de code mort (exigé en CI sur main)</li>
+</ul>
+<p>Avant de coder : lint + typecheck. Avant un merge vers main : lint + typecheck + knip + build.</p>
+<h3>Premier accès (bootstrap)</h3>
+<ol>
+<li>Créer un utilisateur dans Supabase Auth (dashboard).</li>
+<li>Créer la première ligne collaborator via le Dashboard SQL / Table Editor (rôle postgres / service role), avec role = direction ou manager, status = actif, et un team_id valide.</li>
+<li>Une ligne setting est créée automatiquement (trigger), avec must_change_password = true par défaut.</li>
+<li>Se connecter : redirection forcée vers le changement de mot de passe, puis accès métier.</li>
+</ol>
+<p>Les INSERT collaborator via l’application sont réservés Manager / Direction. Sans premier compte bootstrap, l’UI d’administration ne peut pas démarrer.</p>
+<h3>Migrations</h3>
+<p>Les migrations vivent dans supabase/migrations/, ordonnées chronologiquement.</p>
+<ul>
+<li>Ne pas modifier une migration déjà appliquée en production : en ajouter une nouvelle.</li>
+<li>Après changement de schéma, aligner lib/supabase/database.types.ts avec le projet Supabase.</li>
+<li>Le détail du schéma cible est dans .cursor/rules/04_database_schema.mdc.md et 05_security_rls.mdc.md.</li>
+</ul>
+<h2>Architecture applicative</h2>
+<h3>Vue d’ensemble</h3>
+<p>Le navigateur utilise des Client Components pour l’interactivité (kanban, drawers, formulaires). Les lectures simples passent sous RLS avec la clé anon. Les mutations sensibles, le Vault et le Storage passent par des Server Actions ou des Route Handlers.</p>
+<p>Côté serveur :</p>
+<ul>
+<li>createClient() — session utilisateur + RLS (lib/supabase/server.ts)</li>
+<li>createAdminClient() — service role (lib/supabase/admin.ts)</li>
+</ul>
+<p>Principes :</p>
+<ul>
+<li>Server Components par défaut ; Client Components seulement si nécessaire</li>
+<li>Mutations métier dans actions/*.ts</li>
+<li>Service role uniquement côté serveur</li>
+<li>Drawers sans URL : état local / contexte DrawerStackProvider, pas de routing dédié</li>
+</ul>
+<h3>Arborescence des dossiers</h3>
+<ul>
+<li>app/(app)/ — pages métier protégées (shell : sidebar, header, drawers, recherche)</li>
+<li>app/auth/ — login, reset password, callback, update-password, access-denied</li>
+<li>app/api/ — route handlers (proxy fichiers, crons)</li>
+<li>actions/ — Server Actions par domaine</li>
+<li>components/ — UI par domaine, components/ui (shadcn), components/drawers</li>
+<li>lib/ — requêtes, types, helpers métier, clients Supabase</li>
+<li>hooks/ — hooks React partagés</li>
+<li>supabase/migrations/ — historique SQL</li>
+<li>proxy.ts — gate session / collaborateur actif / mot de passe</li>
+<li>.cursor/rules/ — spec produit et technique</li>
+</ul>
+<h3>Clients Supabase</h3>
+<ul>
+<li>lib/supabase/client.ts — navigateur (anon)</li>
+<li>lib/supabase/server.ts — Server Components / Actions (cookies + anon)</li>
+<li>lib/supabase/admin.ts — service role</li>
+<li>lib/supabase/proxy.ts — refresh session et contrôle d’accès</li>
+<li>lib/supabase/database.types.ts — types du schéma</li>
+</ul>
+<h3>Pattern de page liste</h3>
+<p>Exemple pour /clients, /missions, /opportunities, /documents, /tools :</p>
+<ol>
+<li>Server Component page.tsx : lit les searchParams (filtres, page, vue), appelle une query ou une RPC list_*_page.</li>
+<li>Client Component *-page-client.tsx : vues (Kanban / Cartes / Tableau), filtres, drawers, DnD.</li>
+<li>Server Actions : create / update / archive / delete + revalidatePath.</li>
+<li>Pagination côté serveur via RPC list_*_page (SECURITY INVOKER, respect RLS). Ne pas recharger tout le dataset pour paginer.</li>
+</ol>
+<p>Kanban missions / opportunités : mode p_board (jeu filtré complet pour le board ; pagination uniquement en vues Cartes / Tableau).</p>
+<h3>Drawers empilés</h3>
+<p>DrawerStackProvider et DrawerStackHost permettent d’empiler des formulaires (exemple : mission → nouveau client → nouveau contact).</p>
+<ol>
+<li>L’état du drawer inférieur est conservé pendant l’empilement.</li>
+<li>Annuler le supérieur restaure l’inférieur tel quel.</li>
+<li>Valider le supérieur injecte la nouvelle entité dans le champ du formulaire parent.</li>
+</ol>
+<h3>Auth gate (proxy)</h3>
+<p>Fichier proxy.ts → lib/supabase/proxy.ts.</p>
+<p>Pour chaque requête (hors assets) :</p>
+<ol>
+<li>Session Supabase valide ?</li>
+<li>RPC get_auth_gate_state : collaborateur lié, status, must_change_password</li>
+<li>Sinon redirection vers /auth/login, /auth/access-denied ou /auth/update-password</li>
+</ol>
+<p>Les préfixes publics auth sont définis dans lib/auth/constants.ts.</p>
+<h3>Routes API</h3>
+<ul>
+<li>GET /api/documents/[id]/file — proxy du bucket privé documents (session + RLS, puis URL signée)</li>
+<li>/api/cron/exchange-rates — sync des taux Frankfurter (1er du mois) ; header Authorization Bearer CRON_SECRET</li>
+<li>/api/cron/mission-recurrence — génération des occurrences de séries de missions (quotidien)</li>
+</ul>
+<h3>Domaines lib / actions</h3>
+<p>Chaque domaine a en général queries.ts, types.ts, éventuellement list-filters.ts, et actions/domaine.ts pour les écritures.</p>
+<p>Domaines principaux : clients, opportunities, missions, tools, documents, wiki, collaborators, categories, analyses, audit, search, settings, exchange-rate.</p>
+<h2>Modèle de données</h2>
+<h3>Principes</h3>
+<ul>
+<li>Clés primaires uuid (gen_random_uuid)</li>
+<li>Nommage snake_case ; les clés étrangères se terminent par _id</li>
+<li>Horodatage timestamptz ; updated_at via trigger set_updated_at</li>
+<li>Enums SQL en snake_case sans accents ; libellés français uniquement en UI</li>
+<li>RLS activée sur toutes les tables</li>
+<li>client, mission, opportunity : jamais de DELETE physique</li>
+<li>collaborator : anonymisation (anonymize_collaborator) + status = sorti</li>
+<li>audit_log : append-only, jamais de suppression</li>
+</ul>
+<h3>Carte des entités</h3>
+<ul>
+<li>team a plusieurs collaborator ; chaque collaborator a un setting</li>
+<li>client a plusieurs contact_client</li>
+<li>client porte opportunity ; opportunity peut porter mission</li>
+<li>mission a un scope client (avec client_id) ou interne (client_id null)</li>
+<li>tool a tool_access (référence Vault) et tool_subscription avec tool_subscription_price</li>
+<li>exchange_rate stocke les taux mensuels</li>
+<li>document (versionning via parent_document_id, vue document_latest)</li>
+<li>wiki</li>
+<li>category (utilitaire : outils, wikis)</li>
+<li>category_business (métier : clients, missions, opportunités, pôles ; peut être privée)</li>
+<li>document_type</li>
+</ul>
+<p>Tables de jonction typiques : client_category, mission_tool, opportunity_document, wiki_category, team_category, etc.</p>
+<h3>Enums métier</h3>
+<ul>
+<li>collaborator.role : direction, manager, collaborator</li>
+<li>collaborator.status : actif, inactif, sorti</li>
+<li>mission.mission_scope : client, interne</li>
+<li>mission.kanban_status : a_faire, en_cours, terminee, archivee</li>
+<li>opportunity.kanban_status : suspect, prospect, besoin_specifie, proposition_envoyee, gagne, perdue</li>
+<li>opportunity.priority : faible, normal, urgente, prioritaire</li>
+<li>document.storage_type : supabase, url</li>
+<li>tool_subscription.subscription_plan : mensuel, annuel</li>
+<li>setting.theme : clair, sombre, systeme</li>
+</ul>
+<h3>Automatismes importants (triggers)</h3>
+<ul>
+<li>Opportunité — statut initial : nouveau client → suspect ; client déjà connu (mission ou opp) → besoin_specifie</li>
+<li>Opportunité — probabilité : mapping statut → proba mini ; ne baisse jamais une proba déjà plus haute</li>
+<li>Opportunité — archivage : gagne / perdue → is_active = false (symétrique au retour)</li>
+<li>average_price : colonne générée price × probability_confirmation / 100</li>
+<li>Mission — archived_at : posé à l’entrée en archivee, remis à null sinon</li>
+<li>Mission — completed_at : posé à la première entrée en terminee ; conservé si archivée ensuite</li>
+<li>Contact principal : un seul is_main par client ; promotion auto à la suppression</li>
+<li>Prix abonnement : une seule ligne active (valid_to IS NULL) par abonnement et devise</li>
+<li>Setting : créé automatiquement à l’INSERT collaborateur</li>
+<li>Audit : triggers SECURITY DEFINER sur les tables métier + notes</li>
+</ul>
+<h3>Documents et Storage</h3>
+<p>Deux buckets :</p>
+<ul>
+<li>documents (privé) — is_visual = false — lecture via /api/documents/[id]/file (URL signée)</li>
+<li>visuels (lecture publique) — logos, avatars (is_visual = true) — URL publique directe</li>
+</ul>
+<p>Chemin objet : {document_id}/{nom_fichier_assaini}.</p>
+<p>Versionning : parent_document_id pointe vers la v1 ; la « latest » est calculée (COALESCE(parent_document_id, id) + max version_number). Pas de colonne is_latest.</p>
+<p>RPC utiles : delete_document_version, delete_document_lineage (puis nettoyage Storage côté application).</p>
+<h3>Catégories et recherche</h3>
+<ul>
+<li>category : utilitaire (outils, wikis)</li>
+<li>category_business : métier ; is_private = true masque l’entité (et cascade) aux Collaborateurs via RLS</li>
+</ul>
+<p>Recherche FTS (tsvector) sur client, contact, collaborateur, team, opportunity, mission, tool, tool_access, document, wiki. audit_log exclu. Accès toolbox privés filtrés pour le rôle Collaborateur. Wiki indexé sur content_text, jamais sur le HTML.</p>
+<h3>Missions récurrentes</h3>
+<p>Logique mission_series + cron /api/cron/mission-recurrence pour matérialiser les occurrences.</p>
+<h2>Sécurité, authentification et RLS</h2>
+<h3>Règles non négociables</h3>
+<ol>
+<li>RLS sur toutes les tables, aucune exception.</li>
+<li>Seuls les collaborateurs status = actif accèdent à l’application.</li>
+<li>SUPABASE_SERVICE_ROLE_KEY jamais côté client.</li>
+<li>Mots de passe toolbox jamais en clair en base, ni exposés au client sans passage serveur.</li>
+<li>audit_log : écriture via triggers uniquement ; aucune suppression.</li>
+<li>must_change_password : jamais affiché dans l’UI ; mise à jour via server action + service role.</li>
+</ol>
+<h3>Rôles</h3>
+<ul>
+<li>Direction : accès complet ; offboarding collaborateurs ; suppression pôles ; accès toolbox privés ; /analyses ; /history</li>
+<li>Manager : mêmes capacités sensibles que Direction pour le contenu privé, offboarding, analyses, historique</li>
+<li>Collaborateur : CRUD métier standard ; pas d’accès toolbox privé ni catégories métier privées ; pas d’offboarding ; pas d’analyses ni d’historique admin</li>
+</ul>
+<p>Il n’y a pas de rôle Admin séparé en V1.</p>
+<h3>Suppression physique</h3>
+<ul>
+<li>client, mission, opportunity : impossible pour tous les rôles</li>
+<li>collaborator : impossible → anonymize_collaborator (Manager / Direction)</li>
+<li>team et tool_access privé : Manager / Direction</li>
+<li>autres tables métier courantes : tout collaborateur actif</li>
+<li>audit_log : impossible</li>
+</ul>
+<h3>Helpers RLS</h3>
+<ul>
+<li>is_active_collaborator() — session liée à un collaborateur actif</li>
+<li>current_collaborator_role() — rôle du collaborateur courant</li>
+<li>can_access_* / has_private_business_category — masquage catégories privées et cascade</li>
+</ul>
+<p>Piège connu : ne pas appeler can_access_mission(id) / can_access_opportunity(id) dans la policy SELECT de la même table (casse INSERT…RETURNING pour les Collaborateurs). Contrôler les colonnes de la ligne ; garder les helpers pour les jonctions.</p>
+<p>Piège connu : les fonctions de triggers SECURITY DEFINER doivent rester GRANT EXECUTE TO authenticated (sinon permission denied for function audit_trigger_fn).</p>
+<h3>Vault (toolbox)</h3>
+<p>Flux de révélation d’un mot de passe :</p>
+<ol>
+<li>Le client appelle la server action (actions/vault.ts, ex. readVaultSecret).</li>
+<li>Vérification session + collaborateur actif.</li>
+<li>Lecture de la ligne tool_access avec le client session (RLS) — prouve le droit de voir l’accès, y compris is_private.</li>
+<li>Déchiffrement via service role / RPC Vault seulement après.</li>
+<li>Affichage ponctuel en Dialog ; pas de persistance localStorage ni URL.</li>
+</ol>
+<p>Création : secret Vault avant INSERT tool_access. Suppression : secret Vault puis ligne (vérifier que vault_secret_id correspond). vault_secret_id est un nom texte, pas l’UUID interne Vault.</p>
+<h3>Storage</h3>
+<ul>
+<li>Upload et delete d’objets : service role uniquement</li>
+<li>Bucket documents : lecture via route proxy après check session + RLS</li>
+<li>Bucket visuels : lecture publique</li>
+</ul>
+<h3>Flux mots de passe</h3>
+<ul>
+<li>Première connexion (must_change_password) : bloqué jusqu’à /auth/update-password</li>
+<li>Mot de passe oublié : Supabase Auth (resetPasswordForEmail) — ne révèle pas l’existence du compte</li>
+<li>Changement volontaire sur /settings : ré-auth obligatoire (signInWithPassword avec le mot de passe actuel) puis updateUser ; session conservée ; ne touche pas must_change_password</li>
+</ul>
+<p>Un compte inactif ou sorti peut techniquement reset son MDP Auth, mais reste bloqué par le gate (status ≠ actif).</p>
+<h2>Règles métier</h2>
+<h3>Cœur produit</h3>
+<p>Les opportunités et les missions sont les axes centraux. Le pipe commercial va du suspect à la clôture (gagne / perdue). Une opportunité gagnée alimente la création de missions.</p>
+<h3>Client</h3>
+<ul>
+<li>Statut unique : is_active (manuel)</li>
+<li>facilitator : booléen « Apporteur d’affaires »</li>
+<li>Contact principal (contact_client.is_main) : toujours exactement un principal dès qu’il existe au moins un contact</li>
+<li>Champs obligatoires à la création : client_name, website, main_collaborator_id</li>
+</ul>
+<h3>Opportunité</h3>
+<ul>
+<li>Toujours rattachée à un client_id ; contact optionnel</li>
+<li>Au moins une date parmi due_date_at / end_at</li>
+<li>Statuts Kanban (ordre UI = ordre enum) : Suspect → Prospect → Besoin spécifié → Proposition envoyée → Gagné → Perdue</li>
+<li>Montant pondéré = average_price (calculé, non saisi)</li>
+<li>entry_average_price figé à la création ; closed_at à la clôture</li>
+<li>Création en deux temps dans le drawer (identification puis complément) pour permettre les liaisons documents / outils</li>
+</ul>
+<h3>Mission</h3>
+<ul>
+<li>mission_scope = client ⇒ client_id obligatoire ; interne ⇒ client_id null</li>
+<li>Toggle UI « Interne » (distinct du toggle « Privé » des accès outils)</li>
+<li>Statuts : À faire → En cours → Terminée → Archivée (Kanban « Archivée » = 3 derniers mois via archived_at)</li>
+<li>Analyses : complétées = completed_at non null ; abandonnées = archivee et completed_at null</li>
+<li>estimated_charge = « Temps vendu » (heures, manuel)</li>
+<li>Liens outils = jonction mission_tool (sans credentials) ; les accès crédentialisés restent sur tool_access</li>
+</ul>
+<h3>Outils (toolbox)</h3>
+<ul>
+<li>Catalogue partagé tool</li>
+<li>Accès tool_access : identifiant + secret Vault ; option is_private ; client_id optionnel (back-office client)</li>
+<li>Abonnements : tool_subscription + historique de prix ; conversion EUR via exchange_rate (Frankfurter)</li>
+<li>Suppression d’outil possible depuis la liste (contrairement client / mission / opportunité)</li>
+</ul>
+<h3>Documents, wiki et notes</h3>
+<ul>
+<li>Documents liés via jonctions ; liaison opportunité crée aussi client_document (le retrait depuis l’opportunité ne retire pas le lien client)</li>
+<li>Versionning : nouvelle version = nouvel INSERT ; restauration = nouvelle version (copie), pas d’écrasement</li>
+<li>Wiki : Tiptap ; content_html pour l’affichage, content_text pour le FTS ; éditable par tous les rôles actifs</li>
+<li>Notes présentes sur client, mission, team, contact_client ; historisées (entity_type = note dans audit_log)</li>
+</ul>
+<h3>Vocabulaire UI</h3>
+<ul>
+<li>team → Pôle</li>
+<li>opportunity.priority → Urgence</li>
+<li>estimated_charge → Temps vendu</li>
+<li>average_price → Montant pondéré</li>
+<li>facilitator → Apporteur d’affaires</li>
+<li>tool_access.is_private → Privé</li>
+<li>mission_scope / toggle → Interne</li>
+</ul>
+<h2>Modules et routes</h2>
+<h3>Carte des routes</h3>
+<ul>
+<li>/login et /auth/* — authentification (hors shell app)</li>
+<li>/ — Home (widgets configurables via setting.home_widgets)</li>
+<li>/top10 — entreprise (pôles + collaborateurs)</li>
+<li>/clients et /clients/[id] — CRM</li>
+<li>/opportunities et /opportunities/[id] — pipe commercial (Kanban par défaut)</li>
+<li>/missions et /missions/[id] — pipe production (Kanban par défaut)</li>
+<li>/tools et /tools/[id] — toolbox (Vault, abonnements)</li>
+<li>/documents — GED (pas de page [id] ; actions sur carte)</li>
+<li>/wikis — wiki (drawers lecture / édition, pas de [id])</li>
+<li>/analyses — dashboards (Manager / Direction)</li>
+<li>/administration — catégories, types, collaborateurs et pôles</li>
+<li>/history — audit (Manager / Direction)</li>
+<li>/settings — profil, thème, mot de passe</li>
+</ul>
+<h3>Où chercher le code</h3>
+<ul>
+<li>Clients : app/(app)/clients, components/clients, actions/clients.ts, lib/clients</li>
+<li>Opportunités : app/(app)/opportunities, components/opportunities, actions/opportunities.ts, lib/opportunities</li>
+<li>Missions : app/(app)/missions, components/missions, actions/missions.ts, lib/missions</li>
+<li>Outils : app/(app)/tools, components/tools, actions/tools.ts, tool-access.ts, tool-subscriptions.ts, lib/tools</li>
+<li>Documents : app/(app)/documents, components/documents, actions/documents.ts, lib/documents</li>
+<li>Wiki : app/(app)/wikis, components/wiki, actions/wikis.ts, lib/wiki</li>
+<li>Analyses : app/(app)/analyses, components/analyses, lib/analyses</li>
+<li>Admin : app/(app)/administration, components/categories et collaborators, actions/collaborators.ts, teams.ts, categories.ts</li>
+<li>Historique : app/(app)/history, components/audit, actions/audit-logs.ts, lib/audit</li>
+<li>Recherche : components/search, actions/search.ts, lib/search</li>
+<li>Layout / drawers : components/layout, components/drawers</li>
+</ul>
+<h3>Patterns UI transverses</h3>
+<ul>
+<li>Hero + actions (recherche contextuelle, vue, filtre, création) sur les listes</li>
+<li>Vues Cartes / Tableau ; Kanban pour missions et opportunités</li>
+<li>Création / édition : Sheet latéral droit (shadcn), souvent en deux temps</li>
+<li>Icônes Phosphor, toasts Sonner, graphiques Recharts</li>
+<li>DnD via @dnd-kit (kanban_status + kanban_order)</li>
+</ul>
+<h3>Listes paginées (RPC)</h3>
+<p>Migrations 20260910<em>_list_</em>_page*.sql :</p>
+<ul>
+<li>list_clients_page</li>
+<li>list_missions_page / list_opportunities_page (mode board)</li>
+<li>list_documents_page</li>
+<li>list_tools_page</li>
+</ul>
+<p>Filtres et numéro de page dans l’URL (searchParams). Taille de page typique : 24 (historique : 50).</p>
+<h2>CI/CD et opérations</h2>
+<h3>Branches</h3>
+<ul>
+<li>main — production, protégée, pas de push direct</li>
+<li>dev — intégration</li>
+<li>type/description — feature / fix / perf… (ex. feature/pipe-commercial, fix/rls-tool-access)</li>
+</ul>
+<p>Flux nominal : branche → PR vers dev → validation → merge → PR dev vers main → déploiement Vercel.</p>
+<p>Le push GitHub est en général manuel sauf demande contraire.</p>
+<h3>CI GitHub Actions</h3>
+<ul>
+<li>Sur push / PR vers dev : lint + typecheck (ci-dev.yml)</li>
+<li>Sur push / PR vers main : lint + typecheck + knip + build (ci-main.yml)</li>
+</ul>
+<p>Sur main, les secrets Supabase CI sont des placeholders (le build ne parle pas à la vraie base).</p>
+<h3>Hébergement et crons</h3>
+<ul>
+<li>Vercel : déploiement auto depuis main</li>
+<li>Variables d’env Vercel = mêmes clés que le projet Supabase unique</li>
+<li>Crons déclarés dans vercel.json</li>
+</ul>
+<p>Crons :</p>
+<ul>
+<li>/api/cron/exchange-rates — schedule 0 6 1 <em> </em> (1er du mois) — taux de change Frankfurter</li>
+<li>/api/cron/mission-recurrence — schedule 0 5 <em> </em> * (quotidien) — occurrences missions récurrentes</li>
+</ul>
+<p>Auth des crons : header Authorization Bearer CRON_SECRET.</p>
+<h3>Runbook — situations courantes</h3>
+<p>Accès refusé après login Auth OK : vérifier collaborator (ligne liée à auth_user_id, status = actif). Sinon /auth/access-denied.</p>
+<p>Boucle changement de mot de passe : setting.must_change_password encore à true. Mettre à false uniquement via le flux prévu (server action), pas depuis le client.</p>
+<p>Impossible de créer un collaborateur depuis l’UI : normal si l’appelant n’est pas Manager / Direction, ou s’il n’existe encore aucun Manager / Direction (bootstrap Dashboard).</p>
+<p>Mot de passe outil non révélable : session expirée, rôle Collaborateur sur accès is_private, ou secret Vault manquant / vault_secret_id incohérent.</p>
+<p>Écritures métier en permission denied for function… : souvent un REVOKE EXECUTE trop agressif sur les triggers d’audit — rétablir GRANT EXECUTE TO authenticated (migration 20260807120000_restore_trigger_execute_grants.sql).</p>
+<p>INSERT mission / opportunité échoue en 42501 pour Collaborateur : policy SELECT qui ré-interroge la table via can_access_*(id) pendant RETURNING — voir fix 20260807123000_fix_mission_opportunity_rls_returning.sql.</p>
+<p>Build Vercel / ERR_REQUIRE_ESM (jsdom / DOMPurify) : conserver l’override jsdom@25.0.1 dans package.json. Ne pas le retirer lors d’un cleanup Knip.</p>
+<p>Fichier Storage orphelin après delete document : la RPC a déjà supprimé la ligne DB ; un échec Storage est loggé pour nettoyage manuel — non bloquant pour l’utilisateur.</p>
+<h3>Monitoring</h3>
+<ul>
+<li>Logs applicatifs : Vercel Functions</li>
+<li>Auth / DB : Dashboard Supabase</li>
+<li>Journal produit des changements code : suivi.md</li>
+</ul>
+<h2>Conventions de contribution</h2>
+<h3>Avant de modifier</h3>
+<ol>
+<li>Lire ce document et la règle .cursor/rules/ associée au sujet.</li>
+<li>Travailler depuis dev ou une branche dédiée.</li>
+<li>Ne pas inventer de schéma, enum ou policy sans alignement avec les règles 04, 05 et 08.</li>
+</ol>
+<h3>Git</h3>
+<ul>
+<li>Branches : feature/…, fix/…, refactor/…, perf/…, docs/…</li>
+<li>Commits : type: description en français (ex. feat: pagination serveur des missions)</li>
+<li>Mettre à jour suivi.md pour toute action majeure</li>
+<li>Pas de push force sur main ; pas de commit de secrets</li>
+</ul>
+<h3>Code</h3>
+<ul>
+<li>TypeScript strict ; noms de code en anglais ; UI et commentaires en français</li>
+<li>Une responsabilité par fichier ; logique métier dans lib/ et actions/</li>
+<li>Server Components par défaut</li>
+<li>Enums SQL en snake_case sans accents ; mapping libellés dans l’UI</li>
+<li>Pas de service role hors serveur</li>
+<li>Réutiliser drawers et sections existants</li>
+</ul>
+<h3>Base de données</h3>
+<ul>
+<li>Nouvelle migration horodatée dans supabase/migrations/</li>
+<li>Ne jamais éditer une migration déjà déployée</li>
+<li>Mettre à jour database.types.ts après changement de schéma</li>
+<li>Toute table : RLS + index sur FK + audit si l’entité est listée dans audit_log.entity_type</li>
+</ul>
+<h3>Checklist PR</h3>
+<ol>
+<li>Comportement aligné règles métier / RLS</li>
+<li>npm run lint OK</li>
+<li>npm run typecheck OK</li>
+<li>Si cible main : npm run knip + npm run build OK</li>
+<li>suivi.md à jour</li>
+<li>Pas de clé / secret dans le diff</li>
+<li>Migrations documentées si schéma touché</li>
+<li>UI française cohérente (libellés, toasts d’erreur)</li>
+</ol>
+<h3>Où trouver l’historique des décisions</h3>
+<ol>
+<li>suivi.md — chronologie des livraisons</li>
+<li>.cursor/rules/ — intention produit / technique</li>
+<li>supabase/migrations/ — évolution réelle du schéma</li>
+<li>PRs GitHub — discussions de revue</li>
+</ol>
+<h3>Contexte organisationnel</h3>
+<p>Utilisateurs cibles : collaborateurs internes uniquement. Pas d’environnement Supabase de staging séparé à ce jour : prudence maximale sur les scripts SQL et les tests manuels destructifs.</p>
+</body>
+</html>
