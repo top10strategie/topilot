@@ -7,6 +7,7 @@ export type MissionKanbanStatus =
 export type MissionScope = "client" | "interne";
 
 export type MissionRecurrenceFrequency =
+  | "hebdomadaire"
   | "mensuelle"
   | "trimestrielle"
   | "annuelle";
