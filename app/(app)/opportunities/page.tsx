@@ -11,7 +11,6 @@ import {
 } from "@/lib/opportunities/list-filters";
 import {
   listOpportunitiesPage,
-  listOpportunityContactOptions,
 } from "@/lib/opportunities/queries";
 
 async function OpportunitiesContent({
@@ -22,11 +21,10 @@ async function OpportunitiesContent({
   const params = await searchParams;
   let filters = parseOpportunitiesListSearchParams(params ?? {});
 
-  const [collaborators, clients, contacts, categories, pageResult] =
+  const [collaborators, clients, categories, pageResult] =
     await Promise.all([
       listCollaborators({ includeAvatar: false }),
       listClientOptions(),
-      listOpportunityContactOptions(),
       listBusinessCategories(),
       listOpportunitiesPage(filters),
     ]);
@@ -51,7 +49,6 @@ async function OpportunitiesContent({
       filters={filters}
       collaborators={collaborators}
       clients={clients}
-      contacts={contacts}
       categories={categories}
     />
   );

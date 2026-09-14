@@ -3,27 +3,21 @@
 import dynamic from "next/dynamic";
 import { Skeleton } from "@/components/ui/skeleton";
 
+function ChartFallback() {
+  return <Skeleton className="h-64 w-full rounded-xl" />;
+}
+
 /**
- * Chargement différé de Recharts (évite d'alourdir home / analyses au premier paint).
+ * Un seul import() → un chunk Recharts partagé (bar + line).
  */
+const loadCharts = () => import("@/components/analyses/analysis-charts");
+
 export const AnalysisBarChart = dynamic(
-  () =>
-    import("@/components/analyses/analysis-bar-chart").then(
-      (mod) => mod.AnalysisBarChart,
-    ),
-  {
-    ssr: false,
-    loading: () => <Skeleton className="h-64 w-full rounded-xl" />,
-  },
+  () => loadCharts().then((mod) => mod.AnalysisBarChart),
+  { ssr: false, loading: ChartFallback },
 );
 
 export const AnalysisLineChart = dynamic(
-  () =>
-    import("@/components/analyses/analysis-line-chart").then(
-      (mod) => mod.AnalysisLineChart,
-    ),
-  {
-    ssr: false,
-    loading: () => <Skeleton className="h-64 w-full rounded-xl" />,
-  },
+  () => loadCharts().then((mod) => mod.AnalysisLineChart),
+  { ssr: false, loading: ChartFallback },
 );

@@ -54,10 +54,7 @@ import {
   getMissionResponsibleName,
 } from "@/lib/missions/labels";
 import { cn } from "@/lib/utils";
-import type {
-  MissionListItem,
-  MissionOpportunityOption,
-} from "@/lib/missions/types";
+import type { MissionListItem } from "@/lib/missions/types";
 
 type ClientDetailPageClientProps = {
   client: ClientDetail;
@@ -65,7 +62,6 @@ type ClientDetailPageClientProps = {
   categories: CategoryItem[];
   clients: ClientOption[];
   missions: MissionListItem[];
-  opportunityOptions: MissionOpportunityOption[];
   currentCollaboratorId: string;
   canManagePrivacy: boolean;
   canViewHistory: boolean;
@@ -77,7 +73,6 @@ export function ClientDetailPageClient({
   categories,
   clients,
   missions,
-  opportunityOptions,
   currentCollaboratorId,
   canManagePrivacy,
   canViewHistory,
@@ -171,7 +166,6 @@ export function ClientDetailPageClient({
           collaborators={collaborators}
           clients={clients}
           availableCategories={categories}
-          opportunityOptions={opportunityOptions}
           currentCollaboratorId={currentCollaboratorId}
           canManagePrivacy={canManagePrivacy}
           lockedFields={{
@@ -195,7 +189,6 @@ export function ClientDetailPageClient({
           collaborators={collaborators}
           clients={clients}
           availableCategories={categories}
-          opportunityOptions={opportunityOptions}
           currentCollaboratorId={currentCollaboratorId}
           canManagePrivacy={canManagePrivacy}
           duplicatePrefill={buildMissionDuplicatePrefill(source)}

@@ -12,10 +12,7 @@ import {
   parseMissionsListSearchParams,
   type MissionsListFilters,
 } from "@/lib/missions/list-filters";
-import {
-  listMissionOpportunityOptions,
-  listMissionsPage,
-} from "@/lib/missions/queries";
+import { listMissionsPage } from "@/lib/missions/queries";
 import { getPreferredMissionCategoryIds } from "@/lib/settings/queries";
 
 async function MissionsContent({
@@ -33,7 +30,6 @@ async function MissionsContent({
   let collaborators;
   let clients;
   let categories;
-  let opportunityOptions;
   let currentCollaborator;
   let pageResult: Awaited<ReturnType<typeof listMissionsPage>>;
 
@@ -42,21 +38,18 @@ async function MissionsContent({
       collabs,
       clientOpts,
       cats,
-      opps,
       current,
       storedPreferredCategoryIds,
     ] = await Promise.all([
       listCollaborators({ includeAvatar: false }),
       listClientOptions(),
       listBusinessCategories(),
-      listMissionOpportunityOptions(),
       getCurrentCollaborator(),
       getPreferredMissionCategoryIds(),
     ]);
     collaborators = collabs;
     clients = clientOpts;
     categories = cats;
-    opportunityOptions = opps;
     currentCollaborator = current;
 
     const categoryIdSet = new Set(categories.map((category) => category.id));
@@ -68,18 +61,16 @@ async function MissionsContent({
     }
     pageResult = await listMissionsPage(filters);
   } else {
-    const [collabs, clientOpts, cats, opps, current, page] = await Promise.all([
+    const [collabs, clientOpts, cats, current, page] = await Promise.all([
       listCollaborators({ includeAvatar: false }),
       listClientOptions(),
       listBusinessCategories(),
-      listMissionOpportunityOptions(),
       getCurrentCollaborator(),
       listMissionsPage(filters),
     ]);
     collaborators = collabs;
     clients = clientOpts;
     categories = cats;
-    opportunityOptions = opps;
     currentCollaborator = current;
     pageResult = page;
   }
@@ -103,7 +94,6 @@ async function MissionsContent({
       collaborators={collaborators}
       clients={clients}
       categories={categories}
-      opportunityOptions={opportunityOptions}
       currentCollaboratorId={currentCollaborator?.id ?? ""}
     />
   );

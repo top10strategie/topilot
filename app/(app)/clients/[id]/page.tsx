@@ -9,7 +9,6 @@ import { listBusinessCategories } from "@/lib/categories/queries";
 import { getClientById, listClientOptions } from "@/lib/clients/queries";
 import { listCollaborators } from "@/lib/collaborators/queries";
 import {
-  listMissionOpportunityOptions,
   listMissionsByClientId,
 } from "@/lib/missions/queries";
 
@@ -29,15 +28,13 @@ async function ClientDetailContent({
     categories,
     clients,
     missions,
-    opportunityOptions,
     currentCollaborator,
   ] = await Promise.all([
     getClientById(id),
-    listCollaborators(),
+    listCollaborators({ includeAvatar: false }),
     listBusinessCategories(),
     listClientOptions(),
     listMissionsByClientId(id),
-    listMissionOpportunityOptions(),
     getCurrentCollaborator(),
   ]);
 
@@ -52,7 +49,6 @@ async function ClientDetailContent({
       categories={categories}
       clients={clients}
       missions={missions}
-      opportunityOptions={opportunityOptions}
       currentCollaboratorId={currentCollaborator?.id ?? ""}
       canManagePrivacy={
         currentCollaborator

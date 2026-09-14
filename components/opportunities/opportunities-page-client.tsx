@@ -70,7 +70,6 @@ import {
   OPPORTUNITY_PRIORITIES,
 } from "@/lib/opportunities/labels";
 import type {
-  OpportunityContactOption,
   OpportunityKanbanStatus,
   OpportunityListItem,
   OpportunityPriority,
@@ -101,7 +100,6 @@ type OpportunitiesPageClientProps = {
   filters?: OpportunitiesListFilters;
   collaborators: CollaboratorListItem[];
   clients: ClientOption[];
-  contacts: OpportunityContactOption[];
   categories: CategoryItem[];
 };
 
@@ -152,7 +150,6 @@ export function OpportunitiesPageClient({
   filters: filtersProp,
   collaborators,
   clients,
-  contacts,
   categories,
 }: OpportunitiesPageClientProps) {
   const filters = filtersProp ?? DEFAULT_OPPORTUNITIES_LIST_FILTERS;
@@ -245,7 +242,6 @@ export function OpportunitiesPageClient({
           mode="create"
           collaborators={collaborators}
           clients={clients}
-          contacts={contacts}
           availableCategories={categories}
           duplicatePrefill={
             duplicateSource

@@ -31,7 +31,7 @@ async function ToolsContent({
     listToolsPage(filters),
     listCategories(),
     listClientOptions(),
-    listCollaborators(),
+    listCollaborators({ includeAvatar: false }),
     getCurrentCollaborator(),
   ]);
 

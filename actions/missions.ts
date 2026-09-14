@@ -6,8 +6,10 @@ import { todayParisYmd } from "@/lib/dates/paris";
 import { formCategoryIds, formOptional, formText } from "@/lib/form-data";
 import type {
   MissionKanbanStatus,
+  MissionOpportunityOption,
   MissionScope,
 } from "@/lib/missions/types";
+import { listMissionOpportunityOptions } from "@/lib/missions/queries";
 import { createClient } from "@/lib/supabase/server";
 
 export type MissionActionResult =
@@ -435,4 +437,24 @@ export async function archiveMission(
   revalidatePath("/missions");
   revalidatePath(`/missions/${id}`);
   return { success: true };
+}
+
+export async function fetchMissionOpportunityOptions(): Promise<
+  | { success: true; options: MissionOpportunityOption[] }
+  | { success: false; error: string; options: [] }
+> {
+  const auth = await requireActiveCollaboratorAction();
+  if (!auth.success) {
+    return { success: false, error: auth.error, options: [] };
+  }
+  try {
+    const options = await listMissionOpportunityOptions();
+    return { success: true, options };
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Impossible de charger les opportunités.";
+    return { success: false, error: message, options: [] };
+  }
 }

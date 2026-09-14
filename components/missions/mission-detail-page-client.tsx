@@ -31,17 +31,13 @@ import {
   getMissionResponsibleName,
 } from "@/lib/missions/labels";
 import { cn } from "@/lib/utils";
-import type {
-  MissionDetail,
-  MissionOpportunityOption,
-} from "@/lib/missions/types";
+import type { MissionDetail } from "@/lib/missions/types";
 
 type MissionDetailPageClientProps = {
   mission: MissionDetail;
   collaborators: CollaboratorListItem[];
   clients: ClientOption[];
   categories: CategoryItem[];
-  opportunityOptions: MissionOpportunityOption[];
   currentCollaboratorId: string;
   linkedClient: ClientDetail | null;
   canManagePrivacy: boolean;
@@ -53,7 +49,6 @@ export function MissionDetailPageClient({
   collaborators,
   clients,
   categories,
-  opportunityOptions,
   currentCollaboratorId,
   linkedClient,
   canManagePrivacy,
@@ -93,7 +88,6 @@ export function MissionDetailPageClient({
           collaborators={collaborators}
           clients={clients}
           availableCategories={categories}
-          opportunityOptions={opportunityOptions}
           currentCollaboratorId={currentCollaboratorId}
           canManagePrivacy={canManagePrivacy}
           helpers={helpers}
@@ -113,7 +107,6 @@ export function MissionDetailPageClient({
           collaborators={collaborators}
           clients={clients}
           availableCategories={categories}
-          opportunityOptions={opportunityOptions}
           currentCollaboratorId={currentCollaboratorId}
           canManagePrivacy={canManagePrivacy}
           duplicatePrefill={buildMissionDuplicatePrefill(mission)}

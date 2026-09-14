@@ -1,5 +1,15 @@
 # Suivi des actions — TOPilot
 
+## **[2026-09-14] — Vague perf : options tiroirs, Recharts, counts**
+
+**Type :** `perf`
+**Fichiers concernés :** `actions/{missions,opportunities}.ts`, `app/(app)/{missions,opportunities,clients,tools}/**/page.tsx`, `components/{missions,opportunities,clients}/*`, `components/analyses/{analysis-charts.ts,analysis-bar-chart-lazy.tsx}`, `lib/clients/queries.ts`, `suivi.md`
+
+### Description
+
+Contacts et opportunités des sélecteurs de tiroirs chargés à l’ouverture (plus sur chaque liste/fiche). Chunk Recharts unique (bar + line). Compteurs fiche client via `count` HEAD. Collaborateurs outils sans avatar.
+
+---
 ## **[2026-09-14] — Lazy FormDrawers sur les fiches [id]**
 
 **Type :** `perf`

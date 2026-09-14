@@ -70,7 +70,6 @@ import {
 import type {
   MissionKanbanStatus,
   MissionListItem,
-  MissionOpportunityOption,
   MissionScope,
 } from "@/lib/missions/types";
 import { cn } from "@/lib/utils";
@@ -100,7 +99,6 @@ type MissionsPageClientProps = {
   collaborators: CollaboratorListItem[];
   clients: ClientOption[];
   categories: CategoryItem[];
-  opportunityOptions: MissionOpportunityOption[];
   currentCollaboratorId: string;
 };
 
@@ -155,7 +153,6 @@ export function MissionsPageClient({
   collaborators,
   clients,
   categories,
-  opportunityOptions,
   currentCollaboratorId,
 }: MissionsPageClientProps) {
   const filters = filtersProp ?? DEFAULT_MISSIONS_LIST_FILTERS;
@@ -249,7 +246,6 @@ export function MissionsPageClient({
           collaborators={collaborators}
           clients={clients}
           availableCategories={categories}
-          opportunityOptions={opportunityOptions}
           currentCollaboratorId={currentCollaboratorId}
           duplicatePrefill={
             duplicateSource
