@@ -8,10 +8,7 @@ import { getCurrentCollaborator } from "@/lib/auth/get-current-collaborator";
 import { isManagerOrDirection } from "@/lib/auth/roles";
 import { getClientById, listClientOptions } from "@/lib/clients/queries";
 import { listCollaborators } from "@/lib/collaborators/queries";
-import {
-  getMissionById,
-  listMissionOpportunityOptions,
-} from "@/lib/missions/queries";
+import { getMissionById } from "@/lib/missions/queries";
 
 type MissionDetailPageProps = {
   params: Promise<{ id: string }>;
@@ -28,14 +25,12 @@ async function MissionDetailContent({
     collaborators,
     clients,
     categories,
-    opportunityOptions,
     currentCollaborator,
   ] = await Promise.all([
     getMissionById(id),
-    listCollaborators(),
+    listCollaborators({ includeAvatar: false }),
     listClientOptions(),
     listBusinessCategories(),
-    listMissionOpportunityOptions(),
     getCurrentCollaborator(),
   ]);
 
@@ -53,7 +48,6 @@ async function MissionDetailContent({
       collaborators={collaborators}
       clients={clients}
       categories={categories}
-      opportunityOptions={opportunityOptions}
       currentCollaboratorId={currentCollaborator?.id ?? ""}
       linkedClient={linkedClient}
       canManagePrivacy={

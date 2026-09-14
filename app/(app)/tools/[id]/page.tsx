@@ -25,7 +25,7 @@ async function ToolDetailContent({
       getToolById(id),
       listCategories(),
       listClientOptions(),
-      listCollaborators(),
+      listCollaborators({ includeAvatar: false }),
       getCurrentCollaborator(),
     ]);
 

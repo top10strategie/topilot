@@ -20,7 +20,7 @@ import { AuditHistoryButton } from "@/components/audit/audit-history-button";
 import { CategoryMultiCombobox } from "@/components/categories/category-multi-combobox";
 import { useDrawerStack } from "@/components/drawers/drawer-stack-context";
 import { DeleteDocumentDialog } from "@/components/documents/delete-document-dialog";
-import { DocumentFormDrawer } from "@/components/documents/document-form-drawer";
+import { DocumentFormDrawer } from "@/components/documents/document-form-drawer-lazy";
 import { DocumentFormatThumb } from "@/components/documents/document-format-thumb";
 import { DocumentPreviewDialog } from "@/components/documents/document-preview-dialog";
 import { DocumentVersionHistoryDrawer } from "@/components/documents/document-version-history-drawer";

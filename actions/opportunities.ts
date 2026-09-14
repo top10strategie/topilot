@@ -5,9 +5,11 @@ import { requireActiveCollaboratorAction } from "@/lib/auth/require-action";
 import { todayParisYmd } from "@/lib/dates/paris";
 import { formCategoryIds, formOptional, formText } from "@/lib/form-data";
 import type {
+  OpportunityContactOption,
   OpportunityKanbanStatus,
   OpportunityPriority,
 } from "@/lib/opportunities/types";
+import { listOpportunityContactOptions } from "@/lib/opportunities/queries";
 import { createClient } from "@/lib/supabase/server";
 
 const CLOSED_KANBAN_STATUSES = new Set<OpportunityKanbanStatus>([
@@ -554,4 +556,22 @@ export async function markOpportunityAsLost(
 
   revalidateOpportunities(id);
   return { success: true };
+}
+
+export async function fetchOpportunityContactOptions(): Promise<
+  | { success: true; contacts: OpportunityContactOption[] }
+  | { success: false; error: string; contacts: [] }
+> {
+  const auth = await requireActiveCollaboratorAction();
+  if (!auth.success) {
+    return { success: false, error: auth.error, contacts: [] };
+  }
+  try {
+    const contacts = await listOpportunityContactOptions();
+    return { success: true, contacts };
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Impossible de charger les contacts.";
+    return { success: false, error: message, contacts: [] };
+  }
 }

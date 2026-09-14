@@ -6,10 +6,10 @@ import type { DrawerHelpers } from "@/components/drawers/drawer-stack-context";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useSanitizedWikiHtml } from "@/lib/wiki/sanitize-html-client";
-import type { WikiListItem } from "@/lib/wiki/types";
+import type { WikiDetail } from "@/lib/wiki/types";
 
 type WikiConsultationDrawerProps = {
-  wiki: WikiListItem;
+  wiki: WikiDetail;
   helpers: DrawerHelpers<null>;
 };
 

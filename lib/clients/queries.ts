@@ -137,39 +137,25 @@ function mapListItem(row: ClientListRow): ClientListItem {
   };
 }
 
-async function loadEntityCounts(
-  clientIds: string[],
-): Promise<{
-  missions: Map<string, number>;
-  opportunities: Map<string, number>;
+async function loadEntityCounts(clientId: string): Promise<{
+  missions: number;
+  opportunities: number;
 }> {
-  const missions = new Map<string, number>();
-  const opportunities = new Map<string, number>();
-  if (clientIds.length === 0) {
-    return { missions, opportunities };
-  }
-
   const supabase = await createClient();
-
   const [missionRes, opportunityRes] = await Promise.all([
-    supabase.from("mission").select("client_id").in("client_id", clientIds),
+    supabase
+      .from("mission")
+      .select("id", { count: "exact", head: true })
+      .eq("client_id", clientId),
     supabase
       .from("opportunity")
-      .select("client_id")
-      .in("client_id", clientIds),
+      .select("id", { count: "exact", head: true })
+      .eq("client_id", clientId),
   ]);
-
-  for (const row of missionRes.data ?? []) {
-    const id = row.client_id as string | null;
-    if (!id) continue;
-    missions.set(id, (missions.get(id) ?? 0) + 1);
-  }
-  for (const row of opportunityRes.data ?? []) {
-    const id = row.client_id as string;
-    opportunities.set(id, (opportunities.get(id) ?? 0) + 1);
-  }
-
-  return { missions, opportunities };
+  return {
+    missions: missionRes.count ?? 0,
+    opportunities: opportunityRes.count ?? 0,
+  };
 }
 
 /**
@@ -441,11 +427,11 @@ export async function getClientById(id: string): Promise<ClientDetail | null> {
     }> | null;
   };
 
-  const counts = await loadEntityCounts([row.id]);
+  const counts = await loadEntityCounts(row.id);
   const base = mapListItem({
     ...row,
-    mission: [{ count: counts.missions.get(row.id) ?? 0 }],
-    opportunity: [{ count: counts.opportunities.get(row.id) ?? 0 }],
+    mission: [{ count: counts.missions }],
+    opportunity: [{ count: counts.opportunities }],
   });
 
   const contacts = (row.contact_client ?? [])

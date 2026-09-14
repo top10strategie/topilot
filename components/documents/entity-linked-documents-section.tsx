@@ -7,7 +7,7 @@ import {
   unlinkDocumentFromEntity,
 } from "@/actions/document-links";
 import { useDrawerStack } from "@/components/drawers/drawer-stack-context";
-import { DocumentFormDrawer } from "@/components/documents/document-form-drawer";
+import { DocumentFormDrawer } from "@/components/documents/document-form-drawer-lazy";
 import { DocumentFormatThumb } from "@/components/documents/document-format-thumb";
 import { EntityLinkedResourceSection } from "@/components/layout/entity-linked-resource-section";
 import { Badge } from "@/components/ui/badge";

@@ -1,8 +1,9 @@
 "use client";
 
 import { SignOut } from "@phosphor-icons/react";
-import { useRouter } from "next/navigation";
 import { useState, type ComponentProps } from "react";
+import { toast } from "sonner";
+import { signOutAction } from "@/actions/auth";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,7 +14,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { createClient } from "@/lib/supabase/client";
+import { LOGIN_PATH } from "@/lib/auth/constants";
 import { cn } from "@/lib/utils";
 
 type LogoutDialogProps = {
@@ -35,18 +36,24 @@ export function LogoutDialog({
   triggerClassName,
   triggerLabel = "Déconnexion",
 }: LogoutDialogProps) {
-  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleLogout = async () => {
     setIsLoading(true);
     try {
-      const supabase = createClient();
-      await supabase.auth.signOut();
+      const result = await signOutAction();
+      if (!result.success) {
+        toast.error(result.error ?? "Impossible de se déconnecter.");
+        return;
+      }
+      // Ferme la modale puis navigation dure : démonte le portail Radix
+      // et évite un refresh RSC de la page protégée en anon.
       setOpen(false);
-      router.push("/auth/login");
-      router.refresh();
+      window.location.assign(LOGIN_PATH);
+    } catch (error) {
+      console.error("signOutAction:", error);
+      toast.error("Impossible de se déconnecter.");
     } finally {
       setIsLoading(false);
     }

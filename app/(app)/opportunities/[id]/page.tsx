@@ -9,10 +9,7 @@ import { listBusinessCategories } from "@/lib/categories/queries";
 import { getClientById, listClientOptions } from "@/lib/clients/queries";
 import { listCollaborators } from "@/lib/collaborators/queries";
 import { listMissionsByOpportunityId } from "@/lib/missions/queries";
-import {
-  getOpportunityById,
-  listOpportunityContactOptions,
-} from "@/lib/opportunities/queries";
+import { getOpportunityById } from "@/lib/opportunities/queries";
 
 type OpportunityDetailPageProps = {
   params: Promise<{ id: string }>;
@@ -28,15 +25,13 @@ async function OpportunityDetailContent({
     opportunity,
     collaborators,
     clients,
-    contacts,
     categories,
     missions,
     currentCollaborator,
   ] = await Promise.all([
     getOpportunityById(id),
-    listCollaborators(),
+    listCollaborators({ includeAvatar: false }),
     listClientOptions(),
-    listOpportunityContactOptions(),
     listBusinessCategories(),
     listMissionsByOpportunityId(id),
     getCurrentCollaborator(),
@@ -62,7 +57,6 @@ async function OpportunityDetailContent({
       collaborators={collaborators}
       clients={clients}
       linkedClient={linkedClient}
-      contacts={contacts}
       categories={categories}
       missions={missions}
       opportunityOptions={opportunityOptions}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { flushSync } from "react-dom";
 import { FolderSimplePlus, UserPlus } from "@phosphor-icons/react";
 import { toast } from "sonner";
@@ -8,6 +8,7 @@ import { createBusinessCategory, updateBusinessCategory } from "@/actions/catego
 
 import {
   createOpportunityRecord,
+  fetchOpportunityContactOptions,
   updateOpportunityRecord,
 } from "@/actions/opportunities";
 import { CategoryMultiCombobox } from "@/components/categories/category-multi-combobox";
@@ -62,7 +63,8 @@ type OpportunityFormDrawerProps = {
   opportunity?: OpportunityDetail;
   collaborators: CollaboratorListItem[];
   clients: ClientOption[];
-  contacts: OpportunityContactOption[];
+  /** Si omis, chargé à l’ouverture du tiroir. */
+  contacts?: OpportunityContactOption[];
   availableCategories: CategoryItem[];
   canManagePrivacy?: boolean;
   helpers: DrawerHelpers<{ id: string; opportunity_name: string }>;
@@ -160,11 +162,46 @@ export function OpportunityFormDrawer({
       .map((c) => ({ id: c.id, client_name: c.client_name }))
       .sort((a, b) => a.client_name.localeCompare(b.client_name, "fr")),
   );
-  const [contacts, setContacts] = useState<LocalContact[]>(() => [
-    ...initialContacts,
-  ]);
+  const [contacts, setContacts] = useState<LocalContact[]>(() => {
+    const list = [...(initialContacts ?? [])];
+    const linked = opportunity?.contact;
+    if (
+      linked &&
+      opportunity &&
+      !list.some((contact) => contact.id === linked.id)
+    ) {
+      list.push({
+        id: linked.id,
+        client_id: opportunity.client_id,
+        first_name: linked.first_name,
+        last_name: linked.last_name,
+        is_main: false,
+      });
+    }
+    return list;
+  });
   const [clientSelectEpoch, setClientSelectEpoch] = useState(0);
   const [contactSelectEpoch, setContactSelectEpoch] = useState(0);
+
+  useEffect(() => {
+    if ((initialContacts?.length ?? 0) > 0) return;
+    let cancelled = false;
+    void fetchOpportunityContactOptions().then((result) => {
+      if (cancelled) return;
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
+      setContacts((prev) => {
+        const incomingIds = new Set(result.contacts.map((c) => c.id));
+        const extra = prev.filter((c) => !incomingIds.has(c.id));
+        return [...result.contacts, ...extra];
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [initialContacts]);
 
   const [categories, setCategories] = useState<OpportunityCategoryItem[]>(
     () => {

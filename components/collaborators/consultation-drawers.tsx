@@ -16,16 +16,25 @@ import type {
   CollaboratorListItem,
   TeamListItem,
 } from "@/lib/collaborators/types";
-import { formatMissionDate } from "@/lib/missions/labels";
-import type { MissionListItem } from "@/lib/missions/types";
 import { getEndDateToneClass } from "@/lib/dates/end-date-tone";
+import { formatMissionDate } from "@/lib/missions/labels";
 import { cn } from "@/lib/utils";
+
+type AdminMissionSummary = {
+  id: string;
+  mission_name: string;
+  kanban_status: string;
+  start_at: string | null;
+  end_at: string | null;
+  client: { id: string; client_name: string } | null;
+  categories: { id: string; label: string }[];
+};
 
 function RecentMissionsTable({
   missions,
   seeAllHref,
 }: {
-  missions: MissionListItem[];
+  missions: AdminMissionSummary[];
   seeAllHref: string;
 }) {
   return (
@@ -114,7 +123,7 @@ function RecentMissionsTable({
 
 type CollaboratorConsultationProps = {
   collaborator: CollaboratorListItem;
-  recentMissions: MissionListItem[];
+  recentMissions: AdminMissionSummary[];
 };
 
 /**
@@ -170,7 +179,7 @@ export function CollaboratorConsultationContent({
 
 type TeamConsultationProps = {
   team: TeamListItem;
-  recentMissions: MissionListItem[];
+  recentMissions: AdminMissionSummary[];
   onOpenCollaborator: (collaboratorId: string) => void;
 };
 

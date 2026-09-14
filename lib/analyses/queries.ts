@@ -1,3 +1,4 @@
+import { emptyAnalysesPayload } from "@/lib/analyses/empty-payload";
 import {
   getMissionKanbanStatusLabel,
 } from "@/lib/missions/labels";
@@ -246,15 +247,35 @@ function priceCoversMonth(
 
 /**
  * Charge et agrège les données pour `/analyses` et les widgets Home.
+ * Sur Home, passer un scope pour ne fetch que les tables utiles aux widgets.
  */
-export async function loadAnalysesPayload(): Promise<AnalysesPayload> {
+export type AnalysesLoadScope = {
+  opportunities?: boolean;
+  missions?: boolean;
+  subscriptions?: boolean;
+};
+
+export async function loadAnalysesPayload(
+  scope: AnalysesLoadScope = {
+    opportunities: true,
+    missions: true,
+    subscriptions: true,
+  },
+): Promise<AnalysesPayload> {
+  const wantOpp = scope.opportunities !== false;
+  const wantMissions = scope.missions !== false;
+  const wantSubs = scope.subscriptions !== false;
+  const wantCollabs = wantOpp || wantMissions;
+
   const supabase = await createClient();
+  const empty = emptyAnalysesPayload();
 
   const [oppRes, missionRes, collabRes, toolsRes] = await Promise.all([
-    supabase
-      .from("opportunity")
-      .select(
-        `
+    wantOpp
+      ? supabase
+          .from("opportunity")
+          .select(
+            `
         id,
         price,
         average_price,
@@ -267,11 +288,13 @@ export async function loadAnalysesPayload(): Promise<AnalysesPayload> {
           category:category_business!category_id ( id, label, is_private )
         )
       `,
-      ),
-    supabase
-      .from("mission")
-      .select(
-        `
+          )
+      : Promise.resolve({ data: [], error: null }),
+    wantMissions
+      ? supabase
+          .from("mission")
+          .select(
+            `
         id,
         kanban_status,
         completed_at,
@@ -280,12 +303,16 @@ export async function loadAnalysesPayload(): Promise<AnalysesPayload> {
         end_at,
         collaborator_id
       `,
-      ),
-    supabase.from("collaborator").select("id, team:team_id ( team_name )"),
-    supabase
-      .from("tool")
-      .select(
-        `
+          )
+      : Promise.resolve({ data: [], error: null }),
+    wantCollabs
+      ? supabase.from("collaborator").select("id, team:team_id ( team_name )")
+      : Promise.resolve({ data: [], error: null }),
+    wantSubs
+      ? supabase
+          .from("tool")
+          .select(
+            `
         id,
         tool_name,
         tool_category ( category:category_id ( id, label ) ),
@@ -294,7 +321,8 @@ export async function loadAnalysesPayload(): Promise<AnalysesPayload> {
           tool_subscription_price ( currency, amount, valid_from, valid_to )
         )
       `,
-      ),
+          )
+      : Promise.resolve({ data: [], error: null }),
   ]);
 
   if (oppRes.error) {
@@ -318,6 +346,10 @@ export async function loadAnalysesPayload(): Promise<AnalysesPayload> {
   const missions = (missionRes.data ?? []) as unknown as MissionRow[];
   const collaborators = (collabRes.data ?? []) as unknown as CollaboratorTeamRow[];
   const tools = (toolsRes.data ?? []) as unknown as ToolCostRow[];
+
+  if (!wantOpp && !wantMissions && !wantSubs) {
+    return empty;
+  }
 
   const paris = getParisParts();
   const teamByCollaborator = new Map<string, string>();

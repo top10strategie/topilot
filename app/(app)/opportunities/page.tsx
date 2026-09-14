@@ -11,7 +11,6 @@ import {
 } from "@/lib/opportunities/list-filters";
 import {
   listOpportunitiesPage,
-  listOpportunityContactOptions,
 } from "@/lib/opportunities/queries";
 
 async function OpportunitiesContent({
@@ -22,14 +21,15 @@ async function OpportunitiesContent({
   const params = await searchParams;
   let filters = parseOpportunitiesListSearchParams(params ?? {});
 
-  const [collaborators, clients, contacts, categories] = await Promise.all([
-    listCollaborators(),
-    listClientOptions(),
-    listOpportunityContactOptions(),
-    listBusinessCategories(),
-  ]);
+  const [collaborators, clients, categories, pageResult] =
+    await Promise.all([
+      listCollaborators({ includeAvatar: false }),
+      listClientOptions(),
+      listBusinessCategories(),
+      listOpportunitiesPage(filters),
+    ]);
 
-  let { opportunities, totalCount } = await listOpportunitiesPage(filters);
+  let { opportunities, totalCount } = pageResult;
 
   if (filters.view !== "kanban") {
     const totalPages = Math.max(
@@ -49,7 +49,6 @@ async function OpportunitiesContent({
       filters={filters}
       collaborators={collaborators}
       clients={clients}
-      contacts={contacts}
       categories={categories}
     />
   );

@@ -155,19 +155,78 @@ function mapListItem(row: MissionListRow): MissionListItem {
   };
 }
 
-export async function listMissions(): Promise<MissionListItem[]> {
+/**
+ * Missions pour l’admin (pôles / collaborateurs) — sans avatar, série ni opportunité.
+ */
+export async function listMissionsForAdminPeople(): Promise<
+  Pick<
+    MissionListItem,
+    | "id"
+    | "mission_name"
+    | "collaborator_id"
+    | "kanban_status"
+    | "start_at"
+    | "end_at"
+    | "client"
+    | "categories"
+  >[]
+> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("mission")
-    .select(MISSION_LIST_SELECT)
+    .select(
+      `
+      id,
+      mission_name,
+      collaborator_id,
+      kanban_status,
+      start_at,
+      end_at,
+      client:client_id ( id, client_name ),
+      mission_category (
+        category:category_business!category_id ( id, label, is_private )
+      )
+    `,
+    )
+    .is("archived_at", null)
+    .neq("kanban_status", "archivee")
     .order("created_at", { ascending: false });
 
   if (error) {
-    console.error("listMissions:", error);
+    console.error("listMissionsForAdminPeople:", error);
     throw new Error(`Impossible de charger les missions : ${error.message}`);
   }
 
-  return ((data ?? []) as unknown as MissionListRow[]).map(mapListItem);
+  type AdminRow = {
+    id: string;
+    mission_name: string;
+    collaborator_id: string;
+    kanban_status: MissionKanbanStatus;
+    start_at: string | null;
+    end_at: string | null;
+    client: { id: string; client_name: string } | null;
+    mission_category: Array<{
+      category: { id: string; label: string } | null;
+    }> | null;
+  };
+
+  return ((data ?? []) as unknown as AdminRow[]).map((row) => {
+    const categories: MissionCategoryItem[] = (row.mission_category ?? [])
+      .map((link) => link.category)
+      .filter((c): c is { id: string; label: string } => Boolean(c))
+      .sort((a, b) => a.label.localeCompare(b.label, "fr"));
+
+    return {
+      id: row.id,
+      mission_name: row.mission_name,
+      collaborator_id: row.collaborator_id,
+      kanban_status: row.kanban_status,
+      start_at: row.start_at,
+      end_at: row.end_at,
+      client: row.client,
+      categories,
+    };
+  });
 }
 
 type MissionsPageRpcRow = {
