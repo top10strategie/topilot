@@ -154,27 +154,6 @@ function mapListItem(row: OpportunityListRow): OpportunityListItem {
   };
 }
 
-/**
- * Liste toutes les opportunités (autres pages / usages hors liste paginée).
- */
-export async function listOpportunities(): Promise<OpportunityListItem[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("opportunity")
-    .select(OPPORTUNITY_LIST_SELECT)
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    console.error("listOpportunities:", error);
-    throw new Error(
-      `Impossible de charger les opportunités : ${error.message}`,
-    );
-  }
-
-  const rows = (data ?? []) as unknown as OpportunityListRow[];
-  return rows.map(mapListItem);
-}
-
 type OpportunitiesPageRpcRow = {
   id: string;
   opportunity_name: string;
