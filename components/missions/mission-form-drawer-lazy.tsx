@@ -1,7 +1,6 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import type { ComponentProps } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 function DrawerLoading() {
@@ -21,5 +20,3 @@ export const MissionFormDrawer = dynamic(
     ),
   { ssr: false, loading: () => <DrawerLoading /> },
 );
-
-export type MissionFormDrawerProps = ComponentProps<typeof MissionFormDrawer>;

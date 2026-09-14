@@ -155,21 +155,6 @@ function mapListItem(row: MissionListRow): MissionListItem {
   };
 }
 
-export async function listMissions(): Promise<MissionListItem[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("mission")
-    .select(MISSION_LIST_SELECT)
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    console.error("listMissions:", error);
-    throw new Error(`Impossible de charger les missions : ${error.message}`);
-  }
-
-  return ((data ?? []) as unknown as MissionListRow[]).map(mapListItem);
-}
-
 /**
  * Missions pour l’admin (pôles / collaborateurs) — sans avatar, série ni opportunité.
  */

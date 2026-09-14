@@ -1,5 +1,15 @@
 # Suivi des actions — TOPilot
 
+## **[2026-09-14] — Knip : listMissions + types lazy drawers**
+
+**Type :** `fix`
+**Fichiers concernés :** `lib/missions/queries.ts`, `components/**/*-drawer-lazy.tsx`, `components/wiki/wiki-drawers-lazy.tsx`, `suivi.md`
+
+### Description
+
+Suppression de `listMissions` (remplacé par `listMissionsPage`) et des réexports de props inutilisés sur les wrappers `next/dynamic`.
+
+---
 ## **[2026-09-14] — Vague perf : options tiroirs, Recharts, counts**
 
 **Type :** `perf`

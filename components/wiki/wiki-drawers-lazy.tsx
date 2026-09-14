@@ -1,7 +1,6 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import type { ComponentProps } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 function DrawerLoading() {
@@ -29,5 +28,3 @@ export const WikiConsultationDrawer = dynamic(
     ),
   { ssr: false, loading: () => <DrawerLoading /> },
 );
-
-export type WikiFormDrawerProps = ComponentProps<typeof WikiFormDrawer>;
