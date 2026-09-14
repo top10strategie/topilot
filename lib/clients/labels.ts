@@ -1,5 +1,9 @@
 import type { ClientResponsibleItem, ContactClientItem } from "./types";
 
+export function formatClientName(name: string): string {
+  return name.trim().toLocaleUpperCase("fr");
+}
+
 export function getClientResponsibleName(
   person: Pick<ClientResponsibleItem, "first_name" | "last_name">,
 ): string {

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireActiveCollaboratorAction } from "@/lib/auth/require-action";
+import { formatClientName } from "@/lib/clients/labels";
 import { CLIENT_LOGO_TYPE_LABEL } from "@/lib/clients/visuals";
 import { assertVisualDocumentOfType } from "@/lib/documents/visual-document";
 import {
@@ -136,7 +137,7 @@ export async function createClientRecord(
     return { success: false, error: auth.error };
   }
 
-  const client_name = formText(formData, "client_name");
+  const client_name = formatClientName(formText(formData, "client_name"));
   const website = formText(formData, "website");
   const main_collaborator_id = formText(formData, "main_collaborator_id");
   const fieldErrors: NonNullable<
@@ -204,7 +205,7 @@ export async function updateClientRecord(
     return { success: false, error: "Identifiant client manquant." };
   }
 
-  const client_name = formText(formData, "client_name");
+  const client_name = formatClientName(formText(formData, "client_name"));
   const website = formText(formData, "website");
   const main_collaborator_id = formText(formData, "main_collaborator_id");
   const fieldErrors: NonNullable<
