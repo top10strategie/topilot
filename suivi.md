@@ -1,5 +1,15 @@
 # Suivi des actions — TOPilot
 
+## **[2026-09-14] — Lazy FormDrawers sur les fiches [id]**
+
+**Type :** `perf`
+**Fichiers concernés :** `components/{opportunities,missions,clients,tools}/*-detail-page-client.tsx`, `components/clients/contact-form-drawer-lazy.tsx`, `components/tools/tool-access-form-drawer-lazy.tsx`, `components/{documents,wiki,tools}/entity-linked-*-section.tsx`, `suivi.md`
+
+### Description
+
+Même pattern `next/dynamic` que les listes : les tiroirs de création/édition des fiches (et des sections docs/outils/wiki liées) ne sont plus dans le JS du first-load.
+
+---
 ## **[2026-09-14] — Fix logout : fermer la modale + navigation dure**
 
 **Type :** `fix`

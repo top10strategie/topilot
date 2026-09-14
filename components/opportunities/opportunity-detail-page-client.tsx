@@ -20,8 +20,8 @@ import { EntityFormDocumentationBlock } from "@/components/layout/entity-form-do
 import { IconActionButton } from "@/components/layout/icon-action-button";
 import { PageHero } from "@/components/layout/page-hero";
 import { MissionConsultationDrawer } from "@/components/missions/mission-consultation-drawer";
-import { MissionFormDrawer } from "@/components/missions/mission-form-drawer";
-import { OpportunityFormDrawer } from "@/components/opportunities/opportunity-form-drawer";
+import { MissionFormDrawer } from "@/components/missions/mission-form-drawer-lazy";
+import { OpportunityFormDrawer } from "@/components/opportunities/opportunity-form-drawer-lazy";
 import { EntityNotesEditor } from "@/components/notes/entity-notes-editor";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";

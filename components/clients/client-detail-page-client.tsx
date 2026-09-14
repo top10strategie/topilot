@@ -15,9 +15,9 @@ import {
 import { deleteContactClient } from "@/actions/contact-clients";
 import { deactivateClient } from "@/actions/clients";
 import { AuditHistoryButton } from "@/components/audit/audit-history-button";
-import { ClientFormDrawer } from "@/components/clients/client-form-drawer";
+import { ClientFormDrawer } from "@/components/clients/client-form-drawer-lazy";
 import { ClientLogo } from "@/components/clients/client-logo";
-import { ContactFormDrawer } from "@/components/clients/contact-form-drawer";
+import { ContactFormDrawer } from "@/components/clients/contact-form-drawer-lazy";
 import { useDrawerStack } from "@/components/drawers/drawer-stack-context";
 import { ConfirmStatusDialog } from "@/components/layout/confirm-status-dialog";
 import { DuplicateConfirmDialog } from "@/components/layout/duplicate-confirm-dialog";
@@ -26,7 +26,7 @@ import { EntityFormDocumentationBlock } from "@/components/layout/entity-form-do
 import { IconActionButton } from "@/components/layout/icon-action-button";
 import { PageHero } from "@/components/layout/page-hero";
 import { MissionConsultationDrawer } from "@/components/missions/mission-consultation-drawer";
-import { MissionFormDrawer } from "@/components/missions/mission-form-drawer";
+import { MissionFormDrawer } from "@/components/missions/mission-form-drawer-lazy";
 import { EntityNotesEditor } from "@/components/notes/entity-notes-editor";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
