@@ -4,14 +4,12 @@ import { useRouter } from "next/navigation";
 import { EntityKanbanReadonly } from "@/components/layout/entity-kanban-readonly";
 import { MissionKanbanCardContent } from "@/components/missions/mission-kanban-card";
 import { getMissionKanbanStatusLabel } from "@/lib/missions/labels";
-import type {
-  MissionKanbanStatus,
-  MissionListItem,
-} from "@/lib/missions/types";
+import type { MissionListItem } from "@/lib/missions/types";
 
-const HOME_MISSION_COLUMNS: MissionKanbanStatus[] = ["a_faire", "en_cours"];
+const HOME_MISSION_COLUMNS = ["a_faire", "en_cours"] as const;
 
-type HomeBoard = Record<"a_faire" | "en_cours", MissionListItem[]>;
+type HomeMissionStatus = (typeof HOME_MISSION_COLUMNS)[number];
+type HomeBoard = Record<HomeMissionStatus, MissionListItem[]>;
 
 function buildHomeBoard(items: MissionListItem[]): HomeBoard {
   const board: HomeBoard = { a_faire: [], en_cours: [] };

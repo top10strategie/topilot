@@ -7,16 +7,16 @@ import { cn } from "@/lib/utils";
 
 const COLUMN_WIDTH_CLASS = "w-72";
 
-export type EntityKanbanReadonlyItem<TStatus extends string> = {
+export type EntityKanbanReadonlyItem = {
   id: string;
-  kanban_status: TStatus;
+  kanban_status: string;
 };
 
 type Board<TStatus extends string, TItem> = Record<TStatus, TItem[]>;
 
 type EntityKanbanReadonlyProps<
   TStatus extends string,
-  TItem extends EntityKanbanReadonlyItem<TStatus>,
+  TItem extends EntityKanbanReadonlyItem,
 > = {
   columnIds: readonly TStatus[];
   items: TItem[];
@@ -121,7 +121,7 @@ function ReadonlyKanbanCard({
 /** Kanban consultation (Home) — colonnes + cartes cliquables, sans @dnd-kit. */
 export function EntityKanbanReadonly<
   TStatus extends string,
-  TItem extends EntityKanbanReadonlyItem<TStatus>,
+  TItem extends EntityKanbanReadonlyItem,
 >({
   columnIds,
   items,

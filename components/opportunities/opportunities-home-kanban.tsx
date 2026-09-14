@@ -7,23 +7,16 @@ import {
   formatOpportunityPrice,
   getOpportunityKanbanStatusLabel,
 } from "@/lib/opportunities/labels";
-import type {
-  OpportunityKanbanStatus,
-  OpportunityListItem,
-} from "@/lib/opportunities/types";
+import type { OpportunityListItem } from "@/lib/opportunities/types";
 
-const HOME_OPPORTUNITY_COLUMNS: OpportunityKanbanStatus[] = [
+const HOME_OPPORTUNITY_COLUMNS = [
   "suspect",
   "prospect",
   "besoin_specifie",
   "proposition_envoyee",
-];
+] as const;
 
-type HomeStatus =
-  | "suspect"
-  | "prospect"
-  | "besoin_specifie"
-  | "proposition_envoyee";
+type HomeStatus = (typeof HOME_OPPORTUNITY_COLUMNS)[number];
 
 type HomeBoard = Record<HomeStatus, OpportunityListItem[]>;
 
