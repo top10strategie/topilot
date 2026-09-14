@@ -2,15 +2,14 @@ import { createClient } from "@/lib/supabase/server";
 import type {
   LinkedWikiItem,
   WikiCategoryItem,
+  WikiDetail,
   WikiLinkOption,
   WikiListItem,
 } from "./types";
 
-const WIKI_SELECT = `
+const WIKI_LIST_SELECT = `
   id,
   title,
-  content_html,
-  content_text,
   tags,
   created_at,
   updated_at,
@@ -20,23 +19,32 @@ const WIKI_SELECT = `
   )
 `;
 
-type WikiRow = {
+const WIKI_DETAIL_SELECT = `
+  ${WIKI_LIST_SELECT},
+  content_html,
+  content_text
+`;
+
+type WikiCategoryLink = {
+  category_id: string;
+  category:
+    | { id: string; label: string }
+    | { id: string; label: string }[]
+    | null;
+};
+
+type WikiListRow = {
   id: string;
   title: string;
-  content_html: string;
-  content_text: string;
   tags: string[] | null;
   created_at: string;
   updated_at: string | null;
-  wiki_category:
-    | Array<{
-        category_id: string;
-        category:
-          | { id: string; label: string }
-          | { id: string; label: string }[]
-          | null;
-      }>
-    | null;
+  wiki_category: WikiCategoryLink[] | null;
+};
+
+type WikiDetailRow = WikiListRow & {
+  content_html: string;
+  content_text: string;
 };
 
 function asSingle<T>(value: T | T[] | null | undefined): T | null {
@@ -44,7 +52,7 @@ function asSingle<T>(value: T | T[] | null | undefined): T | null {
   return Array.isArray(value) ? (value[0] ?? null) : value;
 }
 
-function mapCategories(row: WikiRow): WikiCategoryItem[] {
+function mapCategories(row: WikiListRow): WikiCategoryItem[] {
   const items: WikiCategoryItem[] = [];
   for (const link of row.wiki_category ?? []) {
     const category = asSingle(link.category);
@@ -55,12 +63,10 @@ function mapCategories(row: WikiRow): WikiCategoryItem[] {
   return items.sort((a, b) => a.label.localeCompare(b.label, "fr"));
 }
 
-function mapListItem(row: WikiRow): WikiListItem {
+function mapListItem(row: WikiListRow): WikiListItem {
   return {
     id: row.id,
     title: row.title,
-    content_html: row.content_html,
-    content_text: row.content_text,
     tags: row.tags ?? [],
     categories: mapCategories(row),
     created_at: row.created_at,
@@ -68,7 +74,15 @@ function mapListItem(row: WikiRow): WikiListItem {
   };
 }
 
-function mapLinkedItem(row: WikiRow): LinkedWikiItem {
+function mapDetail(row: WikiDetailRow): WikiDetail {
+  return {
+    ...mapListItem(row),
+    content_html: row.content_html,
+    content_text: row.content_text,
+  };
+}
+
+function mapLinkedItem(row: WikiListRow): LinkedWikiItem {
   return {
     id: row.id,
     title: row.title,
@@ -82,7 +96,7 @@ export async function listWikis(): Promise<WikiListItem[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("wiki")
-    .select(WIKI_SELECT)
+    .select(WIKI_LIST_SELECT)
     .order("updated_at", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false });
 
@@ -91,14 +105,14 @@ export async function listWikis(): Promise<WikiListItem[]> {
     throw new Error(`Impossible de charger les wikis : ${error.message}`);
   }
 
-  return ((data ?? []) as unknown as WikiRow[]).map(mapListItem);
+  return ((data ?? []) as unknown as WikiListRow[]).map(mapListItem);
 }
 
-export async function getWikiById(id: string): Promise<WikiListItem | null> {
+export async function getWikiById(id: string): Promise<WikiDetail | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("wiki")
-    .select(WIKI_SELECT)
+    .select(WIKI_DETAIL_SELECT)
     .eq("id", id)
     .maybeSingle();
 
@@ -107,7 +121,7 @@ export async function getWikiById(id: string): Promise<WikiListItem | null> {
     throw new Error(`Impossible de charger le wiki : ${error.message}`);
   }
   if (!data) return null;
-  return mapListItem(data as unknown as WikiRow);
+  return mapDetail(data as unknown as WikiDetailRow);
 }
 
 async function listWikisByIds(ids: string[]): Promise<LinkedWikiItem[]> {
@@ -117,7 +131,7 @@ async function listWikisByIds(ids: string[]): Promise<LinkedWikiItem[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("wiki")
-    .select(WIKI_SELECT)
+    .select(WIKI_LIST_SELECT)
     .in("id", unique)
     .order("title");
 
@@ -126,7 +140,7 @@ async function listWikisByIds(ids: string[]): Promise<LinkedWikiItem[]> {
     throw new Error(`Impossible de charger les wikis : ${error.message}`);
   }
 
-  return ((data ?? []) as unknown as WikiRow[]).map(mapLinkedItem);
+  return ((data ?? []) as unknown as WikiListRow[]).map(mapLinkedItem);
 }
 
 export async function listWikisByClientId(

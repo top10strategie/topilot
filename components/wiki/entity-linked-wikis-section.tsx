@@ -10,7 +10,7 @@ import {
 import { useDrawerStack } from "@/components/drawers/drawer-stack-context";
 import { EntityLinkedResourceSection } from "@/components/layout/entity-linked-resource-section";
 import { WikiConsultationDrawer } from "@/components/wiki/wiki-consultation-drawer";
-import { WikiFormDrawer } from "@/components/wiki/wiki-form-drawer";
+import { WikiFormDrawer } from "@/components/wiki/wiki-drawers-lazy";
 import { Badge } from "@/components/ui/badge";
 import type { CategoryItem } from "@/lib/categories/types";
 import type {

@@ -1,5 +1,74 @@
 # Suivi des actions — TOPilot
 
+## **[2026-09-14] — Knip : listMissions + types lazy drawers**
+
+**Type :** `fix`
+**Fichiers concernés :** `lib/missions/queries.ts`, `components/**/*-drawer-lazy.tsx`, `components/wiki/wiki-drawers-lazy.tsx`, `suivi.md`
+
+### Description
+
+Suppression de `listMissions` (remplacé par `listMissionsPage`) et des réexports de props inutilisés sur les wrappers `next/dynamic`.
+
+---
+## **[2026-09-14] — Vague perf : options tiroirs, Recharts, counts**
+
+**Type :** `perf`
+**Fichiers concernés :** `actions/{missions,opportunities}.ts`, `app/(app)/{missions,opportunities,clients,tools}/**/page.tsx`, `components/{missions,opportunities,clients}/*`, `components/analyses/{analysis-charts.ts,analysis-bar-chart-lazy.tsx}`, `lib/clients/queries.ts`, `suivi.md`
+
+### Description
+
+Contacts et opportunités des sélecteurs de tiroirs chargés à l’ouverture (plus sur chaque liste/fiche). Chunk Recharts unique (bar + line). Compteurs fiche client via `count` HEAD. Collaborateurs outils sans avatar.
+
+---
+## **[2026-09-14] — Lazy FormDrawers sur les fiches [id]**
+
+**Type :** `perf`
+**Fichiers concernés :** `components/{opportunities,missions,clients,tools}/*-detail-page-client.tsx`, `components/clients/contact-form-drawer-lazy.tsx`, `components/tools/tool-access-form-drawer-lazy.tsx`, `components/{documents,wiki,tools}/entity-linked-*-section.tsx`, `suivi.md`
+
+### Description
+
+Même pattern `next/dynamic` que les listes : les tiroirs de création/édition des fiches (et des sections docs/outils/wiki liées) ne sont plus dans le JS du first-load.
+
+---
+## **[2026-09-14] — Fix logout : fermer la modale + navigation dure**
+
+**Type :** `fix`
+**Fichiers concernés :** `actions/auth.ts`, `components/layout/logout-dialog.tsx`, `suivi.md`
+
+### Description
+
+Après déconnexion, la Dialog Radix restait montée (portail `body`) via le soft redirect ; elle réapparaissait au login. `setOpen(false)` puis `window.location.assign(LOGIN_PATH)` — pas de `router.refresh()`.
+
+---
+## **[2026-09-14] — Fix logout : plus de refresh RSC en anon**
+
+**Type :** `fix`
+**Fichiers concernés :** `actions/auth.ts`, `components/layout/logout-dialog.tsx`, `supabase/migrations/20260914150000_revoke_anon_list_page_rpcs.sql`, `suivi.md`
+
+### Description
+
+Après `signOutAction`, `router.refresh()` re-rendait `/missions` sans session → `permission denied` sur `is_active_collaborator` / `can_access_*`. Déconnexion via `redirect(LOGIN_PATH)` ; révocation EXECUTE `anon` sur `list_*_page`.
+
+---
+## **[2026-09-14] — Plan d’action perf / chargement**
+
+**Type :** `perf`
+**Fichiers concernés :** `lib/wiki/{types,queries}.ts`, `actions/{auth,wiki-links}.ts`, `components/layout/logout-dialog.tsx`, `components/wiki/*`, `app/(app)/{page,missions,opportunities,administration,loading}.tsx`, `lib/{missions,settings,analyses}/queries.ts`, `components/**/*-lazy.tsx`, `components/{opportunities,missions,clients,tools,documents,wiki}/*-page-client.tsx`, `components/collaborators/{administration-page-client,consultation-drawers}.tsx`, `next.config.ts`, `supabase/migrations/20260914140{000,100}_list_*_board_cap.sql`, `suivi.md`
+
+### Description
+
+Exécution du plan de rentabilité issu de l’audit chargement : payloads plus légers (wikis, admin, analyses Home par scope), moins de JS shell (logout Server Action, FormDrawers lazy), RTT listes réduits, plafond Kanban 500, `loading.tsx` + `optimizePackageImports` Phosphor.
+
+### Détails techniques
+
+- Liste `/wikis` sans `content_html` ; corps chargé via `fetchWikiForConsultation` à l’ouverture
+- `signOutAction` : plus de `createBrowserClient` dans le shell
+- `/opportunities` : `listOpportunitiesPage` dans le même `Promise.all` que les options ; `/missions` parallèle si préférences déjà résolues
+- Cap board SQL `LIMIT 500` (missions + opportunités) — migrations à appliquer sur Supabase
+- Home : `loadAnalysesPayload({ opportunities, missions, subscriptions })` selon widgets ; `getOwnProfile` sous `React.cache`
+- FormDrawers listes en `next/dynamic` ; admin missions via select slim
+
+---
 ## **[2026-09-11] — Doc technique wiki : un seul fichier TipTap**
 
 **Type :** `docs`

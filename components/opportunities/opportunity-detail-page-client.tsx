@@ -20,8 +20,8 @@ import { EntityFormDocumentationBlock } from "@/components/layout/entity-form-do
 import { IconActionButton } from "@/components/layout/icon-action-button";
 import { PageHero } from "@/components/layout/page-hero";
 import { MissionConsultationDrawer } from "@/components/missions/mission-consultation-drawer";
-import { MissionFormDrawer } from "@/components/missions/mission-form-drawer";
-import { OpportunityFormDrawer } from "@/components/opportunities/opportunity-form-drawer";
+import { MissionFormDrawer } from "@/components/missions/mission-form-drawer-lazy";
+import { OpportunityFormDrawer } from "@/components/opportunities/opportunity-form-drawer-lazy";
 import { EntityNotesEditor } from "@/components/notes/entity-notes-editor";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -55,7 +55,6 @@ import type {
   MissionOpportunityOption,
 } from "@/lib/missions/types";
 import type {
-  OpportunityContactOption,
   OpportunityDetail,
 } from "@/lib/opportunities/types";
 
@@ -64,7 +63,6 @@ type OpportunityDetailPageClientProps = {
   collaborators: CollaboratorListItem[];
   clients: ClientOption[];
   linkedClient: ClientDetail | null;
-  contacts: OpportunityContactOption[];
   categories: CategoryItem[];
   missions: MissionListItem[];
   opportunityOptions: MissionOpportunityOption[];
@@ -78,7 +76,6 @@ export function OpportunityDetailPageClient({
   collaborators,
   clients,
   linkedClient,
-  contacts,
   categories,
   missions,
   opportunityOptions,
@@ -126,7 +123,6 @@ export function OpportunityDetailPageClient({
           opportunity={opportunity}
           collaborators={collaborators}
           clients={clients}
-          contacts={contacts}
           availableCategories={categories}
           canManagePrivacy={canManagePrivacy}
           helpers={helpers}
@@ -145,7 +141,6 @@ export function OpportunityDetailPageClient({
           mode="create"
           collaborators={collaborators}
           clients={clients}
-          contacts={contacts}
           availableCategories={categories}
           canManagePrivacy={canManagePrivacy}
           duplicatePrefill={buildOpportunityDuplicatePrefill(opportunity)}

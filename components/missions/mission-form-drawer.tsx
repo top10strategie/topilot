@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { FolderSimplePlus, UserPlus } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { createBusinessCategory, updateBusinessCategory } from "@/actions/categories";
 
 import {
   createMissionRecord,
+  fetchMissionOpportunityOptions,
   updateMissionRecord,
 } from "@/actions/missions";
 import {
@@ -62,7 +63,8 @@ type MissionFormDrawerProps = {
   collaborators: CollaboratorListItem[];
   clients: ClientOption[];
   availableCategories: CategoryItem[];
-  opportunityOptions: MissionOpportunityOption[];
+  /** Si omis / vide, chargé à l’ouverture du tiroir. */
+  opportunityOptions?: MissionOpportunityOption[];
   currentCollaboratorId: string;
   canManagePrivacy?: boolean;
   helpers: DrawerHelpers<{ id: string; mission_name: string }>;
@@ -87,7 +89,7 @@ export function MissionFormDrawer({
   collaborators,
   clients: initialClients,
   availableCategories = [],
-  opportunityOptions,
+  opportunityOptions: initialOpportunityOptions,
   currentCollaboratorId,
   canManagePrivacy = false,
   helpers,
@@ -112,6 +114,46 @@ export function MissionFormDrawer({
         ),
     [collaborators],
   );
+
+  const [opportunityOptions, setOpportunityOptions] = useState<
+    MissionOpportunityOption[]
+  >(() => {
+    const list = [...(initialOpportunityOptions ?? [])];
+    const linked = mission?.opportunity;
+    const linkedClientId = mission?.client_id;
+    if (
+      linked &&
+      linkedClientId &&
+      !list.some((option) => option.id === linked.id)
+    ) {
+      list.push({
+        id: linked.id,
+        opportunity_name: linked.opportunity_name,
+        client_id: linkedClientId,
+      });
+    }
+    return list;
+  });
+
+  useEffect(() => {
+    if ((initialOpportunityOptions?.length ?? 0) > 0) return;
+    let cancelled = false;
+    void fetchMissionOpportunityOptions().then((result) => {
+      if (cancelled) return;
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
+      setOpportunityOptions((prev) => {
+        const incomingIds = new Set(result.options.map((o) => o.id));
+        const extra = prev.filter((o) => !incomingIds.has(o.id));
+        return [...result.options, ...extra];
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [initialOpportunityOptions]);
 
   const [missionName, setMissionName] = useState(
     duplicatePrefill?.mission_name ?? mission?.mission_name ?? "",

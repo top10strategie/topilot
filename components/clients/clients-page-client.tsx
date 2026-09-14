@@ -11,7 +11,7 @@ import {
   UserPlus,
 } from "@phosphor-icons/react";
 import { CategoryMultiCombobox } from "@/components/categories/category-multi-combobox";
-import { ClientFormDrawer } from "@/components/clients/client-form-drawer";
+import { ClientFormDrawer } from "@/components/clients/client-form-drawer-lazy";
 import { ClientLogo } from "@/components/clients/client-logo";
 import { useDrawerStack } from "@/components/drawers/drawer-stack-context";
 import { IconActionButton } from "@/components/layout/icon-action-button";

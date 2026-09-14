@@ -12,7 +12,7 @@ import {
 import { useDrawerStack } from "@/components/drawers/drawer-stack-context";
 import { EntityLinkedResourceSection } from "@/components/layout/entity-linked-resource-section";
 import { ToolConsultationDrawer } from "@/components/tools/tool-consultation-drawer";
-import { ToolFormDrawer } from "@/components/tools/tool-form-drawer";
+import { ToolFormDrawer } from "@/components/tools/tool-form-drawer-lazy";
 import { Badge } from "@/components/ui/badge";
 import type { CategoryItem } from "@/lib/categories/types";
 import type { CollaboratorListItem } from "@/lib/collaborators/types";

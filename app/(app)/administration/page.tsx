@@ -10,7 +10,7 @@ import {
   listDocumentTypes,
 } from "@/lib/categories/queries";
 import { loadPeopleDirectory } from "@/lib/collaborators/queries";
-import { listMissions } from "@/lib/missions/queries";
+import { listMissionsForAdminPeople } from "@/lib/missions/queries";
 
 async function AdministrationContent() {
   const current = await getCurrentCollaborator();
@@ -26,7 +26,7 @@ async function AdministrationContent() {
       canManagePeople
         ? loadPeopleDirectory()
         : Promise.resolve({ teams: [], collaborators: [] }),
-      canManagePeople ? listMissions() : Promise.resolve([]),
+      canManagePeople ? listMissionsForAdminPeople() : Promise.resolve([]),
     ]);
 
   return (
