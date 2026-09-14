@@ -23,9 +23,13 @@ import {
   type ListViewTab,
 } from "@/components/layout/list-view-tabs";
 import { PageHero } from "@/components/layout/page-hero";
+import { toast } from "sonner";
+import { fetchWikiForConsultation } from "@/actions/wiki-links";
 import { DeleteWikiDialog } from "@/components/wiki/delete-wiki-dialog";
-import { WikiConsultationDrawer } from "@/components/wiki/wiki-consultation-drawer";
-import { WikiFormDrawer } from "@/components/wiki/wiki-form-drawer";
+import {
+  WikiConsultationDrawer,
+  WikiFormDrawer,
+} from "@/components/wiki/wiki-drawers-lazy";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -121,7 +125,6 @@ export function WikisPageClient({
         item.title,
         ...item.tags,
         ...item.categories.map((c) => c.label),
-        item.content_text,
       ]
         .join(" ")
         .toLocaleLowerCase("fr");
@@ -149,28 +152,42 @@ export function WikisPageClient({
   };
 
   const openEdit = (item: WikiListItem) => {
-    void pushDrawer({
-      title: "Édition Wiki",
-      content: (helpers) => (
-        <WikiFormDrawer
-          mode="edit"
-          wiki={item}
-          categories={categories}
-          helpers={helpers}
-        />
-      ),
-    }).then((saved) => {
-      if (saved) router.refresh();
-    });
+    void (async () => {
+      const result = await fetchWikiForConsultation(item.id);
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
+      void pushDrawer({
+        title: "Édition Wiki",
+        content: (helpers) => (
+          <WikiFormDrawer
+            mode="edit"
+            wiki={result.wiki}
+            categories={categories}
+            helpers={helpers}
+          />
+        ),
+      }).then((saved) => {
+        if (saved) router.refresh();
+      });
+    })();
   };
 
   const openConsultation = (item: WikiListItem) => {
-    void pushDrawer({
-      title: item.title,
-      content: (helpers) => (
-        <WikiConsultationDrawer wiki={item} helpers={helpers} />
-      ),
-    });
+    void (async () => {
+      const result = await fetchWikiForConsultation(item.id);
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
+      void pushDrawer({
+        title: result.wiki.title,
+        content: (helpers) => (
+          <WikiConsultationDrawer wiki={result.wiki} helpers={helpers} />
+        ),
+      });
+    })();
   };
 
   const actionButtons = (item: WikiListItem) => (

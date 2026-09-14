@@ -3,6 +3,8 @@
 import { SignOut } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
 import { useState, type ComponentProps } from "react";
+import { toast } from "sonner";
+import { signOutAction } from "@/actions/auth";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,7 +15,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
 type LogoutDialogProps = {
@@ -42,8 +43,11 @@ export function LogoutDialog({
   const handleLogout = async () => {
     setIsLoading(true);
     try {
-      const supabase = createClient();
-      await supabase.auth.signOut();
+      const result = await signOutAction();
+      if (!result.success) {
+        toast.error(result.error ?? "Impossible de se déconnecter.");
+        return;
+      }
       setOpen(false);
       router.push("/auth/login");
       router.refresh();

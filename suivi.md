@@ -1,5 +1,24 @@
 # Suivi des actions — TOPilot
 
+## **[2026-09-14] — Plan d’action perf / chargement**
+
+**Type :** `perf`
+**Fichiers concernés :** `lib/wiki/{types,queries}.ts`, `actions/{auth,wiki-links}.ts`, `components/layout/logout-dialog.tsx`, `components/wiki/*`, `app/(app)/{page,missions,opportunities,administration,loading}.tsx`, `lib/{missions,settings,analyses}/queries.ts`, `components/**/*-lazy.tsx`, `components/{opportunities,missions,clients,tools,documents,wiki}/*-page-client.tsx`, `components/collaborators/{administration-page-client,consultation-drawers}.tsx`, `next.config.ts`, `supabase/migrations/20260914140{000,100}_list_*_board_cap.sql`, `suivi.md`
+
+### Description
+
+Exécution du plan de rentabilité issu de l’audit chargement : payloads plus légers (wikis, admin, analyses Home par scope), moins de JS shell (logout Server Action, FormDrawers lazy), RTT listes réduits, plafond Kanban 500, `loading.tsx` + `optimizePackageImports` Phosphor.
+
+### Détails techniques
+
+- Liste `/wikis` sans `content_html` ; corps chargé via `fetchWikiForConsultation` à l’ouverture
+- `signOutAction` : plus de `createBrowserClient` dans le shell
+- `/opportunities` : `listOpportunitiesPage` dans le même `Promise.all` que les options ; `/missions` parallèle si préférences déjà résolues
+- Cap board SQL `LIMIT 500` (missions + opportunités) — migrations à appliquer sur Supabase
+- Home : `loadAnalysesPayload({ opportunities, missions, subscriptions })` selon widgets ; `getOwnProfile` sous `React.cache`
+- FormDrawers listes en `next/dynamic` ; admin missions via select slim
+
+---
 ## **[2026-09-11] — Doc technique wiki : un seul fichier TipTap**
 
 **Type :** `docs`

@@ -5,7 +5,7 @@ import { revalidateCrmEntity } from "@/lib/revalidate-crm-entity";
 import { looseClient } from "@/lib/supabase/loose";
 import { createClient } from "@/lib/supabase/server";
 import { getWikiById } from "@/lib/wiki/queries";
-import type { WikiLinkEntity, WikiListItem } from "@/lib/wiki/types";
+import type { WikiDetail, WikiLinkEntity } from "@/lib/wiki/types";
 import { isUuid } from "@/lib/uuid";
 
 export type WikiLinkActionResult =
@@ -23,7 +23,7 @@ function revalidateEntity(entity: WikiLinkEntity, entityId: string) {
 export async function fetchWikiForConsultation(
   wikiId: string,
 ): Promise<
-  { success: true; wiki: WikiListItem } | { success: false; error: string }
+  { success: true; wiki: WikiDetail } | { success: false; error: string }
 > {
   const auth = await requireActiveCollaboratorAction();
   if (!auth.success) {

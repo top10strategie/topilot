@@ -36,12 +36,36 @@ async function HomeContent() {
   const widgets = resolveHomeWidgets(profile.home_widgets, profile.role);
   const needOpportunities = widgets.includes("kanban_opportunities");
   const needMissions = widgets.includes("kanban_missions");
-  const needAnalyses = widgets.some(
-    (id) => id !== "kanban_opportunities" && id !== "kanban_missions",
+  const needOppAnalyses = widgets.some((id) =>
+    (
+      [
+        "kpi_opportunities",
+        "opp_by_status",
+        "opp_ca_by_category",
+        "opp_pipeline",
+        "opp_by_team",
+      ] as const
+    ).includes(id as never),
   );
+  const needMissionAnalyses = widgets.some((id) =>
+    (["kpi_missions", "mission_by_status"] as const).includes(id as never),
+  );
+  const needSubsAnalyses = widgets.some((id) =>
+    (["tools_monthly_spend", "tools_category_year"] as const).includes(
+      id as never,
+    ),
+  );
+  const needAnalyses =
+    needOppAnalyses || needMissionAnalyses || needSubsAnalyses;
 
   const [analyses, opportunities, missions] = await Promise.all([
-    needAnalyses ? loadAnalysesPayload() : Promise.resolve(emptyAnalysesPayload()),
+    needAnalyses
+      ? loadAnalysesPayload({
+          opportunities: needOppAnalyses,
+          missions: needMissionAnalyses,
+          subscriptions: needSubsAnalyses,
+        })
+      : Promise.resolve(emptyAnalysesPayload()),
     needOpportunities
       ? listHomeOpportunitiesBoard(profile.id)
       : Promise.resolve([]),

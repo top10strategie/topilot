@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { CategoryItem } from "@/lib/categories/types";
-import type { WikiLinkEntity, WikiListItem } from "@/lib/wiki/types";
+import type { WikiDetail, WikiLinkEntity } from "@/lib/wiki/types";
 
 const WikiRichTextEditor = dynamic(
   () =>
@@ -32,7 +32,7 @@ const WikiRichTextEditor = dynamic(
 
 type WikiFormDrawerProps = {
   mode: "create" | "edit";
-  wiki?: WikiListItem;
+  wiki?: WikiDetail;
   categories: CategoryItem[];
   linkEntity?: WikiLinkEntity;
   linkEntityId?: string;

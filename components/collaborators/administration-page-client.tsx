@@ -59,7 +59,18 @@ import type {
   CategoryItem,
   DocumentTypeItem,
 } from "@/lib/categories/types";
-import type { MissionListItem } from "@/lib/missions/types";
+import type { MissionKanbanStatus } from "@/lib/missions/types";
+
+type AdminMissionSummary = {
+  id: string;
+  mission_name: string;
+  collaborator_id: string;
+  kanban_status: MissionKanbanStatus;
+  start_at: string | null;
+  end_at: string | null;
+  client: { id: string; client_name: string } | null;
+  categories: { id: string; label: string }[];
+};
 
 type AdministrationPageClientProps = {
   canManagePeople: boolean;
@@ -68,7 +79,7 @@ type AdministrationPageClientProps = {
   businessCategories: BusinessCategoryItem[];
   utilityCategories: CategoryItem[];
   documentTypes: DocumentTypeItem[];
-  missions: MissionListItem[];
+  missions: AdminMissionSummary[];
 };
 
 type PendingDeleteTeam = {
@@ -95,9 +106,9 @@ type AdminTab =
   | "people";
 
 function recentMissionsForCollaborator(
-  missions: MissionListItem[],
+  missions: AdminMissionSummary[],
   collaboratorId: string,
-): MissionListItem[] {
+): AdminMissionSummary[] {
   return missions
     .filter(
       (mission) =>
@@ -108,10 +119,10 @@ function recentMissionsForCollaborator(
 }
 
 function recentMissionsForTeam(
-  missions: MissionListItem[],
+  missions: AdminMissionSummary[],
   collaborators: CollaboratorListItem[],
   teamId: string,
-): MissionListItem[] {
+): AdminMissionSummary[] {
   const memberIds = new Set(
     collaborators
       .filter((person) => person.team_id === teamId)

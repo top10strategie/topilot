@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { resolveVisualPublicUrl } from "@/lib/visuels/public-url";
 import type { AppTheme, OwnProfile } from "./types";
@@ -65,7 +66,7 @@ export async function getPreferredMissionCategoryIds(): Promise<string[]> {
   return parseUuidArray(data?.preferred_mission_category_ids);
 }
 
-export async function getOwnProfile(): Promise<OwnProfile | null> {
+export const getOwnProfile = cache(async (): Promise<OwnProfile | null> => {
   const supabase = await createClient();
   const {
     data: { user },
@@ -143,4 +144,4 @@ export async function getOwnProfile(): Promise<OwnProfile | null> {
       setting?.preferred_mission_category_ids,
     ),
   };
-}
+});

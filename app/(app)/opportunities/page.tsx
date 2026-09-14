@@ -22,14 +22,16 @@ async function OpportunitiesContent({
   const params = await searchParams;
   let filters = parseOpportunitiesListSearchParams(params ?? {});
 
-  const [collaborators, clients, contacts, categories] = await Promise.all([
-    listCollaborators(),
-    listClientOptions(),
-    listOpportunityContactOptions(),
-    listBusinessCategories(),
-  ]);
+  const [collaborators, clients, contacts, categories, pageResult] =
+    await Promise.all([
+      listCollaborators({ includeAvatar: false }),
+      listClientOptions(),
+      listOpportunityContactOptions(),
+      listBusinessCategories(),
+      listOpportunitiesPage(filters),
+    ]);
 
-  let { opportunities, totalCount } = await listOpportunitiesPage(filters);
+  let { opportunities, totalCount } = pageResult;
 
   if (filters.view !== "kanban") {
     const totalPages = Math.max(

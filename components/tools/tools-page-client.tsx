@@ -24,7 +24,7 @@ import {
 } from "@/components/layout/list-view-tabs";
 import { PageHero } from "@/components/layout/page-hero";
 import { DeleteToolDialog } from "@/components/tools/delete-tool-dialog";
-import { ToolFormDrawer } from "@/components/tools/tool-form-drawer";
+import { ToolFormDrawer } from "@/components/tools/tool-form-drawer-lazy";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {

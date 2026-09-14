@@ -4,6 +4,23 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 /**
+ * Coupe la session côté cookies serveur — évite d’embarquer
+ * `@supabase/ssr` browser client dans le shell app (LogoutDialog).
+ */
+export async function signOutAction(): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  const supabase = await createClient();
+  const { error } = await supabase.auth.signOut();
+  if (error) {
+    console.error("signOutAction:", error.message);
+    return { success: false, error: error.message };
+  }
+  return { success: true };
+}
+
+/**
  * Remet must_change_password à false après un changement de mot de passe réussi.
  * Utilise le service role (champ jamais exposé / modifiable côté client).
  */

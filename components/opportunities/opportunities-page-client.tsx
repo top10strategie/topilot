@@ -26,8 +26,8 @@ import {
   ListViewTabsContent,
   type ListViewTab,
 } from "@/components/layout/list-view-tabs";
-import { OpportunityFormDrawer } from "@/components/opportunities/opportunity-form-drawer";
 import { OpportunitiesKanban } from "@/components/opportunities/opportunities-kanban-lazy";
+import { OpportunityFormDrawer } from "@/components/opportunities/opportunity-form-drawer-lazy";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {

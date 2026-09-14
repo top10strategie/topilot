@@ -26,7 +26,7 @@ import {
   ListViewTabsContent,
   type ListViewTab,
 } from "@/components/layout/list-view-tabs";
-import { MissionFormDrawer } from "@/components/missions/mission-form-drawer";
+import { MissionFormDrawer } from "@/components/missions/mission-form-drawer-lazy";
 import { MissionsKanban } from "@/components/missions/missions-kanban-lazy";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

@@ -10,6 +10,7 @@ import {
   hasMissionsCategoryIdsParam,
   MISSIONS_PAGE_SIZE,
   parseMissionsListSearchParams,
+  type MissionsListFilters,
 } from "@/lib/missions/list-filters";
 import {
   listMissionOpportunityOptions,
@@ -26,24 +27,38 @@ async function MissionsContent({
   let filters = parseMissionsListSearchParams(params ?? {});
   const fromTop10 = Boolean(filters.teamId || filters.responsibleId);
   const categoryIdsInUrl = hasMissionsCategoryIdsParam(params ?? {});
+  const needsPreferred =
+    !categoryIdsInUrl && !fromTop10 && !filters.skipPreferredCategories;
 
-  const [
-    collaborators,
-    clients,
-    categories,
-    opportunityOptions,
-    currentCollaborator,
-    storedPreferredCategoryIds,
-  ] = await Promise.all([
-    listCollaborators({ includeAvatar: false }),
-    listClientOptions(),
-    listBusinessCategories(),
-    listMissionOpportunityOptions(),
-    getCurrentCollaborator(),
-    getPreferredMissionCategoryIds(),
-  ]);
+  let collaborators;
+  let clients;
+  let categories;
+  let opportunityOptions;
+  let currentCollaborator;
+  let pageResult: Awaited<ReturnType<typeof listMissionsPage>>;
 
-  if (!categoryIdsInUrl && !fromTop10 && !filters.skipPreferredCategories) {
+  if (needsPreferred) {
+    const [
+      collabs,
+      clientOpts,
+      cats,
+      opps,
+      current,
+      storedPreferredCategoryIds,
+    ] = await Promise.all([
+      listCollaborators({ includeAvatar: false }),
+      listClientOptions(),
+      listBusinessCategories(),
+      listMissionOpportunityOptions(),
+      getCurrentCollaborator(),
+      getPreferredMissionCategoryIds(),
+    ]);
+    collaborators = collabs;
+    clients = clientOpts;
+    categories = cats;
+    opportunityOptions = opps;
+    currentCollaborator = current;
+
     const categoryIdSet = new Set(categories.map((category) => category.id));
     const preferredCategoryIds = storedPreferredCategoryIds.filter((id) =>
       categoryIdSet.has(id),
@@ -51,14 +66,31 @@ async function MissionsContent({
     if (preferredCategoryIds.length > 0) {
       filters = { ...filters, categoryIds: preferredCategoryIds };
     }
+    pageResult = await listMissionsPage(filters);
+  } else {
+    const [collabs, clientOpts, cats, opps, current, page] = await Promise.all([
+      listCollaborators({ includeAvatar: false }),
+      listClientOptions(),
+      listBusinessCategories(),
+      listMissionOpportunityOptions(),
+      getCurrentCollaborator(),
+      listMissionsPage(filters),
+    ]);
+    collaborators = collabs;
+    clients = clientOpts;
+    categories = cats;
+    opportunityOptions = opps;
+    currentCollaborator = current;
+    pageResult = page;
   }
 
-  let { missions, totalCount } = await listMissionsPage(filters);
+  let { missions, totalCount } = pageResult;
 
   if (filters.view !== "kanban") {
     const totalPages = Math.max(1, Math.ceil(totalCount / MISSIONS_PAGE_SIZE));
     if (filters.page > totalPages) {
-      filters = { ...filters, page: totalPages };
+      const corrected: MissionsListFilters = { ...filters, page: totalPages };
+      filters = corrected;
       ({ missions, totalCount } = await listMissionsPage(filters));
     }
   }
