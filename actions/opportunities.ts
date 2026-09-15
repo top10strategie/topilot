@@ -18,16 +18,31 @@ const CLOSED_KANBAN_STATUSES = new Set<OpportunityKanbanStatus>([
 ]);
 
 /**
- * Filet app à la clôture (complète le trigger DB) :
- * - `end_at` vide → aujourd’hui Paris
- * - `closed_at` posé si transition vers gagne/perdue
+ * Filet app à la clôture / réouverture (complète le trigger DB) :
+ * - entrée gagne/perdue : `end_at` vide → aujourd’hui Paris ; `closed_at` posé
+ * - sortie gagne/perdue : `end_at` et `closed_at` remis à null
  */
 function applyClosureDates(
   payload: Record<string, unknown>,
   kanbanStatus: OpportunityKanbanStatus,
   endAt: string | null | undefined,
-  opts?: { isStatusTransitionToClosed?: boolean },
+  opts?: {
+    previousStatus?: OpportunityKanbanStatus | null;
+    isStatusTransitionToClosed?: boolean;
+  },
 ) {
+  const previous = opts?.previousStatus;
+  const leavingClosed =
+    previous != null &&
+    CLOSED_KANBAN_STATUSES.has(previous) &&
+    !CLOSED_KANBAN_STATUSES.has(kanbanStatus);
+
+  if (leavingClosed) {
+    payload.end_at = null;
+    payload.closed_at = null;
+    return;
+  }
+
   if (!CLOSED_KANBAN_STATUSES.has(kanbanStatus)) return;
   const today = todayParisYmd();
   if (!endAt) {
@@ -352,6 +367,7 @@ export async function updateOpportunityRecord(
   };
 
   applyClosureDates(payload, kanbanRaw as OpportunityKanbanStatus, end_at, {
+    previousStatus: existing.kanban_status as OpportunityKanbanStatus,
     isStatusTransitionToClosed:
       existing.kanban_status !== kanbanRaw &&
       CLOSED_KANBAN_STATUSES.has(kanbanRaw as OpportunityKanbanStatus),
@@ -426,31 +442,27 @@ export async function updateOpportunitiesKanban(
 
   const supabase = await createClient();
 
-  const closedIds = updates
-    .filter((u) => CLOSED_KANBAN_STATUSES.has(u.kanban_status))
-    .map((u) => u.id);
+  const updateIds = updates.map((u) => u.id);
   const existingById = new Map<
     string,
     { end_at: string | null; kanban_status: OpportunityKanbanStatus }
   >();
-  if (closedIds.length > 0) {
-    const { data: rows, error: fetchError } = await supabase
-      .from("opportunity")
-      .select("id, end_at, kanban_status")
-      .in("id", closedIds);
-    if (fetchError) {
-      console.error("updateOpportunitiesKanban fetch:", fetchError);
-      return {
-        success: false,
-        error: `Impossible de lire les opportunités : ${fetchError.message}`,
-      };
-    }
-    for (const row of rows ?? []) {
-      existingById.set(row.id as string, {
-        end_at: (row.end_at as string | null) ?? null,
-        kanban_status: row.kanban_status as OpportunityKanbanStatus,
-      });
-    }
+  const { data: rows, error: fetchError } = await supabase
+    .from("opportunity")
+    .select("id, end_at, kanban_status")
+    .in("id", updateIds);
+  if (fetchError) {
+    console.error("updateOpportunitiesKanban fetch:", fetchError);
+    return {
+      success: false,
+      error: `Impossible de lire les opportunités : ${fetchError.message}`,
+    };
+  }
+  for (const row of rows ?? []) {
+    existingById.set(row.id as string, {
+      end_at: (row.end_at as string | null) ?? null,
+      kanban_status: row.kanban_status as OpportunityKanbanStatus,
+    });
   }
 
   const results = await Promise.all(
@@ -459,18 +471,14 @@ export async function updateOpportunitiesKanban(
         kanban_status: update.kanban_status,
         kanban_order: update.kanban_order,
       };
-      if (CLOSED_KANBAN_STATUSES.has(update.kanban_status)) {
-        const existing = existingById.get(update.id);
-        applyClosureDates(
-          payload,
-          update.kanban_status,
-          existing?.end_at,
-          {
-            isStatusTransitionToClosed:
-              existing?.kanban_status !== update.kanban_status,
-          },
-        );
-      }
+      const existing = existingById.get(update.id);
+      applyClosureDates(payload, update.kanban_status, existing?.end_at, {
+        previousStatus: existing?.kanban_status,
+        isStatusTransitionToClosed:
+          existing != null &&
+          existing.kanban_status !== update.kanban_status &&
+          CLOSED_KANBAN_STATUSES.has(update.kanban_status),
+      });
       return supabase
         .from("opportunity")
         .update(payload as never)

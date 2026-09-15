@@ -184,7 +184,11 @@ export function WikisPageClient({
       void pushDrawer({
         title: result.wiki.title,
         content: (helpers) => (
-          <WikiConsultationDrawer wiki={result.wiki} helpers={helpers} />
+          <WikiConsultationDrawer
+            wiki={result.wiki}
+            categories={categories}
+            helpers={helpers}
+          />
         ),
       });
     })();

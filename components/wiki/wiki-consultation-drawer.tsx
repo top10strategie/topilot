@@ -1,15 +1,20 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { DrawerBody, DrawerFooterActions } from "@/components/drawers/drawer-section";
 import type { DrawerHelpers } from "@/components/drawers/drawer-stack-context";
+import { useDrawerStack } from "@/components/drawers/drawer-stack-context";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { WikiFormDrawer } from "@/components/wiki/wiki-form-drawer";
+import type { CategoryItem } from "@/lib/categories/types";
 import { useSanitizedWikiHtml } from "@/lib/wiki/sanitize-html-client";
 import type { WikiDetail } from "@/lib/wiki/types";
 
 type WikiConsultationDrawerProps = {
   wiki: WikiDetail;
+  categories: CategoryItem[];
   helpers: DrawerHelpers<null>;
 };
 
@@ -18,12 +23,33 @@ type WikiConsultationDrawerProps = {
  */
 export function WikiConsultationDrawer({
   wiki,
+  categories,
   helpers,
 }: WikiConsultationDrawerProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const { pushDrawer } = useDrawerStack();
   const showGoToWikis = pathname !== "/wikis";
   const contentHtml = useSanitizedWikiHtml(wiki.content_html);
+
+  const openEdit = () => {
+    void pushDrawer<{ id: string; title: string }>({
+      title: "Édition Wiki",
+      content: (editHelpers) => (
+        <WikiFormDrawer
+          mode="edit"
+          wiki={wiki}
+          categories={categories}
+          helpers={editHelpers}
+        />
+      ),
+    }).then((saved) => {
+      if (!saved) return;
+      helpers.dismiss();
+      toast.success("Wiki mis à jour.");
+      router.refresh();
+    });
+  };
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -72,6 +98,9 @@ export function WikiConsultationDrawer({
       </DrawerBody>
 
       <DrawerFooterActions>
+        <Button type="button" variant="outline" onClick={openEdit}>
+          Modifier
+        </Button>
         <Button
           type="button"
           variant="outline"
