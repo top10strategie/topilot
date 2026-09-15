@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isUuid } from "@/lib/uuid";
 
 const FREQUENCIES = new Set<MissionRecurrenceFrequency>([
+  "hebdomadaire",
   "mensuelle",
   "trimestrielle",
   "annuelle",

@@ -1700,7 +1700,11 @@ export type Database = {
         | "en_cours"
         | "terminee"
         | "archivee"
-      mission_recurrence_frequency: "mensuelle" | "trimestrielle" | "annuelle"
+      mission_recurrence_frequency:
+        | "hebdomadaire"
+        | "mensuelle"
+        | "trimestrielle"
+        | "annuelle"
       mission_scope_enum: "client" | "interne"
       opportunity_kanban_status_enum:
         | "suspect"
@@ -1849,7 +1853,12 @@ export const Constants = {
         "terminee",
         "archivee",
       ],
-      mission_recurrence_frequency: ["mensuelle", "trimestrielle", "annuelle"],
+      mission_recurrence_frequency: [
+        "hebdomadaire",
+        "mensuelle",
+        "trimestrielle",
+        "annuelle",
+      ],
       mission_scope_enum: ["client", "interne"],
       opportunity_kanban_status_enum: [
         "suspect",
