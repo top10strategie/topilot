@@ -844,6 +844,9 @@ export type Database = {
           end_at: string | null
           entry_average_price: number | null
           id: string
+          invoice_frequency:
+            | Database["public"]["Enums"]["opportunity_invoice_frequency_enum"]
+            | null
           is_active: boolean
           kanban_order: number | null
           kanban_status: Database["public"]["Enums"]["opportunity_kanban_status_enum"]
@@ -870,6 +873,9 @@ export type Database = {
           end_at?: string | null
           entry_average_price?: number | null
           id?: string
+          invoice_frequency?:
+            | Database["public"]["Enums"]["opportunity_invoice_frequency_enum"]
+            | null
           is_active?: boolean
           kanban_order?: number | null
           kanban_status: Database["public"]["Enums"]["opportunity_kanban_status_enum"]
@@ -896,6 +902,9 @@ export type Database = {
           end_at?: string | null
           entry_average_price?: number | null
           id?: string
+          invoice_frequency?:
+            | Database["public"]["Enums"]["opportunity_invoice_frequency_enum"]
+            | null
           is_active?: boolean
           kanban_order?: number | null
           kanban_status?: Database["public"]["Enums"]["opportunity_kanban_status_enum"]
@@ -1493,184 +1502,182 @@ export type Database = {
       is_manager_or_direction: { Args: never; Returns: boolean }
       list_clients_page: {
         Args: {
+          p_category_ids?: string[]
+          p_city?: string
+          p_mission_bucket?: string
           p_page?: number
           p_page_size?: number
+          p_query?: string
+          p_responsible_id?: string
           p_status?: string
-          p_responsible_id?: string | null
-          p_team_id?: string | null
-          p_city?: string | null
-          p_category_ids?: string[] | null
-          p_mission_bucket?: string
-          p_query?: string | null
+          p_team_id?: string
         }
         Returns: {
-          id: string
-          client_name: string
-          website: string
-          address_city: string | null
-          is_active: boolean
-          facilitator: boolean
-          logo_file_path: string | null
-          logo_is_visual: boolean | null
-          responsible_id: string | null
-          responsible_first_name: string | null
-          responsible_last_name: string | null
-          main_contact_id: string | null
-          main_contact_first_name: string | null
-          main_contact_last_name: string | null
-          main_contact_phone: string | null
-          main_contact_email: string | null
+          address_city: string
           categories: Json
+          client_name: string
+          facilitator: boolean
+          id: string
+          is_active: boolean
+          logo_file_path: string
+          logo_is_visual: boolean
+          main_contact_email: string
+          main_contact_first_name: string
+          main_contact_id: string
+          main_contact_last_name: string
+          main_contact_phone: string
           mission_count: number
           opportunity_count: number
+          responsible_first_name: string
+          responsible_id: string
+          responsible_last_name: string
           total_count: number
+          website: string
         }[]
       }
-      list_document_version_numbers: {
-        Args: Record<PropertyKey, never>
-        Returns: number[]
-      }
+      list_document_version_numbers: { Args: never; Returns: number[] }
       list_documents_page: {
         Args: {
+          p_client_ids?: string[]
+          p_include_interne?: boolean
           p_page?: number
           p_page_size?: number
-          p_type_ids?: string[] | null
-          p_versions?: number[] | null
-          p_client_ids?: string[] | null
-          p_include_interne?: boolean
-          p_query?: string | null
+          p_query?: string
+          p_type_ids?: string[]
+          p_versions?: number[]
         }
         Returns: {
-          id: string
+          created_at: string
           document_name: string
           document_type_id: string
           document_type_label: string
-          storage_type: Database["public"]["Enums"]["document_storage_type_enum"]
-          file_path: string | null
-          url: string | null
-          is_visual: boolean
-          version_number: number
-          parent_document_id: string | null
-          lineage_root_id: string
+          file_path: string
+          id: string
           is_latest: boolean
-          created_at: string
-          updated_at: string | null
+          is_visual: boolean
+          lineage_root_id: string
           linked: Json
+          parent_document_id: string
+          storage_type: Database["public"]["Enums"]["document_storage_type_enum"]
           total_count: number
+          updated_at: string
+          url: string
+          version_number: number
         }[]
       }
       list_missions_page: {
         Args: {
+          p_board?: boolean
+          p_category_ids?: string[]
+          p_client_id?: string
+          p_end_from?: string
+          p_end_to?: string
           p_page?: number
           p_page_size?: number
-          p_board?: boolean
-          p_client_id?: string | null
-          p_responsible_id?: string | null
-          p_team_id?: string | null
-          p_category_ids?: string[] | null
-          p_scope?: string | null
-          p_statuses?: string[] | null
-          p_start_from?: string | null
-          p_start_to?: string | null
-          p_end_from?: string | null
-          p_end_to?: string | null
-          p_query?: string | null
+          p_query?: string
+          p_responsible_id?: string
+          p_scope?: string
+          p_start_from?: string
+          p_start_to?: string
+          p_statuses?: string[]
+          p_team_id?: string
         }
         Returns: {
+          archived_at: string
+          categories: Json
+          client_id: string
+          client_name: string
+          collaborator_id: string
+          completed_at: string
+          created_at: string
+          end_at: string
+          estimated_charge: number
           id: string
+          kanban_order: number
+          kanban_status: Database["public"]["Enums"]["mission_kanban_status_enum"]
           mission_name: string
           mission_scope: Database["public"]["Enums"]["mission_scope_enum"]
-          client_id: string | null
-          collaborator_id: string
-          opportunity_id: string | null
-          series_id: string | null
-          kanban_status: Database["public"]["Enums"]["mission_kanban_status_enum"]
-          kanban_order: number | null
-          archived_at: string | null
-          completed_at: string | null
-          estimated_charge: number | null
-          start_at: string | null
-          end_at: string | null
-          client_name: string | null
-          opportunity_name: string | null
-          responsible_first_name: string | null
-          responsible_last_name: string | null
-          profile_picture_file_path: string | null
-          profile_picture_is_visual: boolean | null
-          series_frequency: Database["public"]["Enums"]["mission_recurrence_frequency"] | null
-          series_starts_on: string | null
-          series_ends_on: string | null
-          categories: Json
-          created_at: string
+          opportunity_id: string
+          opportunity_name: string
+          profile_picture_file_path: string
+          profile_picture_is_visual: boolean
+          responsible_first_name: string
+          responsible_last_name: string
+          series_ends_on: string
+          series_frequency: Database["public"]["Enums"]["mission_recurrence_frequency"]
+          series_id: string
+          series_starts_on: string
+          start_at: string
           total_count: number
         }[]
       }
       list_opportunities_page: {
         Args: {
+          p_amount_bucket?: string
+          p_board?: boolean
+          p_category_ids?: string[]
+          p_client_id?: string
+          p_include_archived?: boolean
           p_page?: number
           p_page_size?: number
-          p_board?: boolean
-          p_client_id?: string | null
-          p_responsible_id?: string | null
-          p_team_id?: string | null
-          p_category_ids?: string[] | null
-          p_statuses?: string[] | null
-          p_priority?: string | null
-          p_amount_bucket?: string | null
-          p_probability_bucket?: string | null
-          p_include_archived?: boolean
-          p_query?: string | null
+          p_priority?: string
+          p_probability_bucket?: string
+          p_query?: string
+          p_responsible_id?: string
+          p_statuses?: string[]
+          p_team_id?: string
         }
         Returns: {
-          id: string
-          opportunity_name: string
-          client_id: string
-          contact_client_id: string | null
-          collaborator_id: string
-          price: number | null
-          probability_confirmation: number
-          average_price: number | null
-          entry_average_price: number | null
-          kanban_status: Database["public"]["Enums"]["opportunity_kanban_status_enum"]
-          kanban_order: number | null
-          is_active: boolean
-          priority: Database["public"]["Enums"]["opportunity_priority_enum"]
-          due_date_at: string | null
-          end_at: string | null
-          closed_at: string | null
-          client_name: string | null
-          contact_first_name: string | null
-          contact_last_name: string | null
-          responsible_first_name: string | null
-          responsible_last_name: string | null
-          profile_picture_file_path: string | null
-          profile_picture_is_visual: boolean | null
+          average_price: number
           categories: Json
+          client_id: string
+          client_name: string
+          closed_at: string
+          collaborator_id: string
+          contact_client_id: string
+          contact_first_name: string
+          contact_last_name: string
           created_at: string
+          due_date_at: string
+          end_at: string
+          entry_average_price: number
+          id: string
+          invoice_frequency: Database["public"]["Enums"]["opportunity_invoice_frequency_enum"]
+          is_active: boolean
+          kanban_order: number
+          kanban_status: Database["public"]["Enums"]["opportunity_kanban_status_enum"]
+          opportunity_name: string
+          price: number
+          priority: Database["public"]["Enums"]["opportunity_priority_enum"]
+          probability_confirmation: number
+          profile_picture_file_path: string
+          profile_picture_is_visual: boolean
+          responsible_first_name: string
+          responsible_last_name: string
           total_count: number
         }[]
       }
       list_tools_page: {
         Args: {
+          p_category_ids?: string[]
+          p_client_ids?: string[]
+          p_cost_bucket?: string
+          p_include_interne?: boolean
           p_page?: number
           p_page_size?: number
-          p_category_ids?: string[] | null
-          p_client_ids?: string[] | null
-          p_include_interne?: boolean
-          p_cost_bucket?: string
+          p_query?: string
           p_with_subscription?: boolean
           p_without_subscription?: boolean
-          p_query?: string | null
         }
         Returns: {
-          id: string
-          tool_name: string
-          url: string
-          description: string | null
           categories: Json
           clients: Json
+          description: string
+          id: string
           subscriptions: Json
+          tool_name: string
           total_count: number
+          url: string
         }[]
       }
       read_secret: { Args: { secret_name: string }; Returns: string }
@@ -1701,11 +1708,16 @@ export type Database = {
         | "terminee"
         | "archivee"
       mission_recurrence_frequency:
-        | "hebdomadaire"
         | "mensuelle"
         | "trimestrielle"
         | "annuelle"
+        | "hebdomadaire"
       mission_scope_enum: "client" | "interne"
+      opportunity_invoice_frequency_enum:
+        | "unique"
+        | "mensuel"
+        | "trimestriel"
+        | "annuel"
       opportunity_kanban_status_enum:
         | "suspect"
         | "prospect"
@@ -1731,12 +1743,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1760,11 +1772,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1785,11 +1797,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1810,11 +1822,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1827,11 +1839,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1854,12 +1866,18 @@ export const Constants = {
         "archivee",
       ],
       mission_recurrence_frequency: [
-        "hebdomadaire",
         "mensuelle",
         "trimestrielle",
         "annuelle",
+        "hebdomadaire",
       ],
       mission_scope_enum: ["client", "interne"],
+      opportunity_invoice_frequency_enum: [
+        "unique",
+        "mensuel",
+        "trimestriel",
+        "annuel",
+      ],
       opportunity_kanban_status_enum: [
         "suspect",
         "prospect",

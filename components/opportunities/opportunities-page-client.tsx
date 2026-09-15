@@ -657,13 +657,13 @@ export function OpportunitiesPageClient({
                           </span>
                         </div>
                         <span
-                          className={`shrink-0 ${getEndDateToneClass(item.end_at, {
+                          className={`shrink-0 ${getEndDateToneClass(item.due_date_at, {
                             muted:
                               item.kanban_status === "gagne" ||
                               item.kanban_status === "perdue",
                           })}`}
                         >
-                          {formatOpportunityDate(item.end_at)}
+                          {formatOpportunityDate(item.due_date_at)}
                         </span>
                       </div>
                     </CardContent>
@@ -686,7 +686,6 @@ export function OpportunitiesPageClient({
                   <th className="px-3 py-2 font-medium">Urgence</th>
                   <th className="px-3 py-2 font-medium">Catégories</th>
                   <th className="px-3 py-2 font-medium">Échéance</th>
-                  <th className="px-3 py-2 font-medium">Clôture</th>
                   <th className="px-3 py-2 font-medium">Montant</th>
                   <th className="px-3 py-2 font-medium">Action</th>
                 </tr>
@@ -695,7 +694,7 @@ export function OpportunitiesPageClient({
                 {opportunities.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={10}
+                      colSpan={9}
                       className="px-3 py-6 text-sm text-muted-foreground"
                     >
                       {filters.q.trim() || hasActiveFilters
@@ -726,17 +725,14 @@ export function OpportunitiesPageClient({
                       <td className="px-3 py-2 text-muted-foreground">
                         {item.categories.map((c) => c.label).join(", ") || "—"}
                       </td>
-                      <td className="px-3 py-2 text-muted-foreground">
-                        {formatOpportunityDate(item.due_date_at)}
-                      </td>
                       <td
-                        className={`px-3 py-2 ${getEndDateToneClass(item.end_at, {
+                        className={`px-3 py-2 ${getEndDateToneClass(item.due_date_at, {
                           muted:
                             item.kanban_status === "gagne" ||
                             item.kanban_status === "perdue",
                         })}`}
                       >
-                        {formatOpportunityDate(item.end_at)}
+                        {formatOpportunityDate(item.due_date_at)}
                       </td>
                       <td className="px-3 py-2">
                         {formatOpportunityPrice(item.price)}

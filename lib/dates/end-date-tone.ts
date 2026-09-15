@@ -1,6 +1,6 @@
 /**
- * Couleur unifiée pour la date de fin (`end_at`) — cf. 06_ui_design.mdc.
- * Mutualisé missions / opportunités (et outils si besoin).
+ * Couleur unifiée pour une date d'échéance / fin — cf. 06_ui_design.mdc.
+ * Missions : `end_at` ; opportunités : `due_date_at`.
  */
 export function getEndDateToneClass(
   endAt: string | null | undefined,

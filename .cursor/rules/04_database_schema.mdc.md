@@ -397,16 +397,14 @@ CREATE TABLE public.opportunity (
   action                    text,
   source                    text,
   last_meeting_at           date,
-  due_date_at               date,
-  end_at                    date,
+  due_date_at               date NOT NULL, -- échéance / prochaine date de rendu
+  end_at                    date,          -- fin de facturation (manuel)
+  invoice_frequency         public.opportunity_invoice_frequency_enum, -- NULL | unique | mensuel | trimestriel | annuel
   entry_average_price       numeric, -- figé à la création (price × probability / 100)
-  closed_at                 date,    -- date Paris du passage à gagne/perdue
+  closed_at                 date,    -- date Paris du passage à gagne/perdue (ne gère pas end_at)
   created_at                timestamptz NOT NULL DEFAULT now(),
   updated_at                timestamptz,
-  CONSTRAINT opportunity_due_or_end_required CHECK (due_date_at IS NOT NULL OR end_at IS NOT NULL),
-  CONSTRAINT opportunity_closed_requires_end_at CHECK (
-    kanban_status NOT IN ('gagne', 'perdue') OR end_at IS NOT NULL
-  )
+  CONSTRAINT opportunity_due_date_required CHECK (due_date_at IS NOT NULL)
 );
 
 CREATE INDEX idx_opportunity_client_id ON public.opportunity(client_id);
@@ -473,6 +471,9 @@ BEGIN
   ELSIF TG_OP = 'UPDATE' AND OLD.kanban_status IN ('gagne', 'perdue') THEN
     NEW.is_active := true;
   END IF;
+
+  -- closed_at : posé au passage gagne/perdue ; vidé à la réouverture.
+  -- end_at (fin de facturation) n'est jamais touché ici.
 
   RETURN NEW;
 END;

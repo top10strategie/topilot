@@ -247,13 +247,13 @@ export async function listToolsPage(
     p_page: filters.page,
     p_page_size: TOOLS_PAGE_SIZE,
     p_category_ids:
-      filters.categoryIds.length > 0 ? filters.categoryIds : null,
-    p_client_ids: clientIds.length > 0 ? clientIds : null,
+      filters.categoryIds.length > 0 ? filters.categoryIds : undefined,
+    p_client_ids: clientIds.length > 0 ? clientIds : undefined,
     p_include_interne: includeInterne,
     p_cost_bucket: filters.costBucket,
     p_with_subscription: filters.withSubscription,
     p_without_subscription: filters.withoutSubscription,
-    p_query: filters.q || null,
+    p_query: filters.q || undefined,
   });
 
   if (error) {

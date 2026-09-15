@@ -19,16 +19,16 @@ Les variables de thème (couleurs, radius, ombres, polices) sont définies dans 
 
 ---
 
-## Code couleur unifié — date de fin (mission et opportunity + tool occasionnellement si nécessaire)
+## Code couleur unifié — date d'échéance / fin (mission et opportunity + tool occasionnellement si nécessaire)
 
-Même règle appliquée aux cartes mission et aux cartes/lignes d'opportunité, basée sur `end_at` comparé à aujourd'hui :
+Même règle appliquée aux cartes mission (`end_at`) et aux cartes/lignes d'opportunité (`due_date_at`), comparée à aujourd'hui :
 
 |Couleur|Condition|
 |---|---|
-|`--destructive`|En retard (`end_at` < aujourd'hui)|
+|`--destructive`|En retard (date < aujourd'hui)|
 |`#EB9449`|Échéance aujourd'hui|
 |`#EAF081`|Échéance dans ≤ 3 jours|
 |`--secondary`|Autre, actif|
-|`--muted-foreground`|Statut `terminee` ou `archivee`|
+|`--muted-foreground`|Statut terminal (mission `terminee`/`archivee` ; opportunité `gagne`/`perdue`)|
 
-Cette règle est mutualisée via un composant ou utilitaire Tailwind unique, utilisé partout où une date de fin est affichée.
+Cette règle est mutualisée via un composant ou utilitaire Tailwind unique (`getEndDateToneClass`), utilisé partout où une date d'échéance / fin est affichée.

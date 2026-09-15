@@ -44,8 +44,10 @@ import { getContactFullName } from "@/lib/clients/labels";
 import type { ClientOption } from "@/lib/clients/types";
 import {
   formatOpportunityPrice,
+  getOpportunityInvoiceFrequencyLabel,
   getOpportunityKanbanStatusLabel,
   getOpportunityPriorityLabel,
+  OPPORTUNITY_INVOICE_FREQUENCIES,
   OPPORTUNITY_KANBAN_STATUSES,
   OPPORTUNITY_PRIORITIES,
 } from "@/lib/opportunities/labels";
@@ -54,6 +56,7 @@ import type {
   OpportunityCategoryItem,
   OpportunityContactOption,
   OpportunityDetail,
+  OpportunityInvoiceFrequency,
   OpportunityKanbanStatus,
   OpportunityPriority,
 } from "@/lib/opportunities/types";
@@ -126,6 +129,9 @@ export function OpportunityFormDrawer({
   const [endAt, setEndAt] = useState(
     duplicatePrefill ? "" : (opportunity?.end_at ?? ""),
   );
+  const [invoiceFrequency, setInvoiceFrequency] = useState<
+    OpportunityInvoiceFrequency | ""
+  >(duplicatePrefill ? "" : (opportunity?.invoice_frequency ?? ""));
 
   const [price, setPrice] = useState(
     duplicatePrefill
@@ -415,6 +421,7 @@ export function OpportunityFormDrawer({
     if (lastMeetingAt) formData.set("last_meeting_at", lastMeetingAt);
     if (dueDateAt) formData.set("due_date_at", dueDateAt);
     if (endAt) formData.set("end_at", endAt);
+    if (invoiceFrequency) formData.set("invoice_frequency", invoiceFrequency);
     return formData;
   };
 
@@ -627,7 +634,7 @@ export function OpportunityFormDrawer({
             ) : null}
           </div>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="grid gap-2">
               <Label htmlFor="last_meeting_at">
                 Date de dernière rencontre
@@ -641,13 +648,16 @@ export function OpportunityFormDrawer({
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="due_date_at">Échéance</Label>
+              <Label htmlFor="due_date_at">
+                Échéance <span className="text-destructive">*</span>
+              </Label>
               <Input
                 id="due_date_at"
                 type="date"
                 value={dueDateAt}
                 onChange={(event) => setDueDateAt(event.target.value)}
                 disabled={isPending}
+                required
                 aria-invalid={Boolean(fieldErrors.due_date_at)}
               />
               {fieldErrors.due_date_at ? (
@@ -656,23 +666,9 @@ export function OpportunityFormDrawer({
                 </p>
               ) : null}
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="end_at">Date de clôture</Label>
-              <Input
-                id="end_at"
-                type="date"
-                value={endAt}
-                onChange={(event) => setEndAt(event.target.value)}
-                disabled={isPending}
-                aria-invalid={Boolean(fieldErrors.end_at)}
-              />
-              {fieldErrors.end_at ? (
-                <p className="text-sm text-destructive">{fieldErrors.end_at}</p>
-              ) : null}
-            </div>
           </div>
           <p className="text-xs text-muted-foreground">
-            Au moins une des deux dates (échéance ou clôture) est obligatoire.
+            L&apos;échéance (prochaine date de rendu) est obligatoire.
           </p>
 
           {mode === "create" && !identificationSaved ? (
@@ -812,6 +808,60 @@ export function OpportunityFormDrawer({
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div className="grid gap-2">
+                <Label htmlFor="end_at">Fin de facturation</Label>
+                <Input
+                  id="end_at"
+                  type="date"
+                  value={endAt}
+                  onChange={(event) => setEndAt(event.target.value)}
+                  disabled={isPending}
+                  aria-invalid={Boolean(fieldErrors.end_at)}
+                />
+                {fieldErrors.end_at ? (
+                  <p className="text-sm text-destructive">{fieldErrors.end_at}</p>
+                ) : null}
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="invoice_frequency">
+                  Fréquence de facturation
+                </Label>
+                <Select
+                  value={invoiceFrequency || "__none__"}
+                  onValueChange={(value) =>
+                    setInvoiceFrequency(
+                      value === "__none__"
+                        ? ""
+                        : (value as OpportunityInvoiceFrequency),
+                    )
+                  }
+                  disabled={isPending}
+                >
+                  <SelectTrigger
+                    id="invoice_frequency"
+                    className="w-full"
+                    aria-invalid={Boolean(fieldErrors.invoice_frequency)}
+                  >
+                    <SelectValue placeholder="—" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">—</SelectItem>
+                    {OPPORTUNITY_INVOICE_FREQUENCIES.map((value) => (
+                      <SelectItem key={value} value={value}>
+                        {getOpportunityInvoiceFrequencyLabel(value)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {fieldErrors.invoice_frequency ? (
+                  <p className="text-sm text-destructive">
+                    {fieldErrors.invoice_frequency}
+                  </p>
+                ) : null}
+              </div>
             </div>
 
             <div className="grid gap-2">

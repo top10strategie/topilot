@@ -202,16 +202,16 @@ Structure Hero + Tabs :
 
 - **Vue Kanban** — **vue par défaut** à l'ouverture de la page (cf. `07_ux_composants_reutilisable.mdc` sections 4.3 et 8).
     - 6 colonnes, une par valeur de `kanban_status`, dans cet **ordre d'affichage** (qui correspond désormais à l'ordre de déclaration de l'enum en base) : **Suspect → Prospect → Besoin spécifié → Proposition envoyée → Gagné → Perdue**.
-    - Carte (variante Kanban du composant Carte) : Titre (`opportunity_name`) ; ligne Catégories | Urgence ; ligne Client | Responsable opportunité ; ligne Montant | Probabilité de réussite | Date de clôture (couleur selon la règle unifiée de `06_ui_design.mdc`, basée sur `end_at`).
+    - Carte (variante Kanban du composant Carte) : Titre (`opportunity_name`) ; ligne Catégories | Urgence ; ligne Client | Responsable opportunité ; ligne Montant | Probabilité de réussite | Échéance (couleur selon la règle unifiée de `06_ui_design.mdc`, basée sur `due_date_at`).
     - Drag and drop (DnD kit) entre et au sein des colonnes, mise à jour optimiste de `kanban_status`/`kanban_order`, cf. section 8 de `07_ux_composants_reutilisable.mdc`.
         - Déplacer une carte vers **Gagné** ou **Perdue** archive automatiquement l'opportunité (`is_active = false`) ; l'en sortir la désarchive (cf. `03_business_rules.mdc`/`04_database_schema.mdc`).
         - Le déplacement met aussi à jour `probability_confirmation` (relevée au minimum mappé du nouveau statut, jamais abaissée si déjà supérieure — cf. `03_business_rules.mdc`), donc `average_price` (colonne calculée) recalculé automatiquement.
     - Total agrégé (`average_price` moyen) sous le titre/badge de chaque colonne, cf. section 8 de `07_ux_composants_reutilisable.mdc`.
     - Compteur "Nombre d'opportunités" en bas à gauche — pas de pagination en Kanban (organisation propre à la vue).
 - **Vue Cartes** (cf. section 5.1) : carte sans image → **3 colonnes desktop** / 2 tablette / 1 téléphone.
-    - Carte : Titre (`opportunity_name`) ; ligne Catégories | Statut ; ligne Client | Responsable opportunité ; ligne Montant | Probabilité de réussite | Date de clôture.
+    - Carte : Titre (`opportunity_name`) ; ligne Catégories | Statut ; ligne Client | Responsable opportunité ; ligne Montant | Probabilité de réussite | Échéance (`due_date_at`).
     - Clic sur la carte : redirection vers `/opportunities/[id]` (page de liste principale, cf. section 9.3).
-- **Vue Tableau** (cf. section 5.2) : colonnes Nom Opportunité, Client, Responsable opportunité, Statut, Urgence, Catégories, Echéance, Date de clôture, Montant.
+- **Vue Tableau** (cf. section 5.2) : colonnes Nom Opportunité, Client, Responsable opportunité, Statut, Urgence, Catégories, Échéance, Montant.
     - Clic sur la ligne : redirection vers `/opportunities/[id]`, idem vue Cartes.
 - **Pagination et compteur** (Cartes/Tableau uniquement, cf. section 5.3) : "Nombre d'opportunités" (total, en bas à gauche) + pagination 25/page avec "Page : x/y" et navigation précédent/suivant (en bas à droite).
 - **Filtre** (modale, cf. section 5.4) :
@@ -224,7 +224,7 @@ Structure Hero + Tabs :
     - Filtre par urgence (multi-sélection, ajouté pour cohérence avec la colonne Urgence du tableau)
     - Boutons "Effacer" (vide les filtres) / "Filtrer"
 - **Tiroir de création "Nouvelle opportunité"** (cf. section 7), en **deux temps** :
-    1. **Bloc identification** (toujours visible en haut) : Titre (`opportunity_name`, obligatoire), Client (`client_id`, **obligatoire** — dropdown clients + bouton d'ajout client), Contact (`contact_client_id`, nullable — dropdown contacts du client sélectionné + bouton d'ajout contact), Responsable opportunité (`collaborator_id`, obligatoire — dropdown collaborateurs), Date de dernière rencontre (`last_meeting_at`), Echéance (`due_date_at`), Date de clôture (`end_at`). **Au moins une des deux dates Echéance/Date de clôture est obligatoire** (contrainte `opportunity_due_or_end_required`). Bouton **"Enregistrer"** dédié : crée l'opportunité en base avec ces champs — nécessaire pour permettre l'ajout de documents liés qui requièrent un `opportunity_id` existant. Le statut initial (`kanban_status`) et la probabilité associée sont posés automatiquement à cet instant selon l'historique du client (cf. `03_business_rules.mdc`), sans champ visible à cette étape.
+    1. **Bloc identification** (toujours visible en haut) : Titre (`opportunity_name`, obligatoire), Client (`client_id`, **obligatoire** — dropdown clients + bouton d'ajout client), Contact (`contact_client_id`, nullable — dropdown contacts du client sélectionné + bouton d'ajout contact), Responsable opportunité (`collaborator_id`, obligatoire — dropdown collaborateurs), Date de dernière rencontre (`last_meeting_at`), Échéance (`due_date_at`, **obligatoire**), Fin de facturation (`end_at`, optionnel), Fréquence de facturation (`invoice_frequency`, optionnel). Bouton **"Enregistrer"** dédié : crée l'opportunité en base avec ces champs — nécessaire pour permettre l'ajout de documents liés qui requièrent un `opportunity_id` existant. Le statut initial (`kanban_status`) et la probabilité associée sont posés automatiquement à cet instant selon l'historique du client (cf. `03_business_rules.mdc`), sans champ visible à cette étape.
     2. **Bloc complémentaire** (déverrouillé après l'étape 1) :
         - Catégories (`opportunity_category`) : multi-sélection + bouton d'ajout d'une nouvelle catégorie
         - Montant (`price`) et Montant pondéré (`average_price`, **lecture seule**, calculé automatiquement à partir de Montant × Probabilité)
@@ -247,7 +247,7 @@ Structure Hero + Tabs :
 
 - **Informations** :
     - Colonne gauche : Titre (`opportunity_name`), Client (`client_id`), Responsable opportunité (`collaborator_id`). En dessous : Notes (`notes`, édition inline, historisée dans `audit_log`).
-    - Colonne droite : Statut (`kanban_status`), Montant (`price`), Montant pondéré (`average_price`, **lecture seule**, calculé), Probabilité (`probability_confirmation`), Urgence (`priority`), Action (`action`), Source (`source`), Date de dernière rencontre (`last_meeting_at`), Echéance (`due_date_at`), Date de clôture (`end_at`).
+    - Colonne droite : Statut (`kanban_status`), Montant (`price`), Montant pondéré (`average_price`, **lecture seule**, calculé), Probabilité (`probability_confirmation`), Urgence (`priority`), Action (`action`), Source (`source`), Date de dernière rencontre (`last_meeting_at`), Échéance (`due_date_at`), Fin de facturation (`end_at`), Fréquence de facturation (`invoice_frequency`).
 - **Missions** : tableau des missions liées à cette opportunité (`mission.opportunity_id`). Colonnes (cf. `03_business_rules.mdc`) : Nom mission, Collaborateur, Catégories, Début, Fin, Statut. Bouton d'ajout (`circles-three-plus`, en haut à droite de l'onglet, au-dessus du tableau ; ouvre un drawer mission avec `opportunity_id` verrouillé). Clic sur une ligne : tiroir de **consultation** de la mission (contenu = tiroir d'édition mission en lecture seule, footer "Aller à la mission" → `/missions/[id]`).
 - **Documentations** : 2 blocs côte à côte pour les documents et les outils : libellé + bouton d'ajout à droite + liste en dessous. Clic sur un item outil : tiroir de consultation (comportement général, cf. section 6/7 de `07_ux_composants_reutilisable.mdc`). Le clic sur un document permet la consultation soit du lien, soit du document (ouverture d'un onglet externe).
     - Documents relatifs à l'opportunité (`opportunity_document`)

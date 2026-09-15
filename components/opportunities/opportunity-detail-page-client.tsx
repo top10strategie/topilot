@@ -39,6 +39,7 @@ import {
   formatOpportunityDate,
   formatOpportunityPrice,
   formatOpportunityProbability,
+  getOpportunityInvoiceFrequencyLabel,
   getOpportunityKanbanStatusLabel,
   getOpportunityPriorityLabel,
   getOpportunityResponsibleName,
@@ -438,32 +439,50 @@ export function OpportunityDetailPageClient({
                         {opportunity.source?.trim() || "—"}
                       </span>
                     </div>
-                    <div>
-                      <p className="text-muted-foreground">
-                        Date de dernière rencontre
-                      </p>
-                      <p>
-                        {formatOpportunityDate(opportunity.last_meeting_at)}
-                      </p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <p className="text-muted-foreground">
+                          Date de dernière rencontre
+                        </p>
+                        <p>
+                          {formatOpportunityDate(opportunity.last_meeting_at)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Échéance</p>
+                        <p
+                          className={cn(
+                            "font-bold",
+                            getEndDateToneClass(opportunity.due_date_at, {
+                              muted:
+                                opportunity.kanban_status === "gagne" ||
+                                opportunity.kanban_status === "perdue",
+                            }),
+                          )}
+                        >
+                          {formatOpportunityDate(opportunity.due_date_at)}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-muted-foreground">Échéance</p>
-                      <p>{formatOpportunityDate(opportunity.due_date_at)}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Date de clôture</p>
-                      <p
-                        className={cn(
-                          "font-bold",
-                          getEndDateToneClass(opportunity.end_at, {
-                            muted:
-                              opportunity.kanban_status === "gagne" ||
-                              opportunity.kanban_status === "perdue",
-                          }),
-                        )}
-                      >
-                        {formatOpportunityDate(opportunity.end_at)}
-                      </p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <p className="text-muted-foreground">
+                          Fin de facturation
+                        </p>
+                        <p>{formatOpportunityDate(opportunity.end_at)}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">
+                          Fréquence de facturation
+                        </p>
+                        <p>
+                          {opportunity.invoice_frequency
+                            ? getOpportunityInvoiceFrequencyLabel(
+                                opportunity.invoice_frequency,
+                              )
+                            : "—"}
+                        </p>
+                      </div>
                     </div>
                   </section>
                 }
