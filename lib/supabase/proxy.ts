@@ -16,11 +16,26 @@ function isPublicAuthPath(pathname: string): boolean {
   );
 }
 
-function redirectTo(request: NextRequest, pathname: string) {
+/**
+ * Redirection en conservant les cookies de session éventuellement rafraîchis
+ * sur `supabaseResponse`. Sans cette copie, le navigateur garde un refresh
+ * token déjà consommé → `Refresh Token Not Found` et déconnexion.
+ */
+function redirectTo(
+  request: NextRequest,
+  pathname: string,
+  supabaseResponse: NextResponse,
+) {
   const url = request.nextUrl.clone();
   url.pathname = pathname;
   url.search = "";
-  return NextResponse.redirect(url);
+  const redirectResponse = NextResponse.redirect(url);
+  // Obligatoire : sinon le refresh token rotaté n'atteint pas le navigateur.
+  // ResponseCookies n'expose pas setAll — recopier cookie par cookie.
+  supabaseResponse.cookies.getAll().forEach(({ name, value, ...options }) => {
+    redirectResponse.cookies.set(name, value, options);
+  });
+  return redirectResponse;
 }
 
 export async function updateSession(request: NextRequest) {
@@ -37,7 +52,7 @@ export async function updateSession(request: NextRequest) {
       getAll() {
         return request.cookies.getAll();
       },
-      setAll(cookiesToSet) {
+      setAll(cookiesToSet, headers) {
         cookiesToSet.forEach(({ name, value }) =>
           request.cookies.set(name, value),
         );
@@ -46,6 +61,9 @@ export async function updateSession(request: NextRequest) {
         });
         cookiesToSet.forEach(({ name, value, options }) =>
           supabaseResponse.cookies.set(name, value, options),
+        );
+        Object.entries(headers).forEach(([key, value]) =>
+          supabaseResponse.headers.set(key, value),
         );
       },
     },
@@ -61,7 +79,7 @@ export async function updateSession(request: NextRequest) {
       // update-password sans session : laisser passer (flux reset e-mail).
       return supabaseResponse;
     }
-    return redirectTo(request, LOGIN_PATH);
+    return redirectTo(request, LOGIN_PATH, supabaseResponse);
   }
 
   // Session présente : évaluer le gate métier (collaborateur actif + mot de passe).
@@ -71,7 +89,7 @@ export async function updateSession(request: NextRequest) {
 
   if (gateError) {
     console.error("get_auth_gate_state a échoué:", gateError.message);
-    return redirectTo(request, ACCESS_DENIED_PATH);
+    return redirectTo(request, ACCESS_DENIED_PATH, supabaseResponse);
   }
 
   const gate = (Array.isArray(gateRows) ? gateRows[0] : gateRows) as
@@ -82,24 +100,24 @@ export async function updateSession(request: NextRequest) {
     if (pathname === ACCESS_DENIED_PATH || isPublicAuthPath(pathname)) {
       return supabaseResponse;
     }
-    return redirectTo(request, ACCESS_DENIED_PATH);
+    return redirectTo(request, ACCESS_DENIED_PATH, supabaseResponse);
   }
 
   if (gate.must_change_password) {
     if (pathname === FORCE_PASSWORD_CHANGE_PATH) {
       return supabaseResponse;
     }
-    return redirectTo(request, FORCE_PASSWORD_CHANGE_PATH);
+    return redirectTo(request, FORCE_PASSWORD_CHANGE_PATH, supabaseResponse);
   }
 
   // Mot de passe déjà à jour : inutile de rester sur la page forcée.
   if (pathname === FORCE_PASSWORD_CHANGE_PATH) {
-    return redirectTo(request, "/");
+    return redirectTo(request, "/", supabaseResponse);
   }
 
   // Utilisateur déjà connecté et actif : pas besoin des pages login / forgot.
   if (isPublicAuthPath(pathname) && pathname !== "/auth/error") {
-    return redirectTo(request, "/");
+    return redirectTo(request, "/", supabaseResponse);
   }
 
   return supabaseResponse;
