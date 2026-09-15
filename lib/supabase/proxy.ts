@@ -31,7 +31,10 @@ function redirectTo(
   url.search = "";
   const redirectResponse = NextResponse.redirect(url);
   // Obligatoire : sinon le refresh token rotaté n'atteint pas le navigateur.
-  redirectResponse.cookies.setAll(supabaseResponse.cookies.getAll());
+  // ResponseCookies n'expose pas setAll — recopier cookie par cookie.
+  supabaseResponse.cookies.getAll().forEach(({ name, value, ...options }) => {
+    redirectResponse.cookies.set(name, value, options);
+  });
   return redirectResponse;
 }
 
