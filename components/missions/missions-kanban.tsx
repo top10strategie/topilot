@@ -15,6 +15,8 @@ import type {
 
 type Board = Record<MissionKanbanStatus, MissionListItem[]>;
 
+const TERMINAL_STATUSES: MissionKanbanStatus[] = ["terminee", "archivee"];
+
 function emptyBoard(): Board {
   return {
     a_faire: [],
@@ -32,15 +34,28 @@ function isRecentArchive(mission: MissionListItem): boolean {
   return archivedDate >= threeMonthsAgo;
 }
 
+function compareByKanbanOrder(a: MissionListItem, b: MissionListItem): number {
+  const orderA = a.kanban_order ?? Number.MAX_SAFE_INTEGER;
+  const orderB = b.kanban_order ?? Number.MAX_SAFE_INTEGER;
+  if (orderA !== orderB) return orderA - orderB;
+  return a.mission_name.localeCompare(b.mission_name, "fr");
+}
+
+/** Plus récentes en haut ; sans end_at → en bas. */
+function compareByEndAtDesc(a: MissionListItem, b: MissionListItem): number {
+  if (a.end_at && b.end_at) {
+    if (a.end_at !== b.end_at) return b.end_at.localeCompare(a.end_at);
+  } else if (a.end_at) {
+    return -1;
+  } else if (b.end_at) {
+    return 1;
+  }
+  return a.mission_name.localeCompare(b.mission_name, "fr");
+}
+
 function buildBoard(items: MissionListItem[]): Board {
   const board = emptyBoard();
-  const sorted = [...items].sort((a, b) => {
-    const orderA = a.kanban_order ?? Number.MAX_SAFE_INTEGER;
-    const orderB = b.kanban_order ?? Number.MAX_SAFE_INTEGER;
-    if (orderA !== orderB) return orderA - orderB;
-    return a.mission_name.localeCompare(b.mission_name, "fr");
-  });
-  for (const item of sorted) {
+  for (const item of items) {
     if (item.kanban_status === "archivee") {
       if (isRecentArchive(item)) {
         board.archivee.push(item);
@@ -48,6 +63,13 @@ function buildBoard(items: MissionListItem[]): Board {
     } else {
       board[item.kanban_status].push(item);
     }
+  }
+  for (const status of MISSION_KANBAN_STATUSES) {
+    board[status].sort(
+      TERMINAL_STATUSES.includes(status)
+        ? compareByEndAtDesc
+        : compareByKanbanOrder,
+    );
   }
   return board;
 }

@@ -202,6 +202,7 @@ Structure Hero + Tabs :
 
 - **Vue Kanban** — **vue par défaut** à l'ouverture de la page (cf. `07_ux_composants_reutilisable.mdc` sections 4.3 et 8).
     - 6 colonnes, une par valeur de `kanban_status`, dans cet **ordre d'affichage** (qui correspond désormais à l'ordre de déclaration de l'enum en base) : **Suspect → Prospect → Besoin spécifié → Proposition envoyée → Gagné → Perdue**.
+    - Les colonnes **Gagné** et **Perdue** n'affichent que les opportunités dont `due_date_at` date de **moins de 3 mois** (cf. `03_business_rules.mdc`) — les archives plus anciennes restent accessibles via les vues Cartes/Tableau avec le filtre « Inclure les archivées ». Ces deux colonnes sont triées par `due_date_at` décroissant (plus récentes en haut) ; les colonnes actives restent triées par `kanban_order`.
     - Carte (variante Kanban du composant Carte) : Titre (`opportunity_name`) ; ligne Catégories | Urgence ; ligne Client | Responsable opportunité ; ligne Montant | Probabilité de réussite | Échéance (couleur selon la règle unifiée de `06_ui_design.mdc`, basée sur `due_date_at`).
     - Drag and drop (DnD kit) entre et au sein des colonnes, mise à jour optimiste de `kanban_status`/`kanban_order`, cf. section 8 de `07_ux_composants_reutilisable.mdc`.
         - Déplacer une carte vers **Gagné** ou **Perdue** archive automatiquement l'opportunité (`is_active = false`) ; l'en sortir la désarchive (cf. `03_business_rules.mdc`/`04_database_schema.mdc`).
@@ -265,6 +266,7 @@ Structure Hero + Tabs :
 
 - **Vue Kanban** (cf. `07_ux_composants_reutilisable.mdc` section 8) : 4 colonnes, une par valeur de `kanban_status`, dans l'ordre de déclaration de l'enum : **A faire → En cours → Terminée → Archivée**.
     - La colonne **"Archivée"** est libellée **"Archivée (3 mois)"** et n'affiche que les missions dont `archived_at` date de moins de 3 mois (cf. `03_business_rules.mdc`/`04_database_schema.mdc`) — les archives plus anciennes restent accessibles via les vues Cartes/Tableau avec le filtre par statut.
+    - Les colonnes **Terminée** et **Archivée** sont triées par `end_at` décroissant (plus récentes en haut ; sans date de fin → en bas) ; les colonnes actives restent triées par `kanban_order`.
     - Carte (variante Kanban du composant Carte) : Titre (`mission_name`) ; ligne Catégorie | Scope (`mission_scope`, badge coloré `--secondary` si interne, cf. `06_ui_design.mdc`) ; ligne Client | Responsable mission ; ligne Opportunité liée | Date de début | Date de fin.
     - Drag and drop (DnD kit) entre et au sein des colonnes, mise à jour optimiste de `kanban_status`/`kanban_order` (même comportement que la vue Kanban Opportunités) ; entrer/sortir du statut `archivee` met à jour `archived_at` automatiquement (trigger, cf. `04_database_schema.mdc`).
     - Compteur "Nombre de missions" en bas à gauche — pas de pagination en Kanban.
