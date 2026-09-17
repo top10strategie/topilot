@@ -1049,6 +1049,24 @@ export type Database = {
           },
         ]
       }
+      revenue_aim: {
+        Row: {
+          amount: number
+          id: string
+          year: number
+        }
+        Insert: {
+          amount: number
+          id?: string
+          year: number
+        }
+        Update: {
+          amount?: number
+          id?: string
+          year?: number
+        }
+        Relationships: []
+      }
       setting: {
         Row: {
           collaborator_id: string

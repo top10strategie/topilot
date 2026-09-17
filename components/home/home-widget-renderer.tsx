@@ -223,6 +223,9 @@ export function HomeWidgetRenderer({
     case "opp_pipeline": {
       const pipeline =
         analyses.opportunities.pipelineByYear[oppYear] ?? [];
+      const aimAmount = analyses.opportunities.revenueAimsByYear[oppYear];
+      const hasAim = aimAmount != null;
+      const monthlyObjectif = hasAim ? aimAmount / 12 : null;
       return (
         <AnalysisLineChart
           title={title}
@@ -230,6 +233,7 @@ export function HomeWidgetRenderer({
             label: p.label,
             engage: p.engage,
             previsionnel: p.previsionnel,
+            ...(monthlyObjectif != null ? { objectif: monthlyObjectif } : {}),
           }))}
           series={[
             { key: "engage", label: "CA engagé", color: "var(--chart-2)" },
@@ -238,6 +242,15 @@ export function HomeWidgetRenderer({
               label: "CA prévisionnel",
               color: "var(--chart-1)",
             },
+            ...(hasAim
+              ? [
+                  {
+                    key: "objectif",
+                    label: "Objectif de CA",
+                    color: "var(--chart-3)",
+                  },
+                ]
+              : []),
           ]}
           valueFormatter={(v) => formatOpportunityPrice(v)}
         />

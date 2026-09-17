@@ -33,6 +33,8 @@ export function emptyAnalysesPayload(): AnalysesPayload {
       caByClientByYear: {},
       caByTeamByYear: {},
       missingBillingCount: 0,
+      revenueAims: [],
+      revenueAimsByYear: {},
     },
     missions: {
       kpis: {

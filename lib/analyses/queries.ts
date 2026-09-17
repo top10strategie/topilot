@@ -15,6 +15,7 @@ import type {
   OpportunityInvoiceFrequency,
   OpportunityKanbanStatus,
 } from "@/lib/opportunities/types";
+import { listRevenueAims } from "@/lib/revenue-aim/queries";
 import { createClient } from "@/lib/supabase/server";
 import { monthlyCentsFromPrice } from "@/lib/tools/pricing";
 import type { ToolSubscriptionPlan } from "@/lib/tools/types";
@@ -312,12 +313,13 @@ export async function loadAnalysesPayload(
   const supabase = await createClient();
   const empty = emptyAnalysesPayload();
 
-  const [oppRes, missionRes, collabRes, toolsRes] = await Promise.all([
-    wantOpp
-      ? supabase
-          .from("opportunity")
-          .select(
-            `
+  const [oppRes, missionRes, collabRes, toolsRes, revenueAims] =
+    await Promise.all([
+      wantOpp
+        ? supabase
+            .from("opportunity")
+            .select(
+              `
         id,
         price,
         average_price,
@@ -336,13 +338,13 @@ export async function loadAnalysesPayload(
           client_category ( category:category_business!category_id ( label ) )
         )
       `,
-          )
-      : Promise.resolve({ data: [], error: null }),
-    wantMissions
-      ? supabase
-          .from("mission")
-          .select(
-            `
+            )
+        : Promise.resolve({ data: [], error: null }),
+      wantMissions
+        ? supabase
+            .from("mission")
+            .select(
+              `
         id,
         kanban_status,
         completed_at,
@@ -351,16 +353,16 @@ export async function loadAnalysesPayload(
         end_at,
         collaborator_id
       `,
-          )
-      : Promise.resolve({ data: [], error: null }),
-    wantCollabs
-      ? supabase.from("collaborator").select("id, team:team_id ( team_name )")
-      : Promise.resolve({ data: [], error: null }),
-    wantSubs
-      ? supabase
-          .from("tool")
-          .select(
-            `
+            )
+        : Promise.resolve({ data: [], error: null }),
+      wantCollabs
+        ? supabase.from("collaborator").select("id, team:team_id ( team_name )")
+        : Promise.resolve({ data: [], error: null }),
+      wantSubs
+        ? supabase
+            .from("tool")
+            .select(
+              `
         id,
         tool_name,
         tool_category ( category:category_id ( id, label ) ),
@@ -369,9 +371,10 @@ export async function loadAnalysesPayload(
           tool_subscription_price ( currency, amount, valid_from, valid_to )
         )
       `,
-          )
-      : Promise.resolve({ data: [], error: null }),
-  ]);
+            )
+        : Promise.resolve({ data: [], error: null }),
+      wantOpp ? listRevenueAims() : Promise.resolve([]),
+    ]);
 
   if (oppRes.error) {
     console.error("loadAnalysesPayload opportunities:", oppRes.error);
@@ -405,8 +408,16 @@ export async function loadAnalysesPayload(
     teamByCollaborator.set(c.id, c.team?.team_name ?? "Sans pôle");
   }
 
+  const revenueAimsByYear: Record<number, number> = {};
+  for (const aim of revenueAims) {
+    revenueAimsByYear[aim.year] = aim.amount;
+  }
+
   // —— Opportunités : CA engagé / prévisionnel (invoice_frequency + end_at) ——
   const yearSet = new Set<number>([paris.year]);
+  for (const year of Object.keys(revenueAimsByYear)) {
+    yearSet.add(Number(year));
+  }
   const pipelineByYear = new Map<number, PipelineSeriesPoint[]>();
   const caByTeamByYear = new Map<
     number,
@@ -711,6 +722,8 @@ export async function loadAnalysesPayload(
       caByClientByYear: caByClientRecord,
       caByTeamByYear: caByTeamRecord,
       missingBillingCount,
+      revenueAims,
+      revenueAimsByYear,
     },
     missions: {
       kpis: buildMissionKpis(missions),
