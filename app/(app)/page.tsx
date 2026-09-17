@@ -18,9 +18,12 @@ function resolveHomeWidgets(
   widgets: string[],
   role: string,
 ): HomeWidgetId[] {
-  const normalized = widgets.map((id) =>
-    id === "opp_by_category" ? "opp_ca_by_category" : id,
-  );
+  const normalized = widgets.map((id) => {
+    if (id === "opp_by_category" || id === "opp_ca_by_category") {
+      return "opp_ca_by_client";
+    }
+    return id;
+  });
   if (role === "collaborator") {
     return normalized.filter(isCollaboratorHomeWidgetId);
   }
@@ -41,7 +44,7 @@ async function HomeContent() {
       [
         "kpi_opportunities",
         "opp_by_status",
-        "opp_ca_by_category",
+        "opp_ca_by_client",
         "opp_pipeline",
         "opp_by_team",
       ] as const

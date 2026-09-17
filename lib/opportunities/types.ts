@@ -12,6 +12,12 @@ export type OpportunityPriority =
   | "urgente"
   | "prioritaire";
 
+export type OpportunityInvoiceFrequency =
+  | "unique"
+  | "mensuel"
+  | "trimestriel"
+  | "annuel";
+
 export type OpportunityCategoryItem = {
   id: string;
   label: string;
@@ -61,6 +67,7 @@ export type OpportunityListItem = {
   due_date_at: string | null;
   end_at: string | null;
   closed_at: string | null;
+  invoice_frequency: OpportunityInvoiceFrequency | null;
   client: OpportunityClientRef;
   contact: OpportunityContactRef | null;
   responsible: OpportunityResponsibleItem;

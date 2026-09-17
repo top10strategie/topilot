@@ -25,6 +25,8 @@ type AnalysisLineChartProps = {
   data: Array<Record<string, string | number>>;
   series: AnalysisLineSeries[];
   valueFormatter?: (value: number) => string;
+  /** Format des ticks d’axe (défaut = valueFormatter). */
+  axisTickFormatter?: (value: number) => string;
   emptyMessage?: string;
   headerAction?: ReactNode;
   className?: string;
@@ -33,6 +35,8 @@ type AnalysisLineChartProps = {
 
 const defaultFormat = (value: number) =>
   new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(value);
+
+const AXIS_TICK = { fontSize: 10 } as const;
 
 const DEFAULT_COLORS = [
   "var(--chart-1)",
@@ -47,11 +51,13 @@ export function AnalysisLineChart({
   data,
   series,
   valueFormatter = defaultFormat,
+  axisTickFormatter,
   emptyMessage = "Aucune donnée.",
   headerAction,
   className,
   height = 280,
 }: AnalysisLineChartProps) {
+  const tickFormat = axisTickFormatter ?? valueFormatter;
   const hasValues = data.some((row) =>
     series.some((s) => {
       const v = row[s.key];
@@ -79,7 +85,7 @@ export function AnalysisLineChart({
             <ResponsiveContainer width="100%" height="100%">
               <LineChart
                 data={data}
-                margin={{ top: 8, right: 16, left: 0, bottom: 8 }}
+                margin={{ top: 8, right: 16, left: 8, bottom: 8 }}
               >
                 <CartesianGrid
                   strokeDasharray="3 3"
@@ -91,9 +97,12 @@ export function AnalysisLineChart({
                   tick={{ fontSize: 11 }}
                 />
                 <YAxis
-                  tickFormatter={valueFormatter}
+                  tickFormatter={(v) =>
+                    tickFormat(typeof v === "number" ? v : Number(v))
+                  }
                   className="text-xs"
-                  width={56}
+                  width={72}
+                  tick={AXIS_TICK}
                 />
                 <Tooltip
                   formatter={(value, name) => {

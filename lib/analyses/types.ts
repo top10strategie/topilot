@@ -4,6 +4,14 @@ export type ChartDatum = {
   value: number;
 };
 
+/** Point à deux séries empilables (engagé / prévisionnel). */
+export type StackedCaDatum = {
+  key: string;
+  label: string;
+  engage: number;
+  previsionnel: number;
+};
+
 export type OpportunityKpis = {
   count: number;
   sumPrice: number;
@@ -23,27 +31,50 @@ export type CurrencyTotal = {
   amountCents: number;
 };
 
-/** Point mensuel (Jan→Déc) pour le pipeline opportunités multi-courbes. */
+/** Point mensuel (Jan→Déc) pipeline CA engagé / prévisionnel. */
 export type PipelineSeriesPoint = {
   month: number;
   label: string;
-  entree: number;
-  gagnees: number;
-  perdues: number;
+  engage: number;
+  previsionnel: number;
+};
+
+export type AnalysisClientOption = {
+  id: string;
+  label: string;
+};
+
+/** Entité synthétique : cumul CA des clients catégorisés « ESF ». */
+export const ANALYSIS_CA_ENTITY_ESF_ID = "entity:ESF";
+export const ANALYSIS_CA_ENTITY_ESF_LABEL = "ESF";
+
+/** Totaux CA d'un client pour une année (12 mois). */
+export type ClientCaYearSeries = {
+  clientId: string;
+  months: PipelineSeriesPoint[];
+  /** Somme engagé + prévisionnel sur l'année (pour tri / défaut). */
+  total: number;
 };
 
 export type OpportunitiesAnalysis = {
   kpis: OpportunityKpis;
+  /** Statuts filtrés sur l'année calendaire Paris courante. */
   byStatus: ChartDatum[];
-  /** Années disponibles (closed_at / created_at), tri desc. */
   availableYears: number[];
   defaultYear: number;
-  /** CA gagné (`price`) par catégorie métier, indexé par année de `closed_at`. */
-  caByCategoryByYear: Record<number, ChartDatum[]>;
-  /** CA gagné (`price`) par pôle, indexé par année de `closed_at`. */
-  caByTeamByYear: Record<number, ChartDatum[]>;
-  /** Pipeline commercial multi-séries, indexé par année. */
+  /** Pipeline CA mensuel engagé / prévisionnel. */
   pipelineByYear: Record<number, PipelineSeriesPoint[]>;
+  /** Clients ayant du CA sur au moins une année (tri alpha). */
+  caClientOptions: AnalysisClientOption[];
+  /** CA mensuel par année puis par client. */
+  caByClientByYear: Record<number, Record<string, ClientCaYearSeries>>;
+  /** CA par pôle (totaux année), empilé engagé / prévisionnel. */
+  caByTeamByYear: Record<number, StackedCaDatum[]>;
+  /**
+   * Opportunités non perdues sans `end_at` ou sans `invoice_frequency`
+   * (exclues des graphiques CA).
+   */
+  missingBillingCount: number;
 };
 
 export type MissionsAnalysis = {
@@ -95,7 +126,7 @@ export const HOME_WIDGET_IDS = [
   "kpi_opportunities",
   "kpi_missions",
   "opp_by_status",
-  "opp_ca_by_category",
+  "opp_ca_by_client",
   "mission_by_status",
   "tools_monthly_spend",
   "opp_pipeline",
@@ -111,7 +142,7 @@ export const HOME_WIDGET_LABELS: Record<HomeWidgetId, string> = {
   kpi_opportunities: "Résumé des chiffres des opportunités",
   kpi_missions: "Résumé des chiffres des missions",
   opp_by_status: "Opportunités - comparaison par statut",
-  opp_ca_by_category: "Opportunités - comparaison CA par catégorie",
+  opp_ca_by_client: "Opportunités - évolution du CA par client",
   mission_by_status: "Missions - comparaison par statut",
   tools_monthly_spend: "Tools - dépenses du mois",
   opp_pipeline: "Opportunités - évolution du pipeline Commercial",
@@ -150,12 +181,7 @@ export const HOME_WIDGET_GROUPS: Array<{
   },
   {
     label: "Opportunités",
-    ids: [
-      "opp_by_status",
-      "opp_ca_by_category",
-      "opp_pipeline",
-      "opp_by_team",
-    ],
+    ids: ["opp_by_status", "opp_ca_by_client", "opp_pipeline", "opp_by_team"],
   },
   {
     label: "Missions",
