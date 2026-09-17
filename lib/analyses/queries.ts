@@ -312,12 +312,13 @@ export async function loadAnalysesPayload(
   const supabase = await createClient();
   const empty = emptyAnalysesPayload();
 
-  const [oppRes, missionRes, collabRes, toolsRes] = await Promise.all([
-    wantOpp
-      ? supabase
-          .from("opportunity")
-          .select(
-            `
+  const [oppRes, missionRes, collabRes, toolsRes, revenueAimRes] =
+    await Promise.all([
+      wantOpp
+        ? supabase
+            .from("opportunity")
+            .select(
+              `
         id,
         price,
         average_price,
@@ -336,13 +337,13 @@ export async function loadAnalysesPayload(
           client_category ( category:category_business!category_id ( label ) )
         )
       `,
-          )
-      : Promise.resolve({ data: [], error: null }),
-    wantMissions
-      ? supabase
-          .from("mission")
-          .select(
-            `
+            )
+        : Promise.resolve({ data: [], error: null }),
+      wantMissions
+        ? supabase
+            .from("mission")
+            .select(
+              `
         id,
         kanban_status,
         completed_at,
@@ -351,16 +352,16 @@ export async function loadAnalysesPayload(
         end_at,
         collaborator_id
       `,
-          )
-      : Promise.resolve({ data: [], error: null }),
-    wantCollabs
-      ? supabase.from("collaborator").select("id, team:team_id ( team_name )")
-      : Promise.resolve({ data: [], error: null }),
-    wantSubs
-      ? supabase
-          .from("tool")
-          .select(
-            `
+            )
+        : Promise.resolve({ data: [], error: null }),
+      wantCollabs
+        ? supabase.from("collaborator").select("id, team:team_id ( team_name )")
+        : Promise.resolve({ data: [], error: null }),
+      wantSubs
+        ? supabase
+            .from("tool")
+            .select(
+              `
         id,
         tool_name,
         tool_category ( category:category_id ( id, label ) ),
@@ -369,9 +370,12 @@ export async function loadAnalysesPayload(
           tool_subscription_price ( currency, amount, valid_from, valid_to )
         )
       `,
-          )
-      : Promise.resolve({ data: [], error: null }),
-  ]);
+            )
+        : Promise.resolve({ data: [], error: null }),
+      wantOpp
+        ? supabase.from("revenue_aim").select("id, year, amount")
+        : Promise.resolve({ data: [], error: null }),
+    ]);
 
   if (oppRes.error) {
     console.error("loadAnalysesPayload opportunities:", oppRes.error);
@@ -389,6 +393,10 @@ export async function loadAnalysesPayload(
     console.error("loadAnalysesPayload tools:", toolsRes.error);
     throw new Error(toolsRes.error.message);
   }
+  if (revenueAimRes.error) {
+    console.error("loadAnalysesPayload revenue_aim:", revenueAimRes.error);
+    throw new Error(revenueAimRes.error.message);
+  }
 
   const opportunities = (oppRes.data ?? []) as unknown as OppRow[];
   const missions = (missionRes.data ?? []) as unknown as MissionRow[];
@@ -405,8 +413,22 @@ export async function loadAnalysesPayload(
     teamByCollaborator.set(c.id, c.team?.team_name ?? "Sans pôle");
   }
 
+  const revenueAims: Array<{ id: string; year: number; amount: number }> = [];
+  const revenueAimsByYear: Record<number, number> = {};
+  for (const row of revenueAimRes.data ?? []) {
+    const year = Number(row.year);
+    const amount = Number(row.amount);
+    if (!row.id || !Number.isFinite(year) || !Number.isFinite(amount)) continue;
+    revenueAims.push({ id: row.id, year, amount });
+    revenueAimsByYear[year] = amount;
+  }
+  revenueAims.sort((a, b) => b.year - a.year);
+
   // —— Opportunités : CA engagé / prévisionnel (invoice_frequency + end_at) ——
   const yearSet = new Set<number>([paris.year]);
+  for (const year of Object.keys(revenueAimsByYear)) {
+    yearSet.add(Number(year));
+  }
   const pipelineByYear = new Map<number, PipelineSeriesPoint[]>();
   const caByTeamByYear = new Map<
     number,
@@ -711,6 +733,8 @@ export async function loadAnalysesPayload(
       caByClientByYear: caByClientRecord,
       caByTeamByYear: caByTeamRecord,
       missingBillingCount,
+      revenueAims,
+      revenueAimsByYear,
     },
     missions: {
       kpis: buildMissionKpis(missions),

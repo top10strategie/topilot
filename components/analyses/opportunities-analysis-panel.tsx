@@ -1,10 +1,19 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { Eye, StackPlus } from "@phosphor-icons/react";
+import { useRouter } from "next/navigation";
 import { AnalysisBarChart } from "@/components/analyses/analysis-bar-chart-lazy";
 import { AnalysisLineChart } from "@/components/analyses/analysis-bar-chart-lazy";
 import { AnalysisKpiGrid } from "@/components/analyses/analysis-kpi-grid";
 import { AnalysisYearSelect } from "@/components/analyses/analysis-period-selects";
+import { useDrawerStack } from "@/components/drawers/drawer-stack-context";
+import { IconActionButton } from "@/components/layout/icon-action-button";
+import { RevenueAimConsultationDrawer } from "@/components/revenue-aim/revenue-aim-consultation-drawer";
+import {
+  RevenueAimFormDrawer,
+  type RevenueAimFormResult,
+} from "@/components/revenue-aim/revenue-aim-form-drawer";
 import {
   Combobox,
   ComboboxChip,
@@ -17,6 +26,7 @@ import {
   ComboboxValue,
   useComboboxAnchor,
 } from "@/components/ui/combobox";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type {
   AnalysisClientOption,
   OpportunitiesAnalysis,
@@ -54,6 +64,12 @@ const PIPELINE_SERIES = [
   { key: "engage", label: "CA engagé", color: "var(--chart-2)" },
   { key: "previsionnel", label: "CA prévisionnel", color: "var(--chart-1)" },
 ] as const;
+
+const OBJECTIF_SERIES = {
+  key: "objectif",
+  label: "Objectif de CA",
+  color: "var(--chart-3)",
+} as const;
 
 /** Couleurs « engagé » (plein) / « prévisionnel » (plus clair) par client. */
 const CLIENT_CHART_COLORS_ENGAGE = [
@@ -182,6 +198,8 @@ function ClientMultiSelect({
 }
 
 export function OpportunitiesAnalysisPanel({ data }: Props) {
+  const router = useRouter();
+  const { pushDrawer } = useDrawerStack();
   const yearSuffix = ` - ${data.defaultYear}`;
   const years =
     data.availableYears.length > 0
@@ -215,12 +233,44 @@ export function OpportunitiesAnalysisPanel({ data }: Props) {
 
   const pipeline = data.pipelineByYear[pipelineYear] ?? [];
   const caByTeam = data.caByTeamByYear[teamYear] ?? [];
+  const pipelineAimAmount = data.revenueAimsByYear[pipelineYear];
+  const hasPipelineAim = pipelineAimAmount != null;
+  const monthlyObjectif = hasPipelineAim ? pipelineAimAmount / 12 : null;
 
   const pipelineChartData = pipeline.map((p) => ({
     label: p.label,
     engage: p.engage,
     previsionnel: p.previsionnel,
+    ...(monthlyObjectif != null ? { objectif: monthlyObjectif } : {}),
   }));
+
+  const pipelineSeries = hasPipelineAim
+    ? [...PIPELINE_SERIES, OBJECTIF_SERIES]
+    : [...PIPELINE_SERIES];
+
+  const openCreateRevenueAim = () => {
+    void pushDrawer<RevenueAimFormResult>({
+      title: "Nouvel objectif de CA",
+      content: (helpers) => (
+        <RevenueAimFormDrawer
+          mode="create"
+          initialYear={pipelineYear}
+          helpers={helpers}
+        />
+      ),
+    }).then((created) => {
+      if (created) router.refresh();
+    });
+  };
+
+  const openConsultRevenueAims = () => {
+    void pushDrawer({
+      title: "Consultation des objectifs",
+      content: () => (
+        <RevenueAimConsultationDrawer initialAims={data.revenueAims} />
+      ),
+    });
+  };
 
   const teamChartData = caByTeam.map((d) => ({
     label: d.label,
@@ -480,21 +530,59 @@ export function OpportunitiesAnalysisPanel({ data }: Props) {
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
-        <AnalysisKpiGrid
-          className="h-full sm:grid-cols-2 xl:grid-cols-2"
-          items={[
-            {
-              label: `Total des sommes engagées${yearSuffix}`,
-              value: formatOpportunityPrice(data.kpis.sumPrice),
-            },
-            {
-              label: `Total des sommes pondérées${yearSuffix}`,
-              value: formatOpportunityPrice(data.kpis.sumAveragePrice),
-            },
-          ]}
-        />
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] lg:items-stretch">
+        <div className="flex min-h-0 flex-col gap-4 lg:h-full">
+          <div className="min-h-0 flex-1">
+            <AnalysisKpiGrid
+              className="h-full sm:grid-cols-2 xl:grid-cols-2"
+              items={[
+                {
+                  label: `Total des sommes engagées${yearSuffix}`,
+                  value: formatOpportunityPrice(data.kpis.sumPrice),
+                },
+                {
+                  label: `Total des sommes pondérées${yearSuffix}`,
+                  value: formatOpportunityPrice(data.kpis.sumAveragePrice),
+                },
+              ]}
+            />
+          </div>
+          <Card className="flex min-h-0 flex-1 flex-col">
+            <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0 pb-2">
+              <CardTitle className="text-base">Objectif de CA</CardTitle>
+              <div className="flex shrink-0 items-center gap-1.5">
+                <IconActionButton
+                  label="Ajouter un objectif"
+                  onClick={openCreateRevenueAim}
+                >
+                  <StackPlus className="size-4" />
+                </IconActionButton>
+                <IconActionButton
+                  label="Consulter les objectifs"
+                  onClick={openConsultRevenueAims}
+                >
+                  <Eye className="size-4" />
+                </IconActionButton>
+              </div>
+            </CardHeader>
+            <CardContent className="flex flex-1 flex-col justify-center gap-2">
+              <p className="text-sm text-muted-foreground">
+                Année {pipelineYear}
+              </p>
+              {hasPipelineAim ? (
+                <p className="text-2xl font-semibold tracking-tight">
+                  {formatOpportunityPrice(pipelineAimAmount)}
+                </p>
+              ) : (
+                <p className="text-sm" style={{ color: "#ff8f2e" }}>
+                  Aucun objectif défini pour {pipelineYear}
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
         <AnalysisBarChart
+          className="h-full"
           title={`Comparaison par statut${yearSuffix}`}
           data={data.byStatus}
           layout="vertical"
@@ -513,7 +601,7 @@ export function OpportunitiesAnalysisPanel({ data }: Props) {
         <AnalysisLineChart
           title="Évolution du pipeline Commercial"
           data={pipelineChartData}
-          series={[...PIPELINE_SERIES]}
+          series={pipelineSeries}
           valueFormatter={(v) => formatOpportunityPrice(v)}
           axisTickFormatter={formatAxisEuro}
           headerAction={
