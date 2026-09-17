@@ -15,6 +15,7 @@ import type {
   OpportunityInvoiceFrequency,
   OpportunityKanbanStatus,
 } from "@/lib/opportunities/types";
+import { listRevenueAims } from "@/lib/revenue-aim/queries";
 import { createClient } from "@/lib/supabase/server";
 import { monthlyCentsFromPrice } from "@/lib/tools/pricing";
 import type { ToolSubscriptionPlan } from "@/lib/tools/types";
@@ -312,7 +313,7 @@ export async function loadAnalysesPayload(
   const supabase = await createClient();
   const empty = emptyAnalysesPayload();
 
-  const [oppRes, missionRes, collabRes, toolsRes, revenueAimRes] =
+  const [oppRes, missionRes, collabRes, toolsRes, revenueAims] =
     await Promise.all([
       wantOpp
         ? supabase
@@ -372,9 +373,7 @@ export async function loadAnalysesPayload(
       `,
             )
         : Promise.resolve({ data: [], error: null }),
-      wantOpp
-        ? supabase.from("revenue_aim").select("id, year, amount")
-        : Promise.resolve({ data: [], error: null }),
+      wantOpp ? listRevenueAims() : Promise.resolve([]),
     ]);
 
   if (oppRes.error) {
@@ -393,10 +392,6 @@ export async function loadAnalysesPayload(
     console.error("loadAnalysesPayload tools:", toolsRes.error);
     throw new Error(toolsRes.error.message);
   }
-  if (revenueAimRes.error) {
-    console.error("loadAnalysesPayload revenue_aim:", revenueAimRes.error);
-    throw new Error(revenueAimRes.error.message);
-  }
 
   const opportunities = (oppRes.data ?? []) as unknown as OppRow[];
   const missions = (missionRes.data ?? []) as unknown as MissionRow[];
@@ -413,16 +408,10 @@ export async function loadAnalysesPayload(
     teamByCollaborator.set(c.id, c.team?.team_name ?? "Sans pôle");
   }
 
-  const revenueAims: Array<{ id: string; year: number; amount: number }> = [];
   const revenueAimsByYear: Record<number, number> = {};
-  for (const row of revenueAimRes.data ?? []) {
-    const year = Number(row.year);
-    const amount = Number(row.amount);
-    if (!row.id || !Number.isFinite(year) || !Number.isFinite(amount)) continue;
-    revenueAims.push({ id: row.id, year, amount });
-    revenueAimsByYear[year] = amount;
+  for (const aim of revenueAims) {
+    revenueAimsByYear[aim.year] = aim.amount;
   }
-  revenueAims.sort((a, b) => b.year - a.year);
 
   // —— Opportunités : CA engagé / prévisionnel (invoice_frequency + end_at) ——
   const yearSet = new Set<number>([paris.year]);
