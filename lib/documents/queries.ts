@@ -387,11 +387,11 @@ export async function listDocumentsPage(
   const { data, error } = await supabase.rpc("list_documents_page", {
     p_page: filters.page,
     p_page_size: DOCUMENTS_PAGE_SIZE,
-    p_type_ids: filters.typeIds.length > 0 ? filters.typeIds : null,
-    p_versions: filters.versions.length > 0 ? filters.versions : null,
-    p_client_ids: clientIds.length > 0 ? clientIds : null,
+    p_type_ids: filters.typeIds.length > 0 ? filters.typeIds : undefined,
+    p_versions: filters.versions.length > 0 ? filters.versions : undefined,
+    p_client_ids: clientIds.length > 0 ? clientIds : undefined,
     p_include_interne: includeInterne,
-    p_query: filters.q || null,
+    p_query: filters.q || undefined,
   });
 
   if (error) {

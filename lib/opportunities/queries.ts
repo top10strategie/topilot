@@ -10,6 +10,7 @@ import type {
   OpportunityCategoryItem,
   OpportunityContactOption,
   OpportunityDetail,
+  OpportunityInvoiceFrequency,
   OpportunityKanbanStatus,
   OpportunityListItem,
   OpportunityPriority,
@@ -53,6 +54,7 @@ const OPPORTUNITY_LIST_SELECT = `
   due_date_at,
   end_at,
   closed_at,
+  invoice_frequency,
   client:client_id ( id, client_name ),
   contact_client:contact_client_id ( id, first_name, last_name ),
   collaborator:collaborator_id (
@@ -83,6 +85,7 @@ type OpportunityListRow = {
   due_date_at: string | null;
   end_at: string | null;
   closed_at: string | null;
+  invoice_frequency: OpportunityInvoiceFrequency | null;
   client: { id: string; client_name: string } | null;
   contact_client: {
     id: string;
@@ -138,6 +141,7 @@ function mapListItem(row: OpportunityListRow): OpportunityListItem {
     due_date_at: row.due_date_at,
     end_at: row.end_at,
     closed_at: row.closed_at,
+    invoice_frequency: row.invoice_frequency,
     client: row.client ?? {
       id: row.client_id,
       client_name: "?",
@@ -171,6 +175,7 @@ type OpportunitiesPageRpcRow = {
   due_date_at: string | null;
   end_at: string | null;
   closed_at: string | null;
+  invoice_frequency: OpportunityInvoiceFrequency | null;
   client_name: string | null;
   contact_first_name: string | null;
   contact_last_name: string | null;
@@ -213,6 +218,7 @@ function mapPageRpcRow(row: OpportunitiesPageRpcRow): OpportunityListItem {
     due_date_at: row.due_date_at,
     end_at: row.end_at,
     closed_at: row.closed_at,
+    invoice_frequency: row.invoice_frequency,
     client: {
       id: row.client_id,
       client_name: row.client_name ?? "?",
@@ -261,21 +267,21 @@ export async function listOpportunitiesPage(
     p_page: filters.page,
     p_page_size: OPPORTUNITIES_PAGE_SIZE,
     p_board: board,
-    p_client_id: filters.clientId || null,
-    p_responsible_id: filters.responsibleId || null,
-    p_team_id: filters.teamId || null,
+    p_client_id: filters.clientId || undefined,
+    p_responsible_id: filters.responsibleId || undefined,
+    p_team_id: filters.teamId || undefined,
     p_category_ids:
-      filters.categoryIds.length > 0 ? filters.categoryIds : null,
-    p_statuses: filters.statuses.length > 0 ? filters.statuses : null,
-    p_priority: filters.priority || null,
+      filters.categoryIds.length > 0 ? filters.categoryIds : undefined,
+    p_statuses: filters.statuses.length > 0 ? filters.statuses : undefined,
+    p_priority: filters.priority || undefined,
     p_amount_bucket:
-      filters.amountBucket !== "all" ? filters.amountBucket : null,
+      filters.amountBucket !== "all" ? filters.amountBucket : undefined,
     p_probability_bucket:
       filters.probabilityBucket !== "all"
         ? filters.probabilityBucket
-        : null,
+        : undefined,
     p_include_archived: filters.includeArchived,
-    p_query: filters.q || null,
+    p_query: filters.q || undefined,
   });
 
   if (error) {

@@ -1,4 +1,5 @@
 import type {
+  OpportunityInvoiceFrequency,
   OpportunityKanbanStatus,
   OpportunityPriority,
   OpportunityResponsibleItem,
@@ -20,6 +21,13 @@ export const OPPORTUNITY_PRIORITIES: OpportunityPriority[] = [
   "prioritaire",
 ];
 
+export const OPPORTUNITY_INVOICE_FREQUENCIES: OpportunityInvoiceFrequency[] = [
+  "unique",
+  "mensuel",
+  "trimestriel",
+  "annuel",
+];
+
 const KANBAN_STATUS_LABELS: Record<OpportunityKanbanStatus, string> = {
   suspect: "Suspect",
   prospect: "Prospect",
@@ -36,6 +44,13 @@ const PRIORITY_LABELS: Record<OpportunityPriority, string> = {
   prioritaire: "Prioritaire",
 };
 
+const INVOICE_FREQUENCY_LABELS: Record<OpportunityInvoiceFrequency, string> = {
+  unique: "Unique",
+  mensuel: "Mensuel",
+  trimestriel: "Trimestriel",
+  annuel: "Annuel",
+};
+
 export function getOpportunityKanbanStatusLabel(
   status: OpportunityKanbanStatus,
 ): string {
@@ -46,6 +61,12 @@ export function getOpportunityPriorityLabel(
   priority: OpportunityPriority,
 ): string {
   return PRIORITY_LABELS[priority];
+}
+
+export function getOpportunityInvoiceFrequencyLabel(
+  frequency: OpportunityInvoiceFrequency,
+): string {
+  return INVOICE_FREQUENCY_LABELS[frequency];
 }
 
 export function getOpportunityResponsibleName(

@@ -202,16 +202,17 @@ Structure Hero + Tabs :
 
 - **Vue Kanban** — **vue par défaut** à l'ouverture de la page (cf. `07_ux_composants_reutilisable.mdc` sections 4.3 et 8).
     - 6 colonnes, une par valeur de `kanban_status`, dans cet **ordre d'affichage** (qui correspond désormais à l'ordre de déclaration de l'enum en base) : **Suspect → Prospect → Besoin spécifié → Proposition envoyée → Gagné → Perdue**.
-    - Carte (variante Kanban du composant Carte) : Titre (`opportunity_name`) ; ligne Catégories | Urgence ; ligne Client | Responsable opportunité ; ligne Montant | Probabilité de réussite | Date de clôture (couleur selon la règle unifiée de `06_ui_design.mdc`, basée sur `end_at`).
+    - Les colonnes **Gagné** et **Perdue** n'affichent que les opportunités dont `due_date_at` date de **moins de 3 mois** (cf. `03_business_rules.mdc`) — les archives plus anciennes restent accessibles via les vues Cartes/Tableau avec le filtre « Inclure les archivées ». Ces deux colonnes sont triées par `due_date_at` décroissant (plus récentes en haut) ; les colonnes actives restent triées par `kanban_order`.
+    - Carte (variante Kanban du composant Carte) : Titre (`opportunity_name`) ; ligne Catégories | Urgence ; ligne Client | Responsable opportunité ; ligne Montant | Probabilité de réussite | Échéance (couleur selon la règle unifiée de `06_ui_design.mdc`, basée sur `due_date_at`).
     - Drag and drop (DnD kit) entre et au sein des colonnes, mise à jour optimiste de `kanban_status`/`kanban_order`, cf. section 8 de `07_ux_composants_reutilisable.mdc`.
         - Déplacer une carte vers **Gagné** ou **Perdue** archive automatiquement l'opportunité (`is_active = false`) ; l'en sortir la désarchive (cf. `03_business_rules.mdc`/`04_database_schema.mdc`).
         - Le déplacement met aussi à jour `probability_confirmation` (relevée au minimum mappé du nouveau statut, jamais abaissée si déjà supérieure — cf. `03_business_rules.mdc`), donc `average_price` (colonne calculée) recalculé automatiquement.
     - Total agrégé (`average_price` moyen) sous le titre/badge de chaque colonne, cf. section 8 de `07_ux_composants_reutilisable.mdc`.
     - Compteur "Nombre d'opportunités" en bas à gauche — pas de pagination en Kanban (organisation propre à la vue).
 - **Vue Cartes** (cf. section 5.1) : carte sans image → **3 colonnes desktop** / 2 tablette / 1 téléphone.
-    - Carte : Titre (`opportunity_name`) ; ligne Catégories | Statut ; ligne Client | Responsable opportunité ; ligne Montant | Probabilité de réussite | Date de clôture.
+    - Carte : Titre (`opportunity_name`) ; ligne Catégories | Statut ; ligne Client | Responsable opportunité ; ligne Montant | Probabilité de réussite | Échéance (`due_date_at`).
     - Clic sur la carte : redirection vers `/opportunities/[id]` (page de liste principale, cf. section 9.3).
-- **Vue Tableau** (cf. section 5.2) : colonnes Nom Opportunité, Client, Responsable opportunité, Statut, Urgence, Catégories, Echéance, Date de clôture, Montant.
+- **Vue Tableau** (cf. section 5.2) : colonnes Nom Opportunité, Client, Responsable opportunité, Statut, Urgence, Catégories, Échéance, Montant.
     - Clic sur la ligne : redirection vers `/opportunities/[id]`, idem vue Cartes.
 - **Pagination et compteur** (Cartes/Tableau uniquement, cf. section 5.3) : "Nombre d'opportunités" (total, en bas à gauche) + pagination 25/page avec "Page : x/y" et navigation précédent/suivant (en bas à droite).
 - **Filtre** (modale, cf. section 5.4) :
@@ -224,7 +225,7 @@ Structure Hero + Tabs :
     - Filtre par urgence (multi-sélection, ajouté pour cohérence avec la colonne Urgence du tableau)
     - Boutons "Effacer" (vide les filtres) / "Filtrer"
 - **Tiroir de création "Nouvelle opportunité"** (cf. section 7), en **deux temps** :
-    1. **Bloc identification** (toujours visible en haut) : Titre (`opportunity_name`, obligatoire), Client (`client_id`, **obligatoire** — dropdown clients + bouton d'ajout client), Contact (`contact_client_id`, nullable — dropdown contacts du client sélectionné + bouton d'ajout contact), Responsable opportunité (`collaborator_id`, obligatoire — dropdown collaborateurs), Date de dernière rencontre (`last_meeting_at`), Echéance (`due_date_at`), Date de clôture (`end_at`). **Au moins une des deux dates Echéance/Date de clôture est obligatoire** (contrainte `opportunity_due_or_end_required`). Bouton **"Enregistrer"** dédié : crée l'opportunité en base avec ces champs — nécessaire pour permettre l'ajout de documents liés qui requièrent un `opportunity_id` existant. Le statut initial (`kanban_status`) et la probabilité associée sont posés automatiquement à cet instant selon l'historique du client (cf. `03_business_rules.mdc`), sans champ visible à cette étape.
+    1. **Bloc identification** (toujours visible en haut) : Titre (`opportunity_name`, obligatoire), Client (`client_id`, **obligatoire** — dropdown clients + bouton d'ajout client), Contact (`contact_client_id`, nullable — dropdown contacts du client sélectionné + bouton d'ajout contact), Responsable opportunité (`collaborator_id`, obligatoire — dropdown collaborateurs), Date de dernière rencontre (`last_meeting_at`), Échéance (`due_date_at`, **obligatoire**), Fin de facturation (`end_at`, optionnel), Fréquence de facturation (`invoice_frequency`, optionnel). Bouton **"Enregistrer"** dédié : crée l'opportunité en base avec ces champs — nécessaire pour permettre l'ajout de documents liés qui requièrent un `opportunity_id` existant. Le statut initial (`kanban_status`) et la probabilité associée sont posés automatiquement à cet instant selon l'historique du client (cf. `03_business_rules.mdc`), sans champ visible à cette étape.
     2. **Bloc complémentaire** (déverrouillé après l'étape 1) :
         - Catégories (`opportunity_category`) : multi-sélection + bouton d'ajout d'une nouvelle catégorie
         - Montant (`price`) et Montant pondéré (`average_price`, **lecture seule**, calculé automatiquement à partir de Montant × Probabilité)
@@ -241,13 +242,13 @@ Structure Hero + Tabs :
 **Hero** :
 
 - Identification de l'entité : nom réel de l'opportunité (`opportunity_name`, jamais son id technique, cf. `07_ux_composants_reutilisable.mdc` section 4.1)
-- Groupe de boutons d'action : recherche contextuelle (filtre le contenu de l'onglet actif) + icône de gestion (`pencil-simple`, ouvre le tiroir "Edition Opportunité" — mêmes champs que le tiroir "Nouvelle opportunité" de `/opportunities`, mais en **sauvegarde unique** : "Annuler" / "Enregistrer" en footer, pas d'étape intermédiaire puisque l'opportunité existe déjà. Pas de filtre ni de switch de vue sur cette page, ce n'est pas une liste)
+- Groupe de boutons d'action : recherche contextuelle (filtre le contenu de l'onglet actif) + icône de gestion (`pencil-simple`, ouvre le tiroir "Edition Opportunité" — mêmes champs que le tiroir "Nouvelle opportunité" de `/opportunities`, **plus** « Début de la facturation » (`closed_at`, optionnel) sur la même ligne que Date de dernière rencontre / Échéance, en **sauvegarde unique** : "Annuler" / "Enregistrer" en footer, pas d'étape intermédiaire puisque l'opportunité existe déjà. Pas de filtre ni de switch de vue sur cette page, ce n'est pas une liste)
 
 **Contenu - Tabs** : "Informations" | "Missions" | "Documentations"
 
 - **Informations** :
     - Colonne gauche : Titre (`opportunity_name`), Client (`client_id`), Responsable opportunité (`collaborator_id`). En dessous : Notes (`notes`, édition inline, historisée dans `audit_log`).
-    - Colonne droite : Statut (`kanban_status`), Montant (`price`), Montant pondéré (`average_price`, **lecture seule**, calculé), Probabilité (`probability_confirmation`), Urgence (`priority`), Action (`action`), Source (`source`), Date de dernière rencontre (`last_meeting_at`), Echéance (`due_date_at`), Date de clôture (`end_at`).
+    - Colonne droite : Statut (`kanban_status`), Montant (`price`), Montant pondéré (`average_price`, **lecture seule**, calculé), Probabilité (`probability_confirmation`), Urgence (`priority`), Action (`action`), Source (`source`), Date de dernière rencontre (`last_meeting_at`), Échéance (`due_date_at`), Fin de facturation (`end_at`), Fréquence de facturation (`invoice_frequency`).
 - **Missions** : tableau des missions liées à cette opportunité (`mission.opportunity_id`). Colonnes (cf. `03_business_rules.mdc`) : Nom mission, Collaborateur, Catégories, Début, Fin, Statut. Bouton d'ajout (`circles-three-plus`, en haut à droite de l'onglet, au-dessus du tableau ; ouvre un drawer mission avec `opportunity_id` verrouillé). Clic sur une ligne : tiroir de **consultation** de la mission (contenu = tiroir d'édition mission en lecture seule, footer "Aller à la mission" → `/missions/[id]`).
 - **Documentations** : 2 blocs côte à côte pour les documents et les outils : libellé + bouton d'ajout à droite + liste en dessous. Clic sur un item outil : tiroir de consultation (comportement général, cf. section 6/7 de `07_ux_composants_reutilisable.mdc`). Le clic sur un document permet la consultation soit du lien, soit du document (ouverture d'un onglet externe).
     - Documents relatifs à l'opportunité (`opportunity_document`)
@@ -265,6 +266,7 @@ Structure Hero + Tabs :
 
 - **Vue Kanban** (cf. `07_ux_composants_reutilisable.mdc` section 8) : 4 colonnes, une par valeur de `kanban_status`, dans l'ordre de déclaration de l'enum : **A faire → En cours → Terminée → Archivée**.
     - La colonne **"Archivée"** est libellée **"Archivée (3 mois)"** et n'affiche que les missions dont `archived_at` date de moins de 3 mois (cf. `03_business_rules.mdc`/`04_database_schema.mdc`) — les archives plus anciennes restent accessibles via les vues Cartes/Tableau avec le filtre par statut.
+    - Les colonnes **Terminée** et **Archivée** sont triées par `end_at` décroissant (plus récentes en haut ; sans date de fin → en bas) ; les colonnes actives restent triées par `kanban_order`.
     - Carte (variante Kanban du composant Carte) : Titre (`mission_name`) ; ligne Catégorie | Scope (`mission_scope`, badge coloré `--secondary` si interne, cf. `06_ui_design.mdc`) ; ligne Client | Responsable mission ; ligne Opportunité liée | Date de début | Date de fin.
     - Drag and drop (DnD kit) entre et au sein des colonnes, mise à jour optimiste de `kanban_status`/`kanban_order` (même comportement que la vue Kanban Opportunités) ; entrer/sortir du statut `archivee` met à jour `archived_at` automatiquement (trigger, cf. `04_database_schema.mdc`).
     - Compteur "Nombre de missions" en bas à gauche — pas de pagination en Kanban.
@@ -442,11 +444,13 @@ Page à **plat, sans onglets** (contrairement à Client/Opportunité/Mission) :
 **Contenu - Tabs** : "Opportunités" | "Missions" | "Abonnements"
 
 - **Opportunités** :
-    - 4 cartes KPI : Nombre d'opportunités (`COUNT`) ; Total des sommes engagées (`SUM(price)`) ; Total des sommes pondérées (`SUM(average_price)`) ; Taux de conversion (`COUNT(kanban_status = gagne) / COUNT(*)`, opportunités encore ouvertes incluses au dénominateur).
-    - Comparaison par statut : diagramme en barres horizontales, une barre par valeur de `kanban_status`.
-    - Evolution du pipeline Commercial : diagramme en barres verticales dans le temps (volume/valeur des opportunités par période).
-    - Comparaison par catégories : diagramme en barres horizontales par `opportunity_category`.
-    - Comparaison CA par pôle : diagramme en barres horizontales, chiffre d'affaires (`price` ou `average_price`) agrégé par pôle (via `collaborator_id` → équipe du collaborateur responsable).
+    - Bandeau : 2 KPI (Total des sommes engagées `SUM(price)` ; Total des sommes pondérées `SUM(average_price)`) filtrés sur l’**année calendaire Paris courante** (même règle de date que le statut : `closed_at` si `gagne`/`perdue`, sinon `due_date_at`) ; titres suffixés ` - {année}` ; **Comparaison par statut** à droite (barres verticales, même filtre année, même suffixe) — pas de sélecteur d’année.
+    - **Évolution du pipeline Commercial** : courbes mensuelles **CA engagé** / **CA prévisionnel** (répartition `invoice_frequency` + `end_at`, cf. `03_business_rules.mdc`) ; sélecteur d’année indépendant ; compteur des opportunités sans délais de facturation.
+    - **Comparaison de la pipeline avec l'année précédente** : sous le pipeline ; courbes Jan→Déc pour l’année Y et Y−1 (jusqu’à 4 séries engagé/prévisionnel) ; sélecteur d’année Y indépendant.
+    - **Évolution du CA par Client** : barres mensuelles empilées engagé/prévisionnel, pleine largeur ; sélecteurs année + clients multi (max 5) à droite du header ; piles côte à côte par client ; options incluent l’entité synthétique **ESF** (cumul des clients catégorisés `ESF`).
+    - **Comparaison du CA Client avec l'année précédente** : sous le CA client ; courbes (1–2 lignes engagé/prévisionnel par client × année Y / Y−1) ; même multi-select clients + sélecteur d’année Y.
+    - **Comparaison CA par pôle** : barres horizontales empilées engagé/prévisionnel ; sélecteur d’année indépendant.
+    - **Comparaison du CA par pôle avec l'année précédente** : sous le CA pôle ; barres horizontales, stacks côte à côte pour Y et Y−1 (jusqu’à 4 séries) ; sélecteur d’année Y.
 - **Missions** :
     - 4 cartes KPI : Nombre de missions (`COUNT`) ; Nombre de missions en production (`kanban_status = en_cours`) ; Nombre de missions abandonnées (`kanban_status = archivee AND completed_at IS NULL`) ; Nombre de missions complétées (`completed_at IS NOT NULL`, cf. `03_business_rules.mdc`/`04_database_schema.mdc`).
     - Comparaison par statut : diagramme en barres horizontales par `kanban_status`.
@@ -490,20 +494,18 @@ Page à **plat, sans onglets** (contrairement à Client/Opportunité/Mission) :
 **Modale de sélection des widgets** :
 
 - Titre : "Ajout de widgets à votre page d'accueil"
-- "Sélectionner un ou plusieurs widgets :" — liste déroulante à cases à cocher (multi-sélection), catalogue fermé de 13 widgets précis (pas l'ensemble des graphiques de `/analyses`) :
+- "Sélectionner un ou plusieurs widgets :" — liste déroulante à cases à cocher (multi-sélection), catalogue fermé (pas l'ensemble des graphiques de `/analyses`) :
     1. Kanban des opportunités
     2. Kanban des missions
-    3. Résumé des chiffres des opportunités (4 cartes KPI : Nombre d'opportunités, Total des sommes engagées, Total des sommes pondérées, Taux de conversion)
-    4. Résumé des chiffres des missions (4 cartes KPI : Nombre de missions, Nombre de missions en production, Nombre de missions abandonnées, Nombre de missions complétées)
+    3. Résumé des chiffres des opportunités (2 KPI : Total des sommes engagées, Total des sommes pondérées)
+    4. Résumé des chiffres des missions (4 cartes KPI)
     5. Opportunités - comparaison par statut
-    6. Opportunités - comparaison par catégories
+    6. Opportunités - évolution du CA par client
     7. Missions - comparaison par statut
-    8. Missions - comparaison par catégories
-    9. Tools - dépenses du mois
-    10. Opportunités - évolution du pipeline Commercial
-    11. Opportunités - comparaison CA par pôle
-    12. Missions - évolution du pipeline Produit
-    13. Tools - évolution des coûts par Catégories - année
+    8. Tools - dépenses du mois
+    9. Opportunités - évolution du pipeline Commercial (CA engagé / prévisionnel)
+    10. Opportunités - comparaison CA par pôle
+    11. Tools - évolution des coûts par année
 - Chaque widget correspond exactement à un élément déjà décrit dans `/opportunities` (vue Kanban), `/missions` (vue Kanban), ou `/analyses` (cartes KPI et graphiques des onglets Opportunités/Missions/Abonnements) — même source de données, même calcul, simplement réaffiché ici. Il faut utiliser les composants créer pour les conglets de la page `/analyses`
 - Bouton "Confirmation" : valide la sélection et ferme la modale.
 

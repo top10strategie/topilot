@@ -303,13 +303,13 @@ export async function listClientsPage(
     p_page: filters.page,
     p_page_size: CLIENTS_PAGE_SIZE,
     p_status: filters.status,
-    p_responsible_id: filters.responsibleId || null,
-    p_team_id: filters.teamId || null,
-    p_city: filters.city || null,
+    p_responsible_id: filters.responsibleId || undefined,
+    p_team_id: filters.teamId || undefined,
+    p_city: filters.city || undefined,
     p_category_ids:
-      filters.categoryIds.length > 0 ? filters.categoryIds : null,
+      filters.categoryIds.length > 0 ? filters.categoryIds : undefined,
     p_mission_bucket: filters.missionBucket,
-    p_query: filters.q || null,
+    p_query: filters.q || undefined,
   });
 
   if (error) {

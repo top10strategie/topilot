@@ -6,6 +6,7 @@ import { todayParisYmd } from "@/lib/dates/paris";
 import { formCategoryIds, formOptional, formText } from "@/lib/form-data";
 import type {
   OpportunityContactOption,
+  OpportunityInvoiceFrequency,
   OpportunityKanbanStatus,
   OpportunityPriority,
 } from "@/lib/opportunities/types";
@@ -19,16 +20,17 @@ const CLOSED_KANBAN_STATUSES = new Set<OpportunityKanbanStatus>([
 
 /**
  * Filet app à la clôture / réouverture (complète le trigger DB) :
- * - entrée gagne/perdue : `end_at` vide → aujourd’hui Paris ; `closed_at` posé
- * - sortie gagne/perdue : `end_at` et `closed_at` remis à null
+ * - entrée gagne/perdue : `closed_at` posé uniquement s'il est encore vide
+ * - sortie gagne/perdue : `closed_at` remis à null (conserve `end_at`)
  */
 function applyClosureDates(
   payload: Record<string, unknown>,
   kanbanStatus: OpportunityKanbanStatus,
-  endAt: string | null | undefined,
   opts?: {
     previousStatus?: OpportunityKanbanStatus | null;
     isStatusTransitionToClosed?: boolean;
+    /** Valeur existante en base si absente du payload. */
+    existingClosedAt?: string | null;
   },
 ) {
   const previous = opts?.previousStatus;
@@ -38,18 +40,28 @@ function applyClosureDates(
     !CLOSED_KANBAN_STATUSES.has(kanbanStatus);
 
   if (leavingClosed) {
-    payload.end_at = null;
     payload.closed_at = null;
     return;
   }
 
   if (!CLOSED_KANBAN_STATUSES.has(kanbanStatus)) return;
-  const today = todayParisYmd();
-  if (!endAt) {
-    payload.end_at = today;
-  }
-  if (opts?.isStatusTransitionToClosed) {
-    payload.closed_at = today;
+  if (!opts?.isStatusTransitionToClosed) return;
+
+  const fromPayload =
+    typeof payload.closed_at === "string" && payload.closed_at.trim() !== ""
+      ? payload.closed_at
+      : payload.closed_at === null
+        ? null
+        : undefined;
+  const existing = opts.existingClosedAt ?? null;
+  const current =
+    fromPayload !== undefined ? fromPayload : existing;
+
+  if (current == null || current === "") {
+    payload.closed_at = todayParisYmd();
+  } else if (fromPayload === undefined) {
+    // Conserver la valeur en base (ne pas écraser via payload).
+    payload.closed_at = current;
   }
 }
 
@@ -70,7 +82,9 @@ export type OpportunityActionResult =
           | "contact_client_id"
           | "collaborator_id"
           | "due_date_at"
+          | "closed_at"
           | "end_at"
+          | "invoice_frequency"
           | "price"
           | "probability_confirmation"
           | "priority"
@@ -99,6 +113,13 @@ const PRIORITIES = new Set<OpportunityPriority>([
   "normal",
   "urgente",
   "prioritaire",
+]);
+
+const INVOICE_FREQUENCIES = new Set<OpportunityInvoiceFrequency>([
+  "unique",
+  "mensuel",
+  "trimestriel",
+  "annuel",
 ]);
 
 function formOptionalNumber(
@@ -194,6 +215,7 @@ export async function createOpportunityRecord(
   const last_meeting_at = formOptional(formData, "last_meeting_at");
   const due_date_at = formOptional(formData, "due_date_at");
   const end_at = formOptional(formData, "end_at");
+  const invoiceFrequencyRaw = formOptional(formData, "invoice_frequency");
 
   const fieldErrors: NonNullable<
     Extract<OpportunityActionResult, { success: false }>["fieldErrors"]
@@ -209,11 +231,14 @@ export async function createOpportunityRecord(
     fieldErrors.collaborator_id =
       "Le responsable opportunité est obligatoire.";
   }
-  if (!due_date_at && !end_at) {
-    fieldErrors.due_date_at =
-      "Indiquez au moins une échéance ou une date de clôture.";
-    fieldErrors.end_at =
-      "Indiquez au moins une échéance ou une date de clôture.";
+  if (!due_date_at) {
+    fieldErrors.due_date_at = "L'échéance est obligatoire.";
+  }
+  if (
+    invoiceFrequencyRaw &&
+    !INVOICE_FREQUENCIES.has(invoiceFrequencyRaw as OpportunityInvoiceFrequency)
+  ) {
+    fieldErrors.invoice_frequency = "Fréquence de facturation invalide.";
   }
 
   if (Object.keys(fieldErrors).length > 0) {
@@ -235,6 +260,8 @@ export async function createOpportunityRecord(
       last_meeting_at,
       due_date_at,
       end_at,
+      invoice_frequency:
+        (invoiceFrequencyRaw as OpportunityInvoiceFrequency | null) ?? null,
       // Placeholder : le trigger BEFORE INSERT écrase toujours kanban_status.
       kanban_status: "suspect",
     })
@@ -277,7 +304,11 @@ export async function updateOpportunityRecord(
   const collaborator_id = formText(formData, "collaborator_id");
   const last_meeting_at = formOptional(formData, "last_meeting_at");
   const due_date_at = formOptional(formData, "due_date_at");
+  const closed_at = formData.has("closed_at")
+    ? formOptional(formData, "closed_at")
+    : undefined;
   const end_at = formOptional(formData, "end_at");
+  const invoiceFrequencyRaw = formOptional(formData, "invoice_frequency");
   const action = formOptional(formData, "action");
   const source = formOptional(formData, "source");
   const priorityRaw = formText(formData, "priority");
@@ -299,11 +330,14 @@ export async function updateOpportunityRecord(
     fieldErrors.collaborator_id =
       "Le responsable opportunité est obligatoire.";
   }
-  if (!due_date_at && !end_at) {
-    fieldErrors.due_date_at =
-      "Indiquez au moins une échéance ou une date de clôture.";
-    fieldErrors.end_at =
-      "Indiquez au moins une échéance ou une date de clôture.";
+  if (!due_date_at) {
+    fieldErrors.due_date_at = "L'échéance est obligatoire.";
+  }
+  if (
+    invoiceFrequencyRaw &&
+    !INVOICE_FREQUENCIES.has(invoiceFrequencyRaw as OpportunityInvoiceFrequency)
+  ) {
+    fieldErrors.invoice_frequency = "Fréquence de facturation invalide.";
   }
   if (price === undefined) {
     fieldErrors.price = "Montant invalide.";
@@ -333,7 +367,7 @@ export async function updateOpportunityRecord(
   const supabase = await createClient();
   const { data: existing, error: existingError } = await supabase
     .from("opportunity")
-    .select("id, notes, kanban_status")
+    .select("id, notes, kanban_status, closed_at")
     .eq("id", id)
     .maybeSingle();
 
@@ -358,6 +392,8 @@ export async function updateOpportunityRecord(
     last_meeting_at,
     due_date_at,
     end_at,
+    invoice_frequency:
+      (invoiceFrequencyRaw as OpportunityInvoiceFrequency | null) ?? null,
     action,
     source,
     priority: priorityRaw,
@@ -366,8 +402,13 @@ export async function updateOpportunityRecord(
     probability_confirmation: probability ?? 10,
   };
 
-  applyClosureDates(payload, kanbanRaw as OpportunityKanbanStatus, end_at, {
+  if (closed_at !== undefined) {
+    payload.closed_at = closed_at;
+  }
+
+  applyClosureDates(payload, kanbanRaw as OpportunityKanbanStatus, {
     previousStatus: existing.kanban_status as OpportunityKanbanStatus,
+    existingClosedAt: existing.closed_at as string | null,
     isStatusTransitionToClosed:
       existing.kanban_status !== kanbanRaw &&
       CLOSED_KANBAN_STATUSES.has(kanbanRaw as OpportunityKanbanStatus),
@@ -445,11 +486,11 @@ export async function updateOpportunitiesKanban(
   const updateIds = updates.map((u) => u.id);
   const existingById = new Map<
     string,
-    { end_at: string | null; kanban_status: OpportunityKanbanStatus }
+    { kanban_status: OpportunityKanbanStatus; closed_at: string | null }
   >();
   const { data: rows, error: fetchError } = await supabase
     .from("opportunity")
-    .select("id, end_at, kanban_status")
+    .select("id, kanban_status, closed_at")
     .in("id", updateIds);
   if (fetchError) {
     console.error("updateOpportunitiesKanban fetch:", fetchError);
@@ -460,8 +501,8 @@ export async function updateOpportunitiesKanban(
   }
   for (const row of rows ?? []) {
     existingById.set(row.id as string, {
-      end_at: (row.end_at as string | null) ?? null,
       kanban_status: row.kanban_status as OpportunityKanbanStatus,
+      closed_at: (row.closed_at as string | null) ?? null,
     });
   }
 
@@ -472,8 +513,9 @@ export async function updateOpportunitiesKanban(
         kanban_order: update.kanban_order,
       };
       const existing = existingById.get(update.id);
-      applyClosureDates(payload, update.kanban_status, existing?.end_at, {
+      applyClosureDates(payload, update.kanban_status, {
         previousStatus: existing?.kanban_status,
+        existingClosedAt: existing?.closed_at,
         isStatusTransitionToClosed:
           existing != null &&
           existing.kanban_status !== update.kanban_status &&
@@ -524,7 +566,7 @@ export async function markOpportunityAsLost(
   const supabase = await createClient();
   const { data: existing, error: existingError } = await supabase
     .from("opportunity")
-    .select("id, end_at")
+    .select("id, closed_at")
     .eq("id", id)
     .maybeSingle();
 
@@ -538,12 +580,10 @@ export async function markOpportunityAsLost(
   }
 
   const payload: Record<string, unknown> = { kanban_status: "perdue" };
-  applyClosureDates(
-    payload,
-    "perdue",
-    (existing.end_at as string | null) ?? null,
-    { isStatusTransitionToClosed: true },
-  );
+  applyClosureDates(payload, "perdue", {
+    isStatusTransitionToClosed: true,
+    existingClosedAt: existing.closed_at as string | null,
+  });
 
   const { data, error } = await supabase
     .from("opportunity")

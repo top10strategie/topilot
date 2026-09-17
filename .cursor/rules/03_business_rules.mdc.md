@@ -101,6 +101,7 @@ Même dans un formulaire d'ajout rapide (ex : depuis le drawer de création de m
 - `kanban_status` (enum `a_faire | en_cours | terminee | archivee`, défaut `a_faire`) — l'ordre d'affichage UI correspond à l'ordre de déclaration de l'enum (même principe que pour l'opportunité).
 - `kanban_order` (int) trace la position de la carte **au sein de sa colonne**, identique au comportement de `opportunity` (cf. `07_ux_composants_reutilisable.mdc` section 8).
 - `archived_at` (timestamptz, posé automatiquement par trigger dès que `kanban_status = archivee`, remis à `NULL` sinon) : la colonne Kanban **"Archivée"** n'affiche que les missions dont `archived_at` date de **moins de 3 mois** — les archives plus anciennes restent consultables via les vues Cartes/Tableau avec filtre par statut.
+- Colonnes Kanban **Terminée** et **Archivée** : cartes triées par `end_at` **décroissant** (plus récentes en haut ; sans date de fin → en bas). Les colonnes actives restent triées par `kanban_order`.
 - `completed_at` (timestamptz, posé automatiquement la première fois que `kanban_status = terminee`) : **conservé même si la mission est ensuite archivée**, pour distinguer une mission "terminée puis archivée" d'une mission "abandonnée" (archivée sans avoir jamais été terminée). Remis à `NULL` uniquement si la mission est rouverte (`a_faire`/`en_cours`). Utilisé par `/analyses` (onglet Missions) : "Missions complétées" = `completed_at IS NOT NULL` ; "Missions abandonnées" = `kanban_status = archivee AND completed_at IS NULL`.
 - Une mission peut avoir plusieurs **catégories métier** (`mission_category` → `category_business`), **outils liés** (`mission_tool`), **wikis liés** (`mission_wiki`) et **documents liés** (`mission_document`).
 - `start_at` (défaut = date du jour à la création) et `end_at` sont **obligatoires**.
@@ -117,7 +118,7 @@ Même dans un formulaire d'ajout rapide (ex : depuis le drawer de création de m
 - Le terme métier UI est **opportunité** (route `/opportunities`).
 - `client_id` et `collaborator_id` sont **obligatoires** ; seul `contact_client_id` reste **nullable** (une opportunité a toujours un client, mais pas nécessairement de contact identifié dès sa création).
 - Le champ `collaborator_id` est affiché en UI sous le libellé **"Responsable opportunité"**.
-- **Champs obligatoires à la création** : `opportunity_name`, `client_id`, `collaborator_id`, et **au moins un** des deux champs `due_date_at` (« Echéance ») / `end_at` (« Date de clôture ») — contrainte `opportunity_due_or_end_required`. Seuls `contact_client_id` et `price` restent nullables.
+- **Champs obligatoires à la création** : `opportunity_name`, `client_id`, `collaborator_id`, et `due_date_at` (« Échéance » — prochaine date de rendu prévue) — contrainte `opportunity_due_date_required`. `contact_client_id`, `price`, `end_at` (« Fin de facturation ») et `invoice_frequency` restent nullables.
 - `kanban_status` (enum) : **`suspect | prospect | besoin_specifie | proposition_envoyee | gagne | perdue`** — cet ordre de déclaration en base correspond exactement à l'**ordre d'affichage UI** (colonnes Kanban, filtres, listes déroulantes). `gagne` = opportunité gagnée (contrat signé, missions à créer) ; `perdue` = opportunité non gagnée et archivée.
     - **Valeur initiale à la création**, déterminée automatiquement selon l'historique du client (trigger `set_opportunity_kanban_defaults`, cf. `04_database_schema.mdc`) : si le client a déjà au moins une mission ou une opportunité existante → `besoin_specifie` ; sinon (nouveau client) → `suspect`.
 - `kanban_order` (int) trace la position de la carte **au sein de sa colonne**, mise à jour à chaque réorganisation par glisser-déposer (déplacement dans la même colonne ou vers une autre) — cf. `07_ux_composants_reutilisable.mdc` section 8.
@@ -141,12 +142,20 @@ Même dans un formulaire d'ajout rapide (ex : depuis le drawer de création de m
 
 - **`opportunity.average_price`** (« Montant pondéré ») est une **colonne calculée** (`price × probability_confirmation / 100`), recalculée automatiquement par PostgreSQL à chaque modification de `price` ou `probability_confirmation` — **jamais saisie manuellement** (à la différence d'`estimated_charge` sur `mission`, qui reste lui manuel).
 - **`opportunity.is_active`** : passe automatiquement à `false` dès que `kanban_status` atteint un des deux statuts terminaux, **`gagne`** ou **`perdue`** (les deux archivent l'opportunité, qu'elle soit gagnée ou perdue). Elle repasse à `true` si le statut est ensuite modifié pour sortir de ces deux valeurs (déplacement arrière dans le Kanban) — comportement symétrique confirmé.
+- Colonnes Kanban **Gagné** et **Perdue** : n'affichent que les opportunités dont `due_date_at` date de **moins de 3 mois** ; triées par `due_date_at` **décroissant** (plus récentes en haut). Les archives plus anciennes restent consultables via les vues Cartes/Tableau avec le filtre « Inclure les archivées ». Les colonnes actives restent triées par `kanban_order`.
 - `action` et `source` sont des champs texte libre (pas d'enum).
 - Une opportunité peut avoir plusieurs **catégories métier** (`opportunity_category` → `category_business`), **documents liés** (`opportunity_document`) et **outils liés** (`opportunity_tool`).
-- `entry_average_price` : montant pondéré figé à la création. `closed_at` : date (Europe/Paris) du passage à `gagne`/`perdue` ; si `end_at` est vide à ce moment, il est rempli avec `closed_at`.
+- `entry_average_price` : montant pondéré figé à la création. `closed_at` (« Début de la facturation ») : date (Europe/Paris) — **saisissable en édition uniquement** ; à l’entrée dans `gagne`/`perdue`, auto-remplie avec la date du jour **uniquement si encore `NULL`** (une date déjà saisie n’est pas écrasée) ; remise à `NULL` à la réouverture ; **ne touche pas** `end_at`.
+- `due_date_at` : prochaine date de rendu prévue (négociation) — obligatoire ; sert à l’affichage / couleur d’échéance sur les cartes.
+- `end_at` : fin de répartition des paiements (« Fin de facturation ») — saisie manuelle, nullable.
+- `invoice_frequency` : `NULL | unique | mensuel | trimestriel | annuel` — nullable ; avec `end_at`, sert au CA sur `/analyses` :
+  - **Engagé** : opportunités `gagne` (début = `closed_at`) ; **prévisionnel** : opportunités ouvertes (début = `due_date_at`) ; `perdue` exclue.
+  - Montant / échéance = `price / n` échéances. Dates d’échéance = dernier jour du mois.
+  - `unique` → mois de `end_at` ; `mensuel` → chaque mois de début → `end_at` inclus ; `trimestriel` / `annuel` → 1re échéance = mois suivant le début, puis +3 / +12 tant que ≤ `end_at`.
+  - Sans `end_at` ou sans fréquence → hors graphiques CA (compteur sous le pipeline).
 - Champ de texte libre : **`notes`**, couplé à `notes_updated_at`, historisé dans `audit_log`.
 - Création et édition via **drawer latéral droit** (sans URL) accessible depuis `/opportunities` :
-    1. **Bloc identification** : Titre, Client, Contact, Responsable opportunité, Date de dernière rencontre, Echéance, Date de clôture (au moins Echéance ou Date de clôture obligatoire) — sauvegardé via un bouton "Enregistrer" dédié, qui crée l'opportunité en base (nécessaire pour permettre l'ajout de documents liés qui requièrent un `opportunity_id` existant).
+    1. **Bloc identification** : Titre, Client, Contact, Responsable opportunité, Date de dernière rencontre, Échéance (obligatoire), Fin de facturation (`end_at`, optionnel), Fréquence de facturation (`invoice_frequency`, optionnel) — sauvegardé via un bouton "Enregistrer" dédié, qui crée l'opportunité en base (nécessaire pour permettre l'ajout de documents liés qui requièrent un `opportunity_id` existant).
     2. **Bloc complémentaire** : Catégories, Montant, Montant pondéré (lecture seule, calculé), Probabilité, Priorité, Statut, Action, Source, Notes, Documents — sauvegardé via le footer "Annuler"/"Créer".
 
 ---

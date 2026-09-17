@@ -66,14 +66,14 @@ export function OpportunityKanbanCardContent({
           <span
             className={cn(
               "shrink-0",
-              getEndDateToneClass(item.end_at, {
+              getEndDateToneClass(item.due_date_at, {
                 muted:
                   item.kanban_status === "gagne" ||
                   item.kanban_status === "perdue",
               }),
             )}
           >
-            {formatOpportunityDate(item.end_at)}
+            {formatOpportunityDate(item.due_date_at)}
           </span>
         </div>
       </CardContent>
