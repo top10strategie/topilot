@@ -47,6 +47,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { fetchClientsListFilterOptions } from "@/actions/clients";
 import type { CategoryItem } from "@/lib/categories/types";
 import {
   CLIENTS_PAGE_SIZE,
@@ -81,9 +82,6 @@ type ClientsPageClientProps = {
   clients: ClientListItem[];
   totalCount: number;
   filters?: ClientsListFilters;
-  cities: string[];
-  collaborators: CollaboratorListItem[];
-  categories: CategoryItem[];
 };
 
 type DialogFilters = Pick<
@@ -123,9 +121,6 @@ export function ClientsPageClient({
   clients,
   totalCount,
   filters: filtersProp,
-  cities,
-  collaborators,
-  categories,
 }: ClientsPageClientProps) {
   const filters = filtersProp ?? DEFAULT_CLIENTS_LIST_FILTERS;
   const router = useRouter();
@@ -138,6 +133,14 @@ export function ClientsPageClient({
   );
   const [filterOpen, setFilterOpen] = useState(false);
   const filterPortalRef = useRef<HTMLDivElement>(null);
+
+  const [collaborators, setCollaborators] = useState<CollaboratorListItem[]>(
+    [],
+  );
+  const [categories, setCategories] = useState<CategoryItem[]>([]);
+  const [cities, setCities] = useState<string[]>([]);
+  const [optionsLoaded, setOptionsLoaded] = useState(false);
+  const [optionsLoading, setOptionsLoading] = useState(false);
 
   const navigate = (next: ClientsListFilters) => {
     startTransition(() => {
@@ -152,6 +155,20 @@ export function ClientsPageClient({
   useEffect(() => {
     setDraftFilters(toDialogFilters(filters));
   }, [filters]);
+
+  const ensureFilterOptions = async (): Promise<boolean> => {
+    if (optionsLoaded) return true;
+    if (optionsLoading) return false;
+    setOptionsLoading(true);
+    const result = await fetchClientsListFilterOptions();
+    setOptionsLoading(false);
+    if (!result.success) return false;
+    setCollaborators(result.collaborators);
+    setCategories(result.categories);
+    setCities(result.cities);
+    setOptionsLoaded(true);
+    return true;
+  };
 
   useEffect(() => {
     const trimmed = query.trim();
@@ -199,14 +216,28 @@ export function ClientsPageClient({
 
   const totalPages = Math.max(1, Math.ceil(totalCount / CLIENTS_PAGE_SIZE));
 
-  const openCreate = () => {
+  const openCreate = async () => {
+    let collabs = collaborators;
+    let cats = categories;
+    if (!optionsLoaded) {
+      setOptionsLoading(true);
+      const result = await fetchClientsListFilterOptions();
+      setOptionsLoading(false);
+      if (!result.success) return;
+      collabs = result.collaborators;
+      cats = result.categories;
+      setCollaborators(collabs);
+      setCategories(cats);
+      setCities(result.cities);
+      setOptionsLoaded(true);
+    }
     void pushDrawer({
       title: "Nouveau client",
       content: (helpers) => (
         <ClientFormDrawer
           mode="create"
-          collaborators={collaborators}
-          availableCategories={categories}
+          collaborators={collabs}
+          availableCategories={cats}
           helpers={helpers}
         />
       ),
@@ -251,6 +282,7 @@ export function ClientsPageClient({
               onClick={() => {
                 setDraftFilters(toDialogFilters(filters));
                 setFilterOpen(true);
+                void ensureFilterOptions();
               }}
             >
               <FunnelSimple className="size-4" />

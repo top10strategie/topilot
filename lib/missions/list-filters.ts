@@ -4,6 +4,21 @@ import type { MissionKanbanStatus, MissionScope } from "./types";
 
 export const MISSIONS_PAGE_SIZE = 24;
 
+/** Aligné sur le LIMIT board SQL (`list_missions_page`). */
+export const MISSIONS_BOARD_CAP = 200;
+
+/** Colonnes kanban chargées en vague 1 (premier paint). */
+export const MISSION_OPEN_KANBAN_STATUSES: MissionKanbanStatus[] = [
+  "a_faire",
+  "en_cours",
+];
+
+/** Colonnes kanban chargées en vague 2 (après affichage). */
+export const MISSION_CLOSED_KANBAN_STATUSES: MissionKanbanStatus[] = [
+  "terminee",
+  "archivee",
+];
+
 export type MissionsListView = "kanban" | "cards" | "table";
 
 export type MissionsListFilters = {
@@ -185,4 +200,13 @@ export function hasMissionsCategoryIdsParam(
     return params.has("categoryIds");
   }
   return params.categoryIds != null && params.categoryIds !== "";
+}
+
+/**
+ * Kanban sans filtre statut explicite : ouverts d’abord, closes en 2ᵉ requête.
+ */
+export function shouldDeferClosedKanbanColumns(
+  filters: MissionsListFilters,
+): boolean {
+  return filters.view === "kanban" && filters.statuses.length === 0;
 }

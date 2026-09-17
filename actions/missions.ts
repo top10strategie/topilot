@@ -2,14 +2,28 @@
 
 import { revalidatePath } from "next/cache";
 import { requireActiveCollaboratorAction } from "@/lib/auth/require-action";
+import { listBusinessCategories } from "@/lib/categories/queries";
+import type { CategoryItem } from "@/lib/categories/types";
+import { listClientOptions } from "@/lib/clients/queries";
+import type { ClientOption } from "@/lib/clients/types";
+import { listCollaborators } from "@/lib/collaborators/queries";
+import type { CollaboratorListItem } from "@/lib/collaborators/types";
 import { todayParisYmd } from "@/lib/dates/paris";
 import { formCategoryIds, formOptional, formText } from "@/lib/form-data";
+import {
+  MISSION_CLOSED_KANBAN_STATUSES,
+  type MissionsListFilters,
+} from "@/lib/missions/list-filters";
 import type {
   MissionKanbanStatus,
+  MissionListItem,
   MissionOpportunityOption,
   MissionScope,
 } from "@/lib/missions/types";
-import { listMissionOpportunityOptions } from "@/lib/missions/queries";
+import {
+  listMissionOpportunityOptions,
+  listMissionsPage,
+} from "@/lib/missions/queries";
 import { createClient } from "@/lib/supabase/server";
 
 export type MissionActionResult =
@@ -456,5 +470,96 @@ export async function fetchMissionOpportunityOptions(): Promise<
         ? error.message
         : "Impossible de charger les opportunités.";
     return { success: false, error: message, options: [] };
+  }
+}
+
+export async function fetchMissionsListFilterOptions(): Promise<
+  | {
+      success: true;
+      collaborators: CollaboratorListItem[];
+      clients: ClientOption[];
+      categories: CategoryItem[];
+    }
+  | {
+      success: false;
+      error: string;
+      collaborators: [];
+      clients: [];
+      categories: [];
+    }
+> {
+  const auth = await requireActiveCollaboratorAction();
+  if (!auth.success) {
+    return {
+      success: false,
+      error: auth.error,
+      collaborators: [],
+      clients: [],
+      categories: [],
+    };
+  }
+  try {
+    const [collaborators, clients, categories] = await Promise.all([
+      listCollaborators({ includeAvatar: false }),
+      listClientOptions(),
+      listBusinessCategories(),
+    ]);
+    return { success: true, collaborators, clients, categories };
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Impossible de charger les options de filtres.";
+    return {
+      success: false,
+      error: message,
+      collaborators: [],
+      clients: [],
+      categories: [],
+    };
+  }
+}
+
+/**
+ * Vague 2 kanban : colonnes closes (terminé / archivé), mêmes filtres hors statuts.
+ */
+export async function fetchMissionsClosedBoard(
+  filters: MissionsListFilters,
+): Promise<
+  | { success: true; missions: MissionListItem[]; totalCount: number }
+  | { success: false; error: string; missions: []; totalCount: 0 }
+> {
+  const auth = await requireActiveCollaboratorAction();
+  if (!auth.success) {
+    return {
+      success: false,
+      error: auth.error,
+      missions: [],
+      totalCount: 0,
+    };
+  }
+  try {
+    const result = await listMissionsPage({
+      ...filters,
+      view: "kanban",
+      page: 1,
+      statuses: [...MISSION_CLOSED_KANBAN_STATUSES],
+    });
+    return {
+      success: true,
+      missions: result.missions,
+      totalCount: result.totalCount,
+    };
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Impossible de charger les missions closes.";
+    return {
+      success: false,
+      error: message,
+      missions: [],
+      totalCount: 0,
+    };
   }
 }

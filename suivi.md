@@ -1,5 +1,35 @@
 # Suivi des actions — TOPilot
 
+## **[2026-09-17] — Perf listes : kanban 2 vagues + options différées**
+
+**Type :** `perf`
+**Fichiers concernés :** `app/(app)/{missions,opportunities,clients}/page.tsx`, `components/{missions,opportunities,clients}/*-page-client.tsx`, `components/{missions,opportunities}/*-kanban.tsx`, `components/layout/entity-kanban.tsx`, `actions/{missions,opportunities,clients}.ts`, `lib/{missions,opportunities}/list-filters.ts`, `lib/settings/queries.ts`, `supabase/migrations/20260917180{000,100}_*.sql`, `suivi.md`
+
+### Description
+
+Accélération du premier paint sur `/missions`, `/opportunities` et `/clients` (prod Vercel) : kanban ouvert d’abord puis colonnes closes en 2ᵉ requête, cap board 200, options de filtres chargées à la demande, waterfall préférences missions réduit, indexes SQL ciblés.
+
+### Détails techniques
+
+- Kanban défaut : vague 1 = statuts ouverts ; vague 2 = `fetch*ClosedBoard` (Terminé/Archivé ou Gagné/Perdu) avec « Chargement… » sur les colonnes closes
+- Cap SQL board `500 → 200` (`list_missions_page` / `list_opportunities_page`)
+- Pages RSC : plus de `listCollaborators` / `listClientOptions` / catégories / villes au premier rendu ; Server Actions `fetch*ListFilterOptions`
+- `getPreferredMissionCategoryIds` : `React.cache` + réutilise `getCurrentCollaborator`
+- Indexes : `created_at`, `is_active`, `address_city`, `(collaborator_id, created_at)`
+
+> **À appliquer sur Supabase** : migrations `20260917180000_list_board_cap_200.sql` et `20260917180100_list_page_perf_indexes.sql` (déjà appliquées via MCP).
+
+---
+## **[2026-09-17] — Kanban closes : skeletons de cartes**
+
+**Type :** `perf`
+**Fichiers concernés :** `components/layout/entity-kanban.tsx`, `components/missions/missions-kanban.tsx`, `components/opportunities/opportunities-kanban.tsx`, `suivi.md`
+
+### Description
+
+Pendant la vague 2 (colonnes closes), les colonnes restent fixes et affichent des skeletons de cartes à la place du texte « Chargement… » (évite l’apparition/disparition visuelle).
+
+---
 ## **[2026-09-14] — Knip : listMissions + types lazy drawers**
 
 **Type :** `fix`

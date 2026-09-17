@@ -2,8 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { requireActiveCollaboratorAction } from "@/lib/auth/require-action";
+import { listBusinessCategories } from "@/lib/categories/queries";
+import type { CategoryItem } from "@/lib/categories/types";
 import { formatClientName } from "@/lib/clients/labels";
+import { listClientCities } from "@/lib/clients/queries";
 import { CLIENT_LOGO_TYPE_LABEL } from "@/lib/clients/visuals";
+import { listCollaborators } from "@/lib/collaborators/queries";
+import type { CollaboratorListItem } from "@/lib/collaborators/types";
 import { assertVisualDocumentOfType } from "@/lib/documents/visual-document";
 import {
   formBool,
@@ -342,4 +347,51 @@ export async function deactivateClient(
 
   revalidateClients(id);
   return { success: true };
+}
+
+export async function fetchClientsListFilterOptions(): Promise<
+  | {
+      success: true;
+      collaborators: CollaboratorListItem[];
+      categories: CategoryItem[];
+      cities: string[];
+    }
+  | {
+      success: false;
+      error: string;
+      collaborators: [];
+      categories: [];
+      cities: [];
+    }
+> {
+  const auth = await requireActiveCollaboratorAction();
+  if (!auth.success) {
+    return {
+      success: false,
+      error: auth.error,
+      collaborators: [],
+      categories: [],
+      cities: [],
+    };
+  }
+  try {
+    const [collaborators, categories, cities] = await Promise.all([
+      listCollaborators({ includeAvatar: false }),
+      listBusinessCategories(),
+      listClientCities(),
+    ]);
+    return { success: true, collaborators, categories, cities };
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Impossible de charger les options de filtres.";
+    return {
+      success: false,
+      error: message,
+      collaborators: [],
+      categories: [],
+      cities: [],
+    };
+  }
 }
