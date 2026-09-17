@@ -126,6 +126,9 @@ export function OpportunityFormDrawer({
   const [dueDateAt, setDueDateAt] = useState(
     duplicatePrefill ? "" : (opportunity?.due_date_at ?? ""),
   );
+  const [closedAt, setClosedAt] = useState(
+    duplicatePrefill ? "" : (opportunity?.closed_at ?? ""),
+  );
   const [endAt, setEndAt] = useState(
     duplicatePrefill ? "" : (opportunity?.end_at ?? ""),
   );
@@ -420,6 +423,9 @@ export function OpportunityFormDrawer({
     formData.set("collaborator_id", responsibleId);
     if (lastMeetingAt) formData.set("last_meeting_at", lastMeetingAt);
     if (dueDateAt) formData.set("due_date_at", dueDateAt);
+    if (mode === "edit") {
+      formData.set("closed_at", closedAt);
+    }
     if (endAt) formData.set("end_at", endAt);
     if (invoiceFrequency) formData.set("invoice_frequency", invoiceFrequency);
     return formData;
@@ -634,7 +640,13 @@ export function OpportunityFormDrawer({
             ) : null}
           </div>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div
+            className={
+              mode === "edit"
+                ? "grid grid-cols-1 gap-4 md:grid-cols-3"
+                : "grid grid-cols-1 gap-4 md:grid-cols-2"
+            }
+          >
             <div className="grid gap-2">
               <Label htmlFor="last_meeting_at">
                 Date de dernière rencontre
@@ -666,10 +678,25 @@ export function OpportunityFormDrawer({
                 </p>
               ) : null}
             </div>
+            {mode === "edit" ? (
+              <div className="grid gap-2">
+                <Label htmlFor="closed_at">Début de la facturation</Label>
+                <Input
+                  id="closed_at"
+                  type="date"
+                  value={closedAt}
+                  onChange={(event) => setClosedAt(event.target.value)}
+                  disabled={isPending}
+                  aria-invalid={Boolean(fieldErrors.closed_at)}
+                />
+                {fieldErrors.closed_at ? (
+                  <p className="text-sm text-destructive">
+                    {fieldErrors.closed_at}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
           </div>
-          <p className="text-xs text-muted-foreground">
-            L&apos;échéance (prochaine date de rendu) est obligatoire.
-          </p>
 
           {mode === "create" && !identificationSaved ? (
             <div className="flex justify-end">

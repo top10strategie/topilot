@@ -401,7 +401,7 @@ CREATE TABLE public.opportunity (
   end_at                    date,          -- fin de facturation (manuel)
   invoice_frequency         public.opportunity_invoice_frequency_enum, -- NULL | unique | mensuel | trimestriel | annuel
   entry_average_price       numeric, -- figé à la création (price × probability / 100)
-  closed_at                 date,    -- date Paris du passage à gagne/perdue (ne gère pas end_at)
+  closed_at                 date,    -- début de facturation (saisie édition ; auto à clôture si NULL)
   created_at                timestamptz NOT NULL DEFAULT now(),
   updated_at                timestamptz,
   CONSTRAINT opportunity_due_date_required CHECK (due_date_at IS NOT NULL)
@@ -472,7 +472,7 @@ BEGIN
     NEW.is_active := true;
   END IF;
 
-  -- closed_at : posé au passage gagne/perdue ; vidé à la réouverture.
+  -- closed_at : posé à gagne/perdue uniquement si NULL ; vidé à la réouverture.
   -- end_at (fin de facturation) n'est jamais touché ici.
 
   RETURN NEW;

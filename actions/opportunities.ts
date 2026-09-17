@@ -20,7 +20,7 @@ const CLOSED_KANBAN_STATUSES = new Set<OpportunityKanbanStatus>([
 
 /**
  * Filet app à la clôture / réouverture (complète le trigger DB) :
- * - entrée gagne/perdue : `closed_at` posé (ne touche pas `end_at`)
+ * - entrée gagne/perdue : `closed_at` posé uniquement s'il est encore vide
  * - sortie gagne/perdue : `closed_at` remis à null (conserve `end_at`)
  */
 function applyClosureDates(
@@ -29,6 +29,8 @@ function applyClosureDates(
   opts?: {
     previousStatus?: OpportunityKanbanStatus | null;
     isStatusTransitionToClosed?: boolean;
+    /** Valeur existante en base si absente du payload. */
+    existingClosedAt?: string | null;
   },
 ) {
   const previous = opts?.previousStatus;
@@ -43,8 +45,23 @@ function applyClosureDates(
   }
 
   if (!CLOSED_KANBAN_STATUSES.has(kanbanStatus)) return;
-  if (opts?.isStatusTransitionToClosed) {
+  if (!opts?.isStatusTransitionToClosed) return;
+
+  const fromPayload =
+    typeof payload.closed_at === "string" && payload.closed_at.trim() !== ""
+      ? payload.closed_at
+      : payload.closed_at === null
+        ? null
+        : undefined;
+  const existing = opts.existingClosedAt ?? null;
+  const current =
+    fromPayload !== undefined ? fromPayload : existing;
+
+  if (current == null || current === "") {
     payload.closed_at = todayParisYmd();
+  } else if (fromPayload === undefined) {
+    // Conserver la valeur en base (ne pas écraser via payload).
+    payload.closed_at = current;
   }
 }
 
@@ -65,6 +82,7 @@ export type OpportunityActionResult =
           | "contact_client_id"
           | "collaborator_id"
           | "due_date_at"
+          | "closed_at"
           | "end_at"
           | "invoice_frequency"
           | "price"
@@ -286,6 +304,9 @@ export async function updateOpportunityRecord(
   const collaborator_id = formText(formData, "collaborator_id");
   const last_meeting_at = formOptional(formData, "last_meeting_at");
   const due_date_at = formOptional(formData, "due_date_at");
+  const closed_at = formData.has("closed_at")
+    ? formOptional(formData, "closed_at")
+    : undefined;
   const end_at = formOptional(formData, "end_at");
   const invoiceFrequencyRaw = formOptional(formData, "invoice_frequency");
   const action = formOptional(formData, "action");
@@ -346,7 +367,7 @@ export async function updateOpportunityRecord(
   const supabase = await createClient();
   const { data: existing, error: existingError } = await supabase
     .from("opportunity")
-    .select("id, notes, kanban_status")
+    .select("id, notes, kanban_status, closed_at")
     .eq("id", id)
     .maybeSingle();
 
@@ -381,8 +402,13 @@ export async function updateOpportunityRecord(
     probability_confirmation: probability ?? 10,
   };
 
+  if (closed_at !== undefined) {
+    payload.closed_at = closed_at;
+  }
+
   applyClosureDates(payload, kanbanRaw as OpportunityKanbanStatus, {
     previousStatus: existing.kanban_status as OpportunityKanbanStatus,
+    existingClosedAt: existing.closed_at as string | null,
     isStatusTransitionToClosed:
       existing.kanban_status !== kanbanRaw &&
       CLOSED_KANBAN_STATUSES.has(kanbanRaw as OpportunityKanbanStatus),
@@ -460,11 +486,11 @@ export async function updateOpportunitiesKanban(
   const updateIds = updates.map((u) => u.id);
   const existingById = new Map<
     string,
-    { kanban_status: OpportunityKanbanStatus }
+    { kanban_status: OpportunityKanbanStatus; closed_at: string | null }
   >();
   const { data: rows, error: fetchError } = await supabase
     .from("opportunity")
-    .select("id, kanban_status")
+    .select("id, kanban_status, closed_at")
     .in("id", updateIds);
   if (fetchError) {
     console.error("updateOpportunitiesKanban fetch:", fetchError);
@@ -476,6 +502,7 @@ export async function updateOpportunitiesKanban(
   for (const row of rows ?? []) {
     existingById.set(row.id as string, {
       kanban_status: row.kanban_status as OpportunityKanbanStatus,
+      closed_at: (row.closed_at as string | null) ?? null,
     });
   }
 
@@ -488,6 +515,7 @@ export async function updateOpportunitiesKanban(
       const existing = existingById.get(update.id);
       applyClosureDates(payload, update.kanban_status, {
         previousStatus: existing?.kanban_status,
+        existingClosedAt: existing?.closed_at,
         isStatusTransitionToClosed:
           existing != null &&
           existing.kanban_status !== update.kanban_status &&
@@ -538,7 +566,7 @@ export async function markOpportunityAsLost(
   const supabase = await createClient();
   const { data: existing, error: existingError } = await supabase
     .from("opportunity")
-    .select("id")
+    .select("id, closed_at")
     .eq("id", id)
     .maybeSingle();
 
@@ -554,6 +582,7 @@ export async function markOpportunityAsLost(
   const payload: Record<string, unknown> = { kanban_status: "perdue" };
   applyClosureDates(payload, "perdue", {
     isStatusTransitionToClosed: true,
+    existingClosedAt: existing.closed_at as string | null,
   });
 
   const { data, error } = await supabase

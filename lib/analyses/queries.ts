@@ -29,7 +29,11 @@ import type {
   PipelineSeriesPoint,
   StackedCaDatum,
 } from "./types";
-import { SUBSCRIPTION_ANALYSIS_START_YEAR } from "./types";
+import {
+  ANALYSIS_CA_ENTITY_ESF_ID,
+  ANALYSIS_CA_ENTITY_ESF_LABEL,
+  SUBSCRIPTION_ANALYSIS_START_YEAR,
+} from "./types";
 
 const PARIS_TZ = "Europe/Paris";
 
@@ -113,7 +117,13 @@ type OppRow = {
   invoice_frequency: OpportunityInvoiceFrequency | null;
   collaborator_id: string;
   client_id: string;
-  client: { id: string; client_name: string } | null;
+  client: {
+    id: string;
+    client_name: string;
+    client_category: Array<{
+      category: { label: string } | null;
+    }> | null;
+  } | null;
 };
 
 type MissionRow = {
@@ -154,17 +164,41 @@ function toNum(value: number | string | null | undefined): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-function buildOpportunityKpis(rows: OppRow[]): OpportunityKpis {
-  const count = rows.length;
-  const sumPrice = rows.reduce((s, r) => s + toNum(r.price), 0);
-  const sumAveragePrice = rows.reduce((s, r) => s + toNum(r.average_price), 0);
-  const won = rows.filter((r) => r.kanban_status === "gagne").length;
+/** Année de référence analyses (même règle que Comparaison par statut). */
+function opportunityReferenceYear(row: OppRow): number | null {
+  const closed =
+    row.kanban_status === "gagne" || row.kanban_status === "perdue";
+  const parts = closed
+    ? partsFromDateOnly(row.closed_at)
+    : partsFromDateOnly(row.due_date_at);
+  return parts?.year ?? null;
+}
+
+function buildOpportunityKpis(
+  rows: OppRow[],
+  parisYear: number,
+): OpportunityKpis {
+  const filtered = rows.filter(
+    (r) => opportunityReferenceYear(r) === parisYear,
+  );
+  const count = filtered.length;
+  const sumPrice = filtered.reduce((s, r) => s + toNum(r.price), 0);
+  const sumAveragePrice = filtered.reduce(
+    (s, r) => s + toNum(r.average_price),
+    0,
+  );
+  const won = filtered.filter((r) => r.kanban_status === "gagne").length;
   return {
     count,
     sumPrice,
     sumAveragePrice,
     conversionRate: count === 0 ? 0 : won / count,
   };
+}
+
+function clientHasEsfCategory(row: OppRow): boolean {
+  const cats = row.client?.client_category ?? [];
+  return cats.some((c) => c.category?.label === ANALYSIS_CA_ENTITY_ESF_LABEL);
 }
 
 function buildMissionKpis(rows: MissionRow[]): MissionKpis {
@@ -296,7 +330,11 @@ export async function loadAnalysesPayload(
         invoice_frequency,
         collaborator_id,
         client_id,
-        client:client_id ( id, client_name )
+        client:client_id (
+          id,
+          client_name,
+          client_category ( category:category_business!category_id ( label ) )
+        )
       `,
           )
       : Promise.resolve({ data: [], error: null }),
@@ -431,6 +469,7 @@ export async function loadAnalysesPayload(
     const clientId = row.client?.id ?? row.client_id;
     const clientLabel = row.client?.client_name ?? "Sans client";
     const team = teamByCollaborator.get(row.collaborator_id) ?? "Sans pôle";
+    const isEsfClient = clientHasEsfCategory(row);
 
     for (const inst of installments) {
       yearSet.add(inst.year);
@@ -454,6 +493,17 @@ export async function loadAnalysesPayload(
       const clientMonth = clientSeries.months[inst.month - 1]!;
       if (inst.bucket === "engage") clientMonth.engage += amount;
       else clientMonth.previsionnel += amount;
+
+      if (isEsfClient) {
+        const esfSeries = ensureClientYear(
+          inst.year,
+          ANALYSIS_CA_ENTITY_ESF_ID,
+          ANALYSIS_CA_ENTITY_ESF_LABEL,
+        );
+        const esfMonth = esfSeries.months[inst.month - 1]!;
+        if (inst.bucket === "engage") esfMonth.engage += amount;
+        else esfMonth.previsionnel += amount;
+      }
     }
   }
 
@@ -521,7 +571,11 @@ export async function loadAnalysesPayload(
 
   const caClientOptions = [...clientOptionsMap.entries()]
     .map(([id, label]) => ({ id, label }))
-    .sort((a, b) => a.label.localeCompare(b.label, "fr"));
+    .sort((a, b) => {
+      if (a.id === ANALYSIS_CA_ENTITY_ESF_ID) return -1;
+      if (b.id === ANALYSIS_CA_ENTITY_ESF_ID) return 1;
+      return a.label.localeCompare(b.label, "fr");
+    });
 
   // —— Missions ——
   const missionByTeamMap = new Map<string, number>();
@@ -648,7 +702,7 @@ export async function loadAnalysesPayload(
 
   return {
     opportunities: {
-      kpis: buildOpportunityKpis(opportunities),
+      kpis: buildOpportunityKpis(opportunities, paris.year),
       byStatus: countByStatusOpp(opportunities, paris.year),
       availableYears,
       defaultYear,

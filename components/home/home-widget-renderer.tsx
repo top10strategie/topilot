@@ -11,6 +11,7 @@ import { OpportunitiesHomeKanban } from "@/components/opportunities/opportunitie
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { AnalysesPayload, HomeWidgetId } from "@/lib/analyses/types";
 import {
+  ANALYSIS_CA_ENTITY_ESF_ID,
   HOME_WIDGET_LABELS,
   isCollaboratorHomeWidgetId,
 } from "@/lib/analyses/types";
@@ -52,6 +53,7 @@ function topClientId(
   let bestId: string | null = null;
   let best = -1;
   for (const [id, series] of Object.entries(byClient ?? {})) {
+    if (id === ANALYSIS_CA_ENTITY_ESF_ID) continue;
     if (series.total > best) {
       best = series.total;
       bestId = id;
@@ -104,13 +106,13 @@ export function HomeWidgetRenderer({
             className="sm:grid-cols-2 xl:grid-cols-2"
             items={[
               {
-                label: "Total des sommes engagées",
+                label: `Total des sommes engagées - ${analyses.opportunities.defaultYear}`,
                 value: formatOpportunityPrice(
                   analyses.opportunities.kpis.sumPrice,
                 ),
               },
               {
-                label: "Total des sommes pondérées",
+                label: `Total des sommes pondérées - ${analyses.opportunities.defaultYear}`,
                 value: formatOpportunityPrice(
                   analyses.opportunities.kpis.sumAveragePrice,
                 ),

@@ -242,7 +242,7 @@ Structure Hero + Tabs :
 **Hero** :
 
 - Identification de l'entité : nom réel de l'opportunité (`opportunity_name`, jamais son id technique, cf. `07_ux_composants_reutilisable.mdc` section 4.1)
-- Groupe de boutons d'action : recherche contextuelle (filtre le contenu de l'onglet actif) + icône de gestion (`pencil-simple`, ouvre le tiroir "Edition Opportunité" — mêmes champs que le tiroir "Nouvelle opportunité" de `/opportunities`, mais en **sauvegarde unique** : "Annuler" / "Enregistrer" en footer, pas d'étape intermédiaire puisque l'opportunité existe déjà. Pas de filtre ni de switch de vue sur cette page, ce n'est pas une liste)
+- Groupe de boutons d'action : recherche contextuelle (filtre le contenu de l'onglet actif) + icône de gestion (`pencil-simple`, ouvre le tiroir "Edition Opportunité" — mêmes champs que le tiroir "Nouvelle opportunité" de `/opportunities`, **plus** « Début de la facturation » (`closed_at`, optionnel) sur la même ligne que Date de dernière rencontre / Échéance, en **sauvegarde unique** : "Annuler" / "Enregistrer" en footer, pas d'étape intermédiaire puisque l'opportunité existe déjà. Pas de filtre ni de switch de vue sur cette page, ce n'est pas une liste)
 
 **Contenu - Tabs** : "Informations" | "Missions" | "Documentations"
 
@@ -444,10 +444,13 @@ Page à **plat, sans onglets** (contrairement à Client/Opportunité/Mission) :
 **Contenu - Tabs** : "Opportunités" | "Missions" | "Abonnements"
 
 - **Opportunités** :
-    - Bandeau : 2 KPI (Total des sommes engagées `SUM(price)` ; Total des sommes pondérées `SUM(average_price)`) à gauche ; **Comparaison par statut** à droite (barres verticales, statuts en X) filtrée sur l’**année calendaire Paris courante** (`closed_at` si `gagne`/`perdue`, sinon `due_date_at`) — pas de sélecteur d’année.
-    - **Évolution du pipeline Commercial** : courbes mensuelles **CA engagé** / **CA prévisionnel** (répartition `invoice_frequency` + `end_at`, cf. `03_business_rules.mdc`) ; sélecteur d’année indépendant ; compteur des opportunités sans délais de facturation sous le graphique.
-    - **Évolution du CA par Client** : barres mensuelles empilées engagé/prévisionnel, pleine largeur ; sélecteurs année + clients multi (max 5) à droite du header ; piles côte à côte par client.
+    - Bandeau : 2 KPI (Total des sommes engagées `SUM(price)` ; Total des sommes pondérées `SUM(average_price)`) filtrés sur l’**année calendaire Paris courante** (même règle de date que le statut : `closed_at` si `gagne`/`perdue`, sinon `due_date_at`) ; titres suffixés ` - {année}` ; **Comparaison par statut** à droite (barres verticales, même filtre année, même suffixe) — pas de sélecteur d’année.
+    - **Évolution du pipeline Commercial** : courbes mensuelles **CA engagé** / **CA prévisionnel** (répartition `invoice_frequency` + `end_at`, cf. `03_business_rules.mdc`) ; sélecteur d’année indépendant ; compteur des opportunités sans délais de facturation.
+    - **Comparaison de la pipeline avec l'année précédente** : sous le pipeline ; courbes Jan→Déc pour l’année Y et Y−1 (jusqu’à 4 séries engagé/prévisionnel) ; sélecteur d’année Y indépendant.
+    - **Évolution du CA par Client** : barres mensuelles empilées engagé/prévisionnel, pleine largeur ; sélecteurs année + clients multi (max 5) à droite du header ; piles côte à côte par client ; options incluent l’entité synthétique **ESF** (cumul des clients catégorisés `ESF`).
+    - **Comparaison du CA Client avec l'année précédente** : sous le CA client ; courbes (1–2 lignes engagé/prévisionnel par client × année Y / Y−1) ; même multi-select clients + sélecteur d’année Y.
     - **Comparaison CA par pôle** : barres horizontales empilées engagé/prévisionnel ; sélecteur d’année indépendant.
+    - **Comparaison du CA par pôle avec l'année précédente** : sous le CA pôle ; barres horizontales, stacks côte à côte pour Y et Y−1 (jusqu’à 4 séries) ; sélecteur d’année Y.
 - **Missions** :
     - 4 cartes KPI : Nombre de missions (`COUNT`) ; Nombre de missions en production (`kanban_status = en_cours`) ; Nombre de missions abandonnées (`kanban_status = archivee AND completed_at IS NULL`) ; Nombre de missions complétées (`completed_at IS NOT NULL`, cf. `03_business_rules.mdc`/`04_database_schema.mdc`).
     - Comparaison par statut : diagramme en barres horizontales par `kanban_status`.

@@ -145,7 +145,7 @@ Même dans un formulaire d'ajout rapide (ex : depuis le drawer de création de m
 - Colonnes Kanban **Gagné** et **Perdue** : n'affichent que les opportunités dont `due_date_at` date de **moins de 3 mois** ; triées par `due_date_at` **décroissant** (plus récentes en haut). Les archives plus anciennes restent consultables via les vues Cartes/Tableau avec le filtre « Inclure les archivées ». Les colonnes actives restent triées par `kanban_order`.
 - `action` et `source` sont des champs texte libre (pas d'enum).
 - Une opportunité peut avoir plusieurs **catégories métier** (`opportunity_category` → `category_business`), **documents liés** (`opportunity_document`) et **outils liés** (`opportunity_tool`).
-- `entry_average_price` : montant pondéré figé à la création. `closed_at` : date (Europe/Paris) du passage à `gagne`/`perdue` uniquement — jamais saisie en UI ; remise à `NULL` à la réouverture ; **ne touche pas** `end_at`.
+- `entry_average_price` : montant pondéré figé à la création. `closed_at` (« Début de la facturation ») : date (Europe/Paris) — **saisissable en édition uniquement** ; à l’entrée dans `gagne`/`perdue`, auto-remplie avec la date du jour **uniquement si encore `NULL`** (une date déjà saisie n’est pas écrasée) ; remise à `NULL` à la réouverture ; **ne touche pas** `end_at`.
 - `due_date_at` : prochaine date de rendu prévue (négociation) — obligatoire ; sert à l’affichage / couleur d’échéance sur les cartes.
 - `end_at` : fin de répartition des paiements (« Fin de facturation ») — saisie manuelle, nullable.
 - `invoice_frequency` : `NULL | unique | mensuel | trimestriel | annuel` — nullable ; avec `end_at`, sert au CA sur `/analyses` :

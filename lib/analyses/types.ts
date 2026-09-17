@@ -44,6 +44,10 @@ export type AnalysisClientOption = {
   label: string;
 };
 
+/** Entité synthétique : cumul CA des clients catégorisés « ESF ». */
+export const ANALYSIS_CA_ENTITY_ESF_ID = "entity:ESF";
+export const ANALYSIS_CA_ENTITY_ESF_LABEL = "ESF";
+
 /** Totaux CA d'un client pour une année (12 mois). */
 export type ClientCaYearSeries = {
   clientId: string;

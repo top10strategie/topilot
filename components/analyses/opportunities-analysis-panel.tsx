@@ -21,6 +21,7 @@ import type {
   AnalysisClientOption,
   OpportunitiesAnalysis,
 } from "@/lib/analyses/types";
+import { ANALYSIS_CA_ENTITY_ESF_ID } from "@/lib/analyses/types";
 import { formatOpportunityPrice } from "@/lib/opportunities/labels";
 
 function formatAxisEuro(value: number): string {
@@ -81,12 +82,24 @@ function topClientIdForYear(
   let bestId: string | null = null;
   let bestTotal = -1;
   for (const [id, series] of Object.entries(byClient)) {
+    if (id === ANALYSIS_CA_ENTITY_ESF_ID) continue;
     if (series.total > bestTotal) {
       bestTotal = series.total;
       bestId = id;
     }
   }
   return bestId;
+}
+
+function seriesYearSum(
+  months: Array<Record<string, string | number>>,
+  key: string,
+): number {
+  let sum = 0;
+  for (const point of months) {
+    sum += Number(point[key] ?? 0);
+  }
+  return sum;
 }
 
 function ClientMultiSelect({
@@ -169,15 +182,29 @@ function ClientMultiSelect({
 }
 
 export function OpportunitiesAnalysisPanel({ data }: Props) {
+  const yearSuffix = ` - ${data.defaultYear}`;
   const years =
     data.availableYears.length > 0
       ? data.availableYears
       : [data.defaultYear];
 
   const [pipelineYear, setPipelineYear] = useState(data.defaultYear);
+  const [pipelineCompareYear, setPipelineCompareYear] = useState(
+    data.defaultYear,
+  );
   const [teamYear, setTeamYear] = useState(data.defaultYear);
+  const [teamCompareYear, setTeamCompareYear] = useState(data.defaultYear);
   const [clientYear, setClientYear] = useState(data.defaultYear);
+  const [clientCompareYear, setClientCompareYear] = useState(data.defaultYear);
   const [selectedClients, setSelectedClients] = useState<
+    AnalysisClientOption[]
+  >(() => {
+    const topId = topClientIdForYear(data, data.defaultYear);
+    if (!topId) return [];
+    const opt = data.caClientOptions.find((c) => c.id === topId);
+    return opt ? [opt] : [];
+  });
+  const [selectedCompareClients, setSelectedCompareClients] = useState<
     AnalysisClientOption[]
   >(() => {
     const topId = topClientIdForYear(data, data.defaultYear);
@@ -200,6 +227,46 @@ export function OpportunitiesAnalysisPanel({ data }: Props) {
     engage: d.engage,
     previsionnel: d.previsionnel,
   }));
+
+  const pipelineCompare = useMemo(() => {
+    const y = pipelineCompareYear;
+    const prev = y - 1;
+    const currSeries = data.pipelineByYear[y] ?? [];
+    const prevSeries = data.pipelineByYear[prev] ?? [];
+    const months = Array.from({ length: 12 }, (_, i) => ({
+      label: currSeries[i]?.label ?? prevSeries[i]?.label ?? `M${i + 1}`,
+      [`engage_${y}`]: currSeries[i]?.engage ?? 0,
+      [`previsionnel_${y}`]: currSeries[i]?.previsionnel ?? 0,
+      [`engage_${prev}`]: prevSeries[i]?.engage ?? 0,
+      [`previsionnel_${prev}`]: prevSeries[i]?.previsionnel ?? 0,
+    }));
+
+    const candidates = [
+      {
+        key: `engage_${y}`,
+        label: `CA engagé · ${y}`,
+        color: "var(--chart-2)",
+      },
+      {
+        key: `previsionnel_${y}`,
+        label: `CA prévisionnel · ${y}`,
+        color: "var(--chart-1)",
+      },
+      {
+        key: `engage_${prev}`,
+        label: `CA engagé · ${prev}`,
+        color: "color-mix(in oklab, var(--chart-2) 55%, white)",
+      },
+      {
+        key: `previsionnel_${prev}`,
+        label: `CA prévisionnel · ${prev}`,
+        color: "color-mix(in oklab, var(--chart-1) 55%, white)",
+      },
+    ];
+
+    const series = candidates.filter((s) => seriesYearSum(months, s.key) > 0);
+    return { months, series };
+  }, [data.pipelineByYear, pipelineCompareYear]);
 
   const clientChart = useMemo(() => {
     const byClient = data.caByClientByYear[clientYear] ?? {};
@@ -255,6 +322,162 @@ export function OpportunitiesAnalysisPanel({ data }: Props) {
     return { months, series };
   }, [clientYear, data.caByClientByYear, data.pipelineByYear, selectedClients]);
 
+  const clientCompare = useMemo(() => {
+    const y = clientCompareYear;
+    const prev = y - 1;
+    const clients = selectedCompareClients.slice(0, MAX_CLIENTS);
+    const currByClient = data.caByClientByYear[y] ?? {};
+    const prevByClient = data.caByClientByYear[prev] ?? {};
+    const yearPipeline = data.pipelineByYear[y] ?? data.pipelineByYear[prev];
+
+    const months: Array<Record<string, string | number> & { label: string }> =
+      Array.from({ length: 12 }, (_, i) => {
+        const point: Record<string, string | number> & { label: string } = {
+          label: yearPipeline?.[i]?.label ?? `M${i + 1}`,
+        };
+        for (let c = 0; c < clients.length; c++) {
+          const client = clients[c]!;
+          const curr = currByClient[client.id]?.months[i];
+          const older = prevByClient[client.id]?.months[i];
+          point[`c${c}_${y}_engage`] = curr?.engage ?? 0;
+          point[`c${c}_${y}_previsionnel`] = curr?.previsionnel ?? 0;
+          point[`c${c}_${prev}_engage`] = older?.engage ?? 0;
+          point[`c${c}_${prev}_previsionnel`] = older?.previsionnel ?? 0;
+        }
+        return point;
+      });
+
+    const series = clients.flatMap((client, c) => {
+      const entries: Array<{ key: string; label: string; color: string }> = [];
+      const specs = [
+        {
+          key: `c${c}_${y}_engage`,
+          label: `${client.label} · engagé · ${y}`,
+          color: CLIENT_CHART_COLORS_ENGAGE[c] ?? "var(--chart-2)",
+        },
+        {
+          key: `c${c}_${y}_previsionnel`,
+          label: `${client.label} · prévisionnel · ${y}`,
+          color: CLIENT_CHART_COLORS_PREV[c] ?? "var(--chart-1)",
+        },
+        {
+          key: `c${c}_${prev}_engage`,
+          label: `${client.label} · engagé · ${prev}`,
+          color: `color-mix(in oklab, ${CLIENT_CHART_COLORS_ENGAGE[c] ?? "var(--chart-2)"} 45%, white)`,
+        },
+        {
+          key: `c${c}_${prev}_previsionnel`,
+          label: `${client.label} · prévisionnel · ${prev}`,
+          color: `color-mix(in oklab, ${CLIENT_CHART_COLORS_PREV[c] ?? "var(--chart-1)"} 45%, white)`,
+        },
+      ];
+      for (const spec of specs) {
+        if (seriesYearSum(months, spec.key) > 0) entries.push(spec);
+      }
+      return entries;
+    });
+
+    return { months, series };
+  }, [
+    clientCompareYear,
+    data.caByClientByYear,
+    data.pipelineByYear,
+    selectedCompareClients,
+  ]);
+
+  const teamCompare = useMemo(() => {
+    const y = teamCompareYear;
+    const prev = y - 1;
+    const curr = data.caByTeamByYear[y] ?? [];
+    const older = data.caByTeamByYear[prev] ?? [];
+    const byLabel = new Map<
+      string,
+      {
+        label: string;
+        engageY: number;
+        prevY: number;
+        engagePrev: number;
+        prevPrev: number;
+      }
+    >();
+
+    for (const row of curr) {
+      byLabel.set(row.label, {
+        label: row.label,
+        engageY: row.engage,
+        prevY: row.previsionnel,
+        engagePrev: 0,
+        prevPrev: 0,
+      });
+    }
+    for (const row of older) {
+      const existing = byLabel.get(row.label);
+      if (existing) {
+        existing.engagePrev = row.engage;
+        existing.prevPrev = row.previsionnel;
+      } else {
+        byLabel.set(row.label, {
+          label: row.label,
+          engageY: 0,
+          prevY: 0,
+          engagePrev: row.engage,
+          prevPrev: row.previsionnel,
+        });
+      }
+    }
+
+    const rows = [...byLabel.values()].sort(
+      (a, b) =>
+        b.engageY +
+          b.prevY +
+          b.engagePrev +
+          b.prevPrev -
+          (a.engageY + a.prevY + a.engagePrev + a.prevPrev) ||
+        a.label.localeCompare(b.label, "fr"),
+    );
+
+    const chartData = rows.map((r) => ({
+      label: r.label,
+      [`engage_${y}`]: r.engageY,
+      [`previsionnel_${y}`]: r.prevY,
+      [`engage_${prev}`]: r.engagePrev,
+      [`previsionnel_${prev}`]: r.prevPrev,
+    }));
+
+    const candidates = [
+      {
+        key: `engage_${y}`,
+        label: `CA engagé · ${y}`,
+        color: "var(--chart-2)",
+        stackId: `y${y}`,
+      },
+      {
+        key: `previsionnel_${y}`,
+        label: `CA prévisionnel · ${y}`,
+        color: "var(--chart-1)",
+        stackId: `y${y}`,
+      },
+      {
+        key: `engage_${prev}`,
+        label: `CA engagé · ${prev}`,
+        color: "color-mix(in oklab, var(--chart-2) 55%, white)",
+        stackId: `y${prev}`,
+      },
+      {
+        key: `previsionnel_${prev}`,
+        label: `CA prévisionnel · ${prev}`,
+        color: "color-mix(in oklab, var(--chart-1) 55%, white)",
+        stackId: `y${prev}`,
+      },
+    ];
+
+    const series = candidates.filter((s) =>
+      chartData.some((row) => Number(row[s.key] ?? 0) > 0),
+    );
+
+    return { chartData, series };
+  }, [data.caByTeamByYear, teamCompareYear]);
+
   return (
     <div className="space-y-6">
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
@@ -262,24 +485,24 @@ export function OpportunitiesAnalysisPanel({ data }: Props) {
           className="h-full sm:grid-cols-2 xl:grid-cols-2"
           items={[
             {
-              label: "Total des sommes engagées",
+              label: `Total des sommes engagées${yearSuffix}`,
               value: formatOpportunityPrice(data.kpis.sumPrice),
             },
             {
-              label: "Total des sommes pondérées",
+              label: `Total des sommes pondérées${yearSuffix}`,
               value: formatOpportunityPrice(data.kpis.sumAveragePrice),
             },
           ]}
         />
         <AnalysisBarChart
-          title="Comparaison par statut"
+          title={`Comparaison par statut${yearSuffix}`}
           data={data.byStatus}
           layout="vertical"
           emptyMessage="Aucune opportunité pour l'année en cours."
         />
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-4">
         {data.missingBillingCount > 0 ? (
           <p className="text-sm text-destructive">
             {data.missingBillingCount} opportunité
@@ -301,57 +524,115 @@ export function OpportunitiesAnalysisPanel({ data }: Props) {
             />
           }
         />
-      </div>
-
-      <AnalysisBarChart
-        title="Évolution du CA par Client"
-        data={clientChart.months}
-        series={clientChart.series}
-        layout="vertical"
-        height={320}
-        showLegend
-        valueFormatter={(v) => formatOpportunityPrice(v)}
-        axisTickFormatter={formatAxisEuro}
-        emptyMessage="Sélectionnez un client pour afficher le CA mensuel."
-        headerAction={
-          <>
-            <ClientMultiSelect
-              options={data.caClientOptions}
-              value={selectedClients}
-              onChange={setSelectedClients}
-            />
+        <AnalysisLineChart
+          title="Comparaison de la pipeline avec l'année précédente"
+          data={pipelineCompare.months}
+          series={pipelineCompare.series}
+          valueFormatter={(v) => formatOpportunityPrice(v)}
+          axisTickFormatter={formatAxisEuro}
+          headerAction={
             <AnalysisYearSelect
               years={years}
-              value={clientYear}
-              onChange={(year) => {
-                setClientYear(year);
-                if (selectedClients.length === 0) {
-                  const topId = topClientIdForYear(data, year);
-                  const opt = data.caClientOptions.find((c) => c.id === topId);
-                  if (opt) setSelectedClients([opt]);
-                }
-              }}
+              value={pipelineCompareYear}
+              onChange={setPipelineCompareYear}
             />
-          </>
-        }
-      />
+          }
+        />
+      </div>
 
-      <AnalysisBarChart
-        title="Comparaison CA par pôle"
-        data={teamChartData}
-        series={[...CA_STACK_SERIES]}
-        layout="horizontal"
-        showLegend
-        valueFormatter={(v) => formatOpportunityPrice(v)}
-        axisTickFormatter={formatAxisEuro}
-        headerAction={
-          <AnalysisYearSelect
-            years={years}
-            value={teamYear}
-            onChange={setTeamYear}
-          />
-        }
-      />
+      <div className="space-y-4">
+        <AnalysisBarChart
+          title="Évolution du CA par Client"
+          data={clientChart.months}
+          series={clientChart.series}
+          layout="vertical"
+          height={320}
+          showLegend
+          valueFormatter={(v) => formatOpportunityPrice(v)}
+          axisTickFormatter={formatAxisEuro}
+          emptyMessage="Sélectionnez un client pour afficher le CA mensuel."
+          headerAction={
+            <>
+              <ClientMultiSelect
+                options={data.caClientOptions}
+                value={selectedClients}
+                onChange={setSelectedClients}
+              />
+              <AnalysisYearSelect
+                years={years}
+                value={clientYear}
+                onChange={(year) => {
+                  setClientYear(year);
+                  if (selectedClients.length === 0) {
+                    const topId = topClientIdForYear(data, year);
+                    const opt = data.caClientOptions.find((c) => c.id === topId);
+                    if (opt) setSelectedClients([opt]);
+                  }
+                }}
+              />
+            </>
+          }
+        />
+        <AnalysisLineChart
+          title="Comparaison du CA Client avec l'année précédente"
+          data={clientCompare.months}
+          series={clientCompare.series}
+          height={320}
+          valueFormatter={(v) => formatOpportunityPrice(v)}
+          axisTickFormatter={formatAxisEuro}
+          emptyMessage="Sélectionnez un client pour comparer le CA."
+          headerAction={
+            <>
+              <ClientMultiSelect
+                options={data.caClientOptions}
+                value={selectedCompareClients}
+                onChange={setSelectedCompareClients}
+              />
+              <AnalysisYearSelect
+                years={years}
+                value={clientCompareYear}
+                onChange={setClientCompareYear}
+              />
+            </>
+          }
+        />
+      </div>
+
+      <div className="space-y-4">
+        <AnalysisBarChart
+          title="Comparaison CA par pôle"
+          data={teamChartData}
+          series={[...CA_STACK_SERIES]}
+          layout="horizontal"
+          showLegend
+          valueFormatter={(v) => formatOpportunityPrice(v)}
+          axisTickFormatter={formatAxisEuro}
+          headerAction={
+            <AnalysisYearSelect
+              years={years}
+              value={teamYear}
+              onChange={setTeamYear}
+            />
+          }
+        />
+        <AnalysisBarChart
+          title="Comparaison du CA par pôle avec l'année précédente"
+          data={teamCompare.chartData}
+          series={teamCompare.series}
+          layout="horizontal"
+          showLegend
+          valueFormatter={(v) => formatOpportunityPrice(v)}
+          axisTickFormatter={formatAxisEuro}
+          emptyMessage="Aucune donnée de CA par pôle pour ces années."
+          headerAction={
+            <AnalysisYearSelect
+              years={years}
+              value={teamCompareYear}
+              onChange={setTeamCompareYear}
+            />
+          }
+        />
+      </div>
     </div>
   );
 }
