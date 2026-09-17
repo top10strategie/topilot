@@ -1,5 +1,9 @@
 import { emptyAnalysesPayload } from "@/lib/analyses/empty-payload";
 import {
+  buildOpportunityCaInstallments,
+  isMissingBillingSchedule,
+} from "@/lib/analyses/opportunity-ca";
+import {
   getMissionKanbanStatusLabel,
 } from "@/lib/missions/labels";
 import type { MissionKanbanStatus } from "@/lib/missions/types";
@@ -7,18 +11,23 @@ import {
   getOpportunityKanbanStatusLabel,
   OPPORTUNITY_KANBAN_STATUSES,
 } from "@/lib/opportunities/labels";
-import type { OpportunityKanbanStatus } from "@/lib/opportunities/types";
+import type {
+  OpportunityInvoiceFrequency,
+  OpportunityKanbanStatus,
+} from "@/lib/opportunities/types";
 import { createClient } from "@/lib/supabase/server";
 import { monthlyCentsFromPrice } from "@/lib/tools/pricing";
 import type { ToolSubscriptionPlan } from "@/lib/tools/types";
 import type {
   AnalysesPayload,
   ChartDatum,
+  ClientCaYearSeries,
   CostEvolutionPoint,
   CurrencyTotal,
   MissionKpis,
   OpportunityKpis,
   PipelineSeriesPoint,
+  StackedCaDatum,
 } from "./types";
 import { SUBSCRIPTION_ANALYSIS_START_YEAR } from "./types";
 
@@ -74,16 +83,6 @@ function partsFromDateOnly(
   return { year, month, day };
 }
 
-/** Instant timestamptz → parties calendaires Europe/Paris. */
-function partsFromInstant(
-  value: string | null | undefined,
-): DateParts | null {
-  if (!value) return null;
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return null;
-  return getParisParts(d);
-}
-
 function yearMonthKey(year: number, month: number): string {
   return `${year}-${String(month).padStart(2, "0")}`;
 }
@@ -96,9 +95,8 @@ function emptyPipelineYear(): PipelineSeriesPoint[] {
   return Array.from({ length: 12 }, (_, i) => ({
     month: i + 1,
     label: monthLabelShort(i + 1),
-    entree: 0,
-    gagnees: 0,
-    perdues: 0,
+    engage: 0,
+    previsionnel: 0,
   }));
 }
 
@@ -110,10 +108,12 @@ type OppRow = {
   kanban_status: OpportunityKanbanStatus;
   created_at: string;
   closed_at: string | null;
+  due_date_at: string | null;
+  end_at: string | null;
+  invoice_frequency: OpportunityInvoiceFrequency | null;
   collaborator_id: string;
-  opportunity_category: Array<{
-    category: { id: string; label: string } | null;
-  }> | null;
+  client_id: string;
+  client: { id: string; client_name: string } | null;
 };
 
 type MissionRow = {
@@ -178,10 +178,18 @@ function buildMissionKpis(rows: MissionRow[]): MissionKpis {
   };
 }
 
-function countByStatusOpp(rows: OppRow[]): ChartDatum[] {
+function countByStatusOpp(
+  rows: OppRow[],
+  parisYear: number,
+): ChartDatum[] {
   const counts = new Map<OpportunityKanbanStatus, number>();
   for (const status of OPPORTUNITY_KANBAN_STATUSES) counts.set(status, 0);
   for (const row of rows) {
+    const closed = row.kanban_status === "gagne" || row.kanban_status === "perdue";
+    const parts = closed
+      ? partsFromDateOnly(row.closed_at)
+      : partsFromDateOnly(row.due_date_at);
+    if (!parts || parts.year !== parisYear) continue;
     counts.set(row.kanban_status, (counts.get(row.kanban_status) ?? 0) + 1);
   }
   return OPPORTUNITY_KANBAN_STATUSES.map((status) => ({
@@ -283,10 +291,12 @@ export async function loadAnalysesPayload(
         kanban_status,
         created_at,
         closed_at,
+        due_date_at,
+        end_at,
+        invoice_frequency,
         collaborator_id,
-        opportunity_category (
-          category:category_business!category_id ( id, label, is_private )
-        )
+        client_id,
+        client:client_id ( id, client_name )
       `,
           )
       : Promise.resolve({ data: [], error: null }),
@@ -357,14 +367,18 @@ export async function loadAnalysesPayload(
     teamByCollaborator.set(c.id, c.team?.team_name ?? "Sans pôle");
   }
 
-  // —— Opportunités : CA par catégorie / pôle (gagne, price, closed_at) ——
+  // —— Opportunités : CA engagé / prévisionnel (invoice_frequency + end_at) ——
   const yearSet = new Set<number>([paris.year]);
-  const caByCategoryByYear = new Map<
-    number,
-    Map<string, { label: string; value: number }>
-  >();
-  const caByTeamByYear = new Map<number, Map<string, number>>();
   const pipelineByYear = new Map<number, PipelineSeriesPoint[]>();
+  const caByTeamByYear = new Map<
+    number,
+    Map<string, { engage: number; previsionnel: number }>
+  >();
+  const caByClientByYear = new Map<
+    number,
+    Map<string, { label: string; months: PipelineSeriesPoint[] }>
+  >();
+  let missingBillingCount = 0;
 
   const ensurePipeline = (year: number) => {
     if (!pipelineByYear.has(year)) {
@@ -373,94 +387,141 @@ export async function loadAnalysesPayload(
     return pipelineByYear.get(year)!;
   };
 
+  const ensureClientYear = (
+    year: number,
+    clientId: string,
+    clientLabel: string,
+  ) => {
+    let byClient = caByClientByYear.get(year);
+    if (!byClient) {
+      byClient = new Map();
+      caByClientByYear.set(year, byClient);
+    }
+    let series = byClient.get(clientId);
+    if (!series) {
+      series = { label: clientLabel, months: emptyPipelineYear() };
+      byClient.set(clientId, series);
+    }
+    return series;
+  };
+
   for (const row of opportunities) {
-    const created = partsFromInstant(row.created_at);
-    if (created) {
-      yearSet.add(created.year);
-      const series = ensurePipeline(created.year);
-      series[created.month - 1]!.entree += toNum(row.entry_average_price);
+    if (isMissingBillingSchedule({
+      price: toNum(row.price),
+      kanban_status: row.kanban_status,
+      due_date_at: row.due_date_at,
+      closed_at: row.closed_at,
+      end_at: row.end_at,
+      invoice_frequency: row.invoice_frequency,
+    })) {
+      missingBillingCount += 1;
     }
 
-    const closed = partsFromDateOnly(row.closed_at);
-    if (closed) {
-      yearSet.add(closed.year);
-      const series = ensurePipeline(closed.year);
-      if (row.kanban_status === "gagne") {
-        series[closed.month - 1]!.gagnees += toNum(row.price);
-      } else if (row.kanban_status === "perdue") {
-        series[closed.month - 1]!.perdues += toNum(row.price);
-      }
-    }
+    const installments = buildOpportunityCaInstallments({
+      price: toNum(row.price),
+      kanban_status: row.kanban_status,
+      due_date_at: row.due_date_at,
+      closed_at: row.closed_at,
+      end_at: row.end_at,
+      invoice_frequency: row.invoice_frequency,
+    });
 
-    if (row.kanban_status !== "gagne" || !closed) continue;
+    if (installments.length === 0) continue;
 
-    const year = closed.year;
-    const price = toNum(row.price);
-
-    let catMap = caByCategoryByYear.get(year);
-    if (!catMap) {
-      catMap = new Map();
-      caByCategoryByYear.set(year, catMap);
-    }
-    const cats = (row.opportunity_category ?? [])
-      .map((l) => l.category)
-      .filter((c): c is { id: string; label: string } => Boolean(c));
-    if (cats.length === 0) {
-      const prev = catMap.get("__none__");
-      if (prev) prev.value += price;
-      else catMap.set("__none__", { label: "Sans catégorie", value: price });
-    } else {
-      const share = price / cats.length;
-      for (const cat of cats) {
-        const prev = catMap.get(cat.id);
-        if (prev) prev.value += share;
-        else catMap.set(cat.id, { label: cat.label, value: share });
-      }
-    }
-
-    let teamMap = caByTeamByYear.get(year);
-    if (!teamMap) {
-      teamMap = new Map();
-      caByTeamByYear.set(year, teamMap);
-    }
+    const clientId = row.client?.id ?? row.client_id;
+    const clientLabel = row.client?.client_name ?? "Sans client";
     const team = teamByCollaborator.get(row.collaborator_id) ?? "Sans pôle";
-    teamMap.set(team, (teamMap.get(team) ?? 0) + price);
+
+    for (const inst of installments) {
+      yearSet.add(inst.year);
+      const amount = Math.round(inst.amount * 100) / 100;
+      const pipeline = ensurePipeline(inst.year);
+      const monthPoint = pipeline[inst.month - 1]!;
+      if (inst.bucket === "engage") monthPoint.engage += amount;
+      else monthPoint.previsionnel += amount;
+
+      let teamMap = caByTeamByYear.get(inst.year);
+      if (!teamMap) {
+        teamMap = new Map();
+        caByTeamByYear.set(inst.year, teamMap);
+      }
+      const teamPrev = teamMap.get(team) ?? { engage: 0, previsionnel: 0 };
+      if (inst.bucket === "engage") teamPrev.engage += amount;
+      else teamPrev.previsionnel += amount;
+      teamMap.set(team, teamPrev);
+
+      const clientSeries = ensureClientYear(inst.year, clientId, clientLabel);
+      const clientMonth = clientSeries.months[inst.month - 1]!;
+      if (inst.bucket === "engage") clientMonth.engage += amount;
+      else clientMonth.previsionnel += amount;
+    }
   }
 
-  // Garantir une série pipeline vide pour l'année courante
   ensurePipeline(paris.year);
 
   const availableYears = [...yearSet].sort((a, b) => b - a);
   const defaultYear = paris.year;
 
-  const caByCategoryRecord: Record<number, ChartDatum[]> = {};
-  for (const [year, map] of caByCategoryByYear) {
-    caByCategoryRecord[year] = mapToSortedChart(map).map((d) => ({
-      ...d,
-      value: Math.round(d.value * 100) / 100,
+  const pipelineRecord: Record<number, PipelineSeriesPoint[]> = {};
+  for (const [year, points] of pipelineByYear) {
+    pipelineRecord[year] = points.map((p) => ({
+      ...p,
+      engage: Math.round(p.engage * 100) / 100,
+      previsionnel: Math.round(p.previsionnel * 100) / 100,
     }));
   }
   for (const year of availableYears) {
-    if (!caByCategoryRecord[year]) caByCategoryRecord[year] = [];
+    if (!pipelineRecord[year]) pipelineRecord[year] = emptyPipelineYear();
   }
 
-  const caByTeamRecord: Record<number, ChartDatum[]> = {};
+  const caByTeamRecord: Record<number, StackedCaDatum[]> = {};
   for (const [year, map] of caByTeamByYear) {
     caByTeamRecord[year] = [...map.entries()]
-      .map(([label, value]) => ({ key: label, label, value }))
-      .sort((a, b) => b.value - a.value || a.label.localeCompare(b.label, "fr"));
+      .map(([label, v]) => ({
+        key: label,
+        label,
+        engage: Math.round(v.engage * 100) / 100,
+        previsionnel: Math.round(v.previsionnel * 100) / 100,
+      }))
+      .sort(
+        (a, b) =>
+          b.engage +
+            b.previsionnel -
+            (a.engage + a.previsionnel) ||
+          a.label.localeCompare(b.label, "fr"),
+      );
   }
   for (const year of availableYears) {
     if (!caByTeamRecord[year]) caByTeamRecord[year] = [];
   }
 
-  const pipelineRecord: Record<number, PipelineSeriesPoint[]> = {};
-  for (const [year, points] of pipelineByYear) {
-    pipelineRecord[year] = points;
+  const clientOptionsMap = new Map<string, string>();
+  const caByClientRecord: Record<number, Record<string, ClientCaYearSeries>> =
+    {};
+  for (const [year, byClient] of caByClientByYear) {
+    const yearMap: Record<string, ClientCaYearSeries> = {};
+    for (const [clientId, series] of byClient) {
+      clientOptionsMap.set(clientId, series.label);
+      const months = series.months.map((p) => ({
+        ...p,
+        engage: Math.round(p.engage * 100) / 100,
+        previsionnel: Math.round(p.previsionnel * 100) / 100,
+      }));
+      const total = months.reduce(
+        (s, p) => s + p.engage + p.previsionnel,
+        0,
+      );
+      yearMap[clientId] = { clientId, months, total };
+    }
+    caByClientRecord[year] = yearMap;
   }
   for (const year of availableYears) {
-    if (!pipelineRecord[year]) pipelineRecord[year] = emptyPipelineYear();
+    if (!caByClientRecord[year]) caByClientRecord[year] = {};
   }
+
+  const caClientOptions = [...clientOptionsMap.entries()]
+    .map(([id, label]) => ({ id, label }))
+    .sort((a, b) => a.label.localeCompare(b.label, "fr"));
 
   // —— Missions ——
   const missionByTeamMap = new Map<string, number>();
@@ -588,12 +649,14 @@ export async function loadAnalysesPayload(
   return {
     opportunities: {
       kpis: buildOpportunityKpis(opportunities),
-      byStatus: countByStatusOpp(opportunities),
+      byStatus: countByStatusOpp(opportunities, paris.year),
       availableYears,
       defaultYear,
-      caByCategoryByYear: caByCategoryRecord,
-      caByTeamByYear: caByTeamRecord,
       pipelineByYear: pipelineRecord,
+      caClientOptions,
+      caByClientByYear: caByClientRecord,
+      caByTeamByYear: caByTeamRecord,
+      missingBillingCount,
     },
     missions: {
       kpis: buildMissionKpis(missions),

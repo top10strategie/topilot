@@ -148,7 +148,11 @@ Même dans un formulaire d'ajout rapide (ex : depuis le drawer de création de m
 - `entry_average_price` : montant pondéré figé à la création. `closed_at` : date (Europe/Paris) du passage à `gagne`/`perdue` uniquement — jamais saisie en UI ; remise à `NULL` à la réouverture ; **ne touche pas** `end_at`.
 - `due_date_at` : prochaine date de rendu prévue (négociation) — obligatoire ; sert à l’affichage / couleur d’échéance sur les cartes.
 - `end_at` : fin de répartition des paiements (« Fin de facturation ») — saisie manuelle, nullable.
-- `invoice_frequency` : `NULL | unique | mensuel | trimestriel | annuel` — nullable ; avec `end_at`, sert au CA (phase analyses).
+- `invoice_frequency` : `NULL | unique | mensuel | trimestriel | annuel` — nullable ; avec `end_at`, sert au CA sur `/analyses` :
+  - **Engagé** : opportunités `gagne` (début = `closed_at`) ; **prévisionnel** : opportunités ouvertes (début = `due_date_at`) ; `perdue` exclue.
+  - Montant / échéance = `price / n` échéances. Dates d’échéance = dernier jour du mois.
+  - `unique` → mois de `end_at` ; `mensuel` → chaque mois de début → `end_at` inclus ; `trimestriel` / `annuel` → 1re échéance = mois suivant le début, puis +3 / +12 tant que ≤ `end_at`.
+  - Sans `end_at` ou sans fréquence → hors graphiques CA (compteur sous le pipeline).
 - Champ de texte libre : **`notes`**, couplé à `notes_updated_at`, historisé dans `audit_log`.
 - Création et édition via **drawer latéral droit** (sans URL) accessible depuis `/opportunities` :
     1. **Bloc identification** : Titre, Client, Contact, Responsable opportunité, Date de dernière rencontre, Échéance (obligatoire), Fin de facturation (`end_at`, optionnel), Fréquence de facturation (`invoice_frequency`, optionnel) — sauvegardé via un bouton "Enregistrer" dédié, qui crée l'opportunité en base (nécessaire pour permettre l'ajout de documents liés qui requièrent un `opportunity_id` existant).

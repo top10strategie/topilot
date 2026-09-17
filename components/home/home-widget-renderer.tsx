@@ -46,6 +46,20 @@ function yearMonthKey(year: number, month: number): string {
   return `${year}-${String(month).padStart(2, "0")}`;
 }
 
+function topClientId(
+  byClient: AnalysesPayload["opportunities"]["caByClientByYear"][number],
+): string | null {
+  let bestId: string | null = null;
+  let best = -1;
+  for (const [id, series] of Object.entries(byClient ?? {})) {
+    if (series.total > best) {
+      best = series.total;
+      bestId = id;
+    }
+  }
+  return bestId;
+}
+
 export function HomeWidgetRenderer({
   widgetId,
   analyses,
@@ -87,11 +101,8 @@ export function HomeWidgetRenderer({
       return (
         <WidgetShell title={title}>
           <AnalysisKpiGrid
+            className="sm:grid-cols-2 xl:grid-cols-2"
             items={[
-              {
-                label: "Nombre d'opportunités",
-                value: String(analyses.opportunities.kpis.count),
-              },
               {
                 label: "Total des sommes engagées",
                 value: formatOpportunityPrice(
@@ -103,10 +114,6 @@ export function HomeWidgetRenderer({
                 value: formatOpportunityPrice(
                   analyses.opportunities.kpis.sumAveragePrice,
                 ),
-              },
-              {
-                label: "Taux de conversion",
-                value: `${Math.round(analyses.opportunities.kpis.conversionRate * 100)} %`,
               },
             ]}
           />
@@ -142,18 +149,52 @@ export function HomeWidgetRenderer({
         <AnalysisBarChart
           title={title}
           data={analyses.opportunities.byStatus}
-          layout="horizontal"
+          layout="vertical"
         />
       );
-    case "opp_ca_by_category":
+    case "opp_ca_by_client": {
+      const byClient =
+        analyses.opportunities.caByClientByYear[oppYear] ?? {};
+      const clientId = topClientId(byClient);
+      const option = analyses.opportunities.caClientOptions.find(
+        (c) => c.id === clientId,
+      );
+      const series = clientId ? byClient[clientId] : null;
+      const chartData =
+        series?.months.map((p) => ({
+          label: p.label,
+          engage: p.engage,
+          previsionnel: p.previsionnel,
+        })) ?? [];
       return (
         <AnalysisBarChart
-          title={title}
-          data={analyses.opportunities.caByCategoryByYear[oppYear] ?? []}
-          layout="horizontal"
+          title={
+            option
+              ? `${title} (${option.label})`
+              : title
+          }
+          data={chartData}
+          series={[
+            {
+              key: "engage",
+              label: "CA engagé",
+              color: "var(--chart-2)",
+              stackId: "ca",
+            },
+            {
+              key: "previsionnel",
+              label: "CA prévisionnel",
+              color: "var(--chart-1)",
+              stackId: "ca",
+            },
+          ]}
+          layout="vertical"
+          showLegend
           valueFormatter={(v) => formatOpportunityPrice(v)}
+          emptyMessage="Aucun CA client pour l'année en cours."
         />
       );
+    }
     case "mission_by_status":
       return (
         <AnalysisBarChart
@@ -185,14 +226,16 @@ export function HomeWidgetRenderer({
           title={title}
           data={pipeline.map((p) => ({
             label: p.label,
-            entree: p.entree,
-            gagnees: p.gagnees,
-            perdues: p.perdues,
+            engage: p.engage,
+            previsionnel: p.previsionnel,
           }))}
           series={[
-            { key: "entree", label: "Entrée pipeline", color: "var(--chart-1)" },
-            { key: "gagnees", label: "Gagnées", color: "var(--chart-2)" },
-            { key: "perdues", label: "Perdues", color: "var(--chart-3)" },
+            { key: "engage", label: "CA engagé", color: "var(--chart-2)" },
+            {
+              key: "previsionnel",
+              label: "CA prévisionnel",
+              color: "var(--chart-1)",
+            },
           ]}
           valueFormatter={(v) => formatOpportunityPrice(v)}
         />
@@ -202,8 +245,29 @@ export function HomeWidgetRenderer({
       return (
         <AnalysisBarChart
           title={title}
-          data={analyses.opportunities.caByTeamByYear[oppYear] ?? []}
+          data={(analyses.opportunities.caByTeamByYear[oppYear] ?? []).map(
+            (d) => ({
+              label: d.label,
+              engage: d.engage,
+              previsionnel: d.previsionnel,
+            }),
+          )}
+          series={[
+            {
+              key: "engage",
+              label: "CA engagé",
+              color: "var(--chart-2)",
+              stackId: "ca",
+            },
+            {
+              key: "previsionnel",
+              label: "CA prévisionnel",
+              color: "var(--chart-1)",
+              stackId: "ca",
+            },
+          ]}
           layout="horizontal"
+          showLegend
           valueFormatter={(v) => formatOpportunityPrice(v)}
         />
       );

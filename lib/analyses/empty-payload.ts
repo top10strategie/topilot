@@ -28,9 +28,11 @@ export function emptyAnalysesPayload(): AnalysesPayload {
       byStatus: [],
       availableYears: [year],
       defaultYear: year,
-      caByCategoryByYear: {},
-      caByTeamByYear: {},
       pipelineByYear: {},
+      caClientOptions: [],
+      caByClientByYear: {},
+      caByTeamByYear: {},
+      missingBillingCount: 0,
     },
     missions: {
       kpis: {

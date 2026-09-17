@@ -23,12 +23,12 @@ Les variables de thème (couleurs, radius, ombres, polices) sont définies dans 
 
 Même règle appliquée aux cartes mission (`end_at`) et aux cartes/lignes d'opportunité (`due_date_at`), comparée à aujourd'hui :
 
-|Couleur|Condition|
+|Couleur / graisse|Condition|
 |---|---|
 |`--destructive`|En retard (date < aujourd'hui)|
-|`#EB9449`|Échéance aujourd'hui|
-|`#EAF081`|Échéance dans ≤ 3 jours|
-|`--secondary`|Autre, actif|
+|`#ff8f2e`|Échéance aujourd'hui|
+|`#eed13f`|Échéance demain → J+3|
+|`--primary-foreground` + `font-semibold` `dark:text-sidebar-accent` |Autre (> 3 jours) ou date absente / invalide|
 |`--muted-foreground`|Statut terminal (mission `terminee`/`archivee` ; opportunité `gagne`/`perdue`)|
 
 Cette règle est mutualisée via un composant ou utilitaire Tailwind unique (`getEndDateToneClass`), utilisé partout où une date d'échéance / fin est affichée.

@@ -5,6 +5,7 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Legend,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -12,30 +13,74 @@ import {
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { ChartDatum } from "@/lib/analyses/types";
+import { cn } from "@/lib/utils";
+
+export type AnalysisBarSeries = {
+  key: string;
+  label: string;
+  color: string;
+  /** Même `stackId` = barres empilées ; ids différents = groupes côte à côte. */
+  stackId?: string;
+};
 
 type AnalysisBarChartProps = {
   title: string;
-  data: ChartDatum[];
+  /**
+   * Mode simple : `{ key, label, value }`.
+   * Mode séries : chaque point a `label` + clés numériques listées dans `series`.
+   */
+  data: Array<ChartDatum | (Record<string, string | number> & { label: string })>;
+  series?: AnalysisBarSeries[];
   layout?: "horizontal" | "vertical";
   valueFormatter?: (value: number) => string;
+  /** Format des ticks d’axe (défaut = valueFormatter). */
+  axisTickFormatter?: (value: number) => string;
   emptyMessage?: string;
   headerAction?: ReactNode;
   className?: string;
+  /** Hauteur du conteneur chart (px). */
+  height?: number;
+  showLegend?: boolean;
 };
 
 const defaultFormat = (value: number) =>
   new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(value);
 
+export function formatAnalysisAxisEuro(value: number): string {
+  if (!Number.isFinite(value)) return "";
+  if (Math.abs(value) >= 1000) {
+    return `${new Intl.NumberFormat("fr-FR", {
+      notation: "compact",
+      compactDisplay: "short",
+      maximumFractionDigits: 1,
+    }).format(value)} €`;
+  }
+  return `${new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(value)} €`;
+}
+
+const AXIS_TICK = { fontSize: 10 } as const;
+
 export function AnalysisBarChart({
   title,
   data,
+  series,
   layout = "horizontal",
   valueFormatter = defaultFormat,
+  axisTickFormatter,
   emptyMessage = "Aucune donnée.",
   headerAction,
   className,
+  height = 280,
+  showLegend = false,
 }: AnalysisBarChartProps) {
-  const chartData = data.filter((d) => d.value > 0);
+  const isMulti = Boolean(series && series.length > 0);
+  const tickFormat = axisTickFormatter ?? valueFormatter;
+  const chartData = isMulti
+    ? data.filter((d) =>
+        (series ?? []).some((s) => Number((d as Record<string, unknown>)[s.key]) > 0),
+      )
+    : (data as ChartDatum[]).filter((d) => d.value > 0);
+
   const isHorizontalBars = layout === "horizontal";
 
   return (
@@ -43,7 +88,7 @@ export function AnalysisBarChart({
       <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0 pb-2">
         <CardTitle className="text-base">{title}</CardTitle>
         {headerAction ? (
-          <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
             {headerAction}
           </div>
         ) : null}
@@ -54,7 +99,7 @@ export function AnalysisBarChart({
             {emptyMessage}
           </p>
         ) : (
-          <div className="h-[280px] w-full">
+          <div className={cn("w-full")} style={{ height }}>
             <ResponsiveContainer width="100%" height="100%">
               {isHorizontalBars ? (
                 <BarChart
@@ -65,8 +110,11 @@ export function AnalysisBarChart({
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                   <XAxis
                     type="number"
-                    tickFormatter={valueFormatter}
+                    tickFormatter={(v) =>
+                      tickFormat(typeof v === "number" ? v : Number(v))
+                    }
                     className="text-xs"
+                    tick={AXIS_TICK}
                   />
                   <YAxis
                     type="category"
@@ -76,30 +124,83 @@ export function AnalysisBarChart({
                     tick={{ fontSize: 11 }}
                   />
                   <Tooltip
-                    formatter={(value) =>
-                      valueFormatter(typeof value === "number" ? value : Number(value))
-                    }
+                    formatter={(value, name) => {
+                      const num =
+                        typeof value === "number" ? value : Number(value);
+                      const seriesLabel =
+                        series?.find((s) => s.key === name)?.label ??
+                        String(name);
+                      return [valueFormatter(num), seriesLabel];
+                    }}
                   />
-                  <Bar dataKey="value" fill="var(--primary)" radius={[0, 4, 4, 0]} />
+                  {showLegend && series ? <Legend /> : null}
+                  {isMulti && series
+                    ? series.map((s) => (
+                        <Bar
+                          key={s.key}
+                          dataKey={s.key}
+                          name={s.label}
+                          stackId={s.stackId}
+                          fill={s.color}
+                          radius={[0, 4, 4, 0]}
+                        />
+                      ))
+                    : (
+                        <Bar
+                          dataKey="value"
+                          fill="var(--primary)"
+                          radius={[0, 4, 4, 0]}
+                        />
+                      )}
                 </BarChart>
               ) : (
                 <BarChart
                   data={chartData}
-                  margin={{ top: 8, right: 8, left: 0, bottom: 8 }}
+                  margin={{ top: 8, right: 8, left: 8, bottom: 8 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                  <XAxis dataKey="label" className="text-xs" tick={{ fontSize: 11 }} />
-                  <YAxis
-                    tickFormatter={valueFormatter}
+                  <XAxis
+                    dataKey="label"
                     className="text-xs"
-                    width={48}
+                    tick={{ fontSize: 11 }}
+                  />
+                  <YAxis
+                    tickFormatter={(v) =>
+                      tickFormat(typeof v === "number" ? v : Number(v))
+                    }
+                    className="text-xs"
+                    width={72}
+                    tick={AXIS_TICK}
                   />
                   <Tooltip
-                    formatter={(value) =>
-                      valueFormatter(typeof value === "number" ? value : Number(value))
-                    }
+                    formatter={(value, name) => {
+                      const num =
+                        typeof value === "number" ? value : Number(value);
+                      const seriesLabel =
+                        series?.find((s) => s.key === name)?.label ??
+                        String(name);
+                      return [valueFormatter(num), seriesLabel];
+                    }}
                   />
-                  <Bar dataKey="value" fill="var(--primary)" radius={[4, 4, 0, 0]} />
+                  {showLegend && series ? <Legend /> : null}
+                  {isMulti && series
+                    ? series.map((s) => (
+                        <Bar
+                          key={s.key}
+                          dataKey={s.key}
+                          name={s.label}
+                          stackId={s.stackId}
+                          fill={s.color}
+                          radius={[4, 4, 0, 0]}
+                        />
+                      ))
+                    : (
+                        <Bar
+                          dataKey="value"
+                          fill="var(--primary)"
+                          radius={[4, 4, 0, 0]}
+                        />
+                      )}
                 </BarChart>
               )}
             </ResponsiveContainer>

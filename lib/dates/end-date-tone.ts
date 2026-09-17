@@ -10,13 +10,13 @@ export function getEndDateToneClass(
     return "text-muted-foreground";
   }
   if (!endAt) {
-    return "text-secondary-foreground";
+    return "text-secondary-foreground dark:text-sidebar-accent font-semibold";
   }
 
   const today = startOfLocalDay(new Date());
   const end = startOfLocalDay(new Date(`${endAt}T00:00:00`));
   if (Number.isNaN(end.getTime())) {
-    return "text-secondary-foreground";
+    return "text-secondary-foreground dark:text-sidebar-accent font-semibold";
   }
 
   const diffDays = Math.round(
@@ -24,9 +24,9 @@ export function getEndDateToneClass(
   );
 
   if (diffDays < 0) return "text-destructive";
-  if (diffDays === 0) return "text-[#EB9449]";
-  if (diffDays <= 3) return "text-[#EAF081]";
-  return "text-secondary-foreground";
+  if (diffDays === 0) return "text-[#ff8f2e]";
+  if (diffDays <= 3) return "text-[#eed13f]";
+  return "text-secondary-foreground dark:text-sidebar-accent font-semibold";
 }
 
 function startOfLocalDay(date: Date): Date {

@@ -444,11 +444,10 @@ Page à **plat, sans onglets** (contrairement à Client/Opportunité/Mission) :
 **Contenu - Tabs** : "Opportunités" | "Missions" | "Abonnements"
 
 - **Opportunités** :
-    - 4 cartes KPI : Nombre d'opportunités (`COUNT`) ; Total des sommes engagées (`SUM(price)`) ; Total des sommes pondérées (`SUM(average_price)`) ; Taux de conversion (`COUNT(kanban_status = gagne) / COUNT(*)`, opportunités encore ouvertes incluses au dénominateur).
-    - Comparaison par statut : diagramme en barres horizontales, une barre par valeur de `kanban_status`.
-    - Evolution du pipeline Commercial : diagramme en barres verticales dans le temps (volume/valeur des opportunités par période).
-    - Comparaison par catégories : diagramme en barres horizontales par `opportunity_category`.
-    - Comparaison CA par pôle : diagramme en barres horizontales, chiffre d'affaires (`price` ou `average_price`) agrégé par pôle (via `collaborator_id` → équipe du collaborateur responsable).
+    - Bandeau : 2 KPI (Total des sommes engagées `SUM(price)` ; Total des sommes pondérées `SUM(average_price)`) à gauche ; **Comparaison par statut** à droite (barres verticales, statuts en X) filtrée sur l’**année calendaire Paris courante** (`closed_at` si `gagne`/`perdue`, sinon `due_date_at`) — pas de sélecteur d’année.
+    - **Évolution du pipeline Commercial** : courbes mensuelles **CA engagé** / **CA prévisionnel** (répartition `invoice_frequency` + `end_at`, cf. `03_business_rules.mdc`) ; sélecteur d’année indépendant ; compteur des opportunités sans délais de facturation sous le graphique.
+    - **Évolution du CA par Client** : barres mensuelles empilées engagé/prévisionnel, pleine largeur ; sélecteurs année + clients multi (max 5) à droite du header ; piles côte à côte par client.
+    - **Comparaison CA par pôle** : barres horizontales empilées engagé/prévisionnel ; sélecteur d’année indépendant.
 - **Missions** :
     - 4 cartes KPI : Nombre de missions (`COUNT`) ; Nombre de missions en production (`kanban_status = en_cours`) ; Nombre de missions abandonnées (`kanban_status = archivee AND completed_at IS NULL`) ; Nombre de missions complétées (`completed_at IS NOT NULL`, cf. `03_business_rules.mdc`/`04_database_schema.mdc`).
     - Comparaison par statut : diagramme en barres horizontales par `kanban_status`.
@@ -492,20 +491,18 @@ Page à **plat, sans onglets** (contrairement à Client/Opportunité/Mission) :
 **Modale de sélection des widgets** :
 
 - Titre : "Ajout de widgets à votre page d'accueil"
-- "Sélectionner un ou plusieurs widgets :" — liste déroulante à cases à cocher (multi-sélection), catalogue fermé de 13 widgets précis (pas l'ensemble des graphiques de `/analyses`) :
+- "Sélectionner un ou plusieurs widgets :" — liste déroulante à cases à cocher (multi-sélection), catalogue fermé (pas l'ensemble des graphiques de `/analyses`) :
     1. Kanban des opportunités
     2. Kanban des missions
-    3. Résumé des chiffres des opportunités (4 cartes KPI : Nombre d'opportunités, Total des sommes engagées, Total des sommes pondérées, Taux de conversion)
-    4. Résumé des chiffres des missions (4 cartes KPI : Nombre de missions, Nombre de missions en production, Nombre de missions abandonnées, Nombre de missions complétées)
+    3. Résumé des chiffres des opportunités (2 KPI : Total des sommes engagées, Total des sommes pondérées)
+    4. Résumé des chiffres des missions (4 cartes KPI)
     5. Opportunités - comparaison par statut
-    6. Opportunités - comparaison par catégories
+    6. Opportunités - évolution du CA par client
     7. Missions - comparaison par statut
-    8. Missions - comparaison par catégories
-    9. Tools - dépenses du mois
-    10. Opportunités - évolution du pipeline Commercial
-    11. Opportunités - comparaison CA par pôle
-    12. Missions - évolution du pipeline Produit
-    13. Tools - évolution des coûts par Catégories - année
+    8. Tools - dépenses du mois
+    9. Opportunités - évolution du pipeline Commercial (CA engagé / prévisionnel)
+    10. Opportunités - comparaison CA par pôle
+    11. Tools - évolution des coûts par année
 - Chaque widget correspond exactement à un élément déjà décrit dans `/opportunities` (vue Kanban), `/missions` (vue Kanban), ou `/analyses` (cartes KPI et graphiques des onglets Opportunités/Missions/Abonnements) — même source de données, même calcul, simplement réaffiché ici. Il faut utiliser les composants créer pour les conglets de la page `/analyses`
 - Bouton "Confirmation" : valide la sélection et ferme la modale.
 
