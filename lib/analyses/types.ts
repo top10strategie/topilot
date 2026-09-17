@@ -75,6 +75,10 @@ export type OpportunitiesAnalysis = {
    * (exclues des graphiques CA).
    */
   missingBillingCount: number;
+  /** Objectifs de CA annuels (liste complète pour consultation / CRUD). */
+  revenueAims: Array<{ id: string; year: number; amount: number }>;
+  /** Objectif de CA annuel (montant) indexé par année. */
+  revenueAimsByYear: Record<number, number>;
 };
 
 export type MissionsAnalysis = {
