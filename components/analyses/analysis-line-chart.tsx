@@ -36,18 +36,6 @@ type AnalysisLineChartProps = {
 const defaultFormat = (value: number) =>
   new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(value);
 
-export function formatAnalysisAxisEuro(value: number): string {
-  if (!Number.isFinite(value)) return "";
-  if (Math.abs(value) >= 1000) {
-    return `${new Intl.NumberFormat("fr-FR", {
-      notation: "compact",
-      compactDisplay: "short",
-      maximumFractionDigits: 1,
-    }).format(value)} €`;
-  }
-  return `${new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(value)} €`;
-}
-
 const AXIS_TICK = { fontSize: 10 } as const;
 
 const DEFAULT_COLORS = [
