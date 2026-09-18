@@ -1,5 +1,15 @@
 # Suivi des actions — TOPilot
 
+## **[2026-09-18] — Knip : exports BOARD_CAP inutilisés**
+
+**Type :** `fix`
+**Fichiers concernés :** `lib/{missions,opportunities}/list-filters.ts`, `suivi.md`
+
+### Description
+
+Suppression de `MISSIONS_BOARD_CAP` / `OPPORTUNITIES_BOARD_CAP` (non référencés — le cap 200 est uniquement côté SQL).
+
+---
 ## **[2026-09-17] — Perf listes : kanban 2 vagues + options différées**
 
 **Type :** `perf`

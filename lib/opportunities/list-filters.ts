@@ -7,9 +7,6 @@ import type {
 
 export const OPPORTUNITIES_PAGE_SIZE = 24;
 
-/** Aligné sur le LIMIT board SQL (`list_opportunities_page`). */
-export const OPPORTUNITIES_BOARD_CAP = 200;
-
 /** Colonnes kanban chargées en vague 1 (premier paint). */
 export const OPPORTUNITY_OPEN_KANBAN_STATUSES: OpportunityKanbanStatus[] = [
   "suspect",

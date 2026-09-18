@@ -4,9 +4,6 @@ import type { MissionKanbanStatus, MissionScope } from "./types";
 
 export const MISSIONS_PAGE_SIZE = 24;
 
-/** Aligné sur le LIMIT board SQL (`list_missions_page`). */
-export const MISSIONS_BOARD_CAP = 200;
-
 /** Colonnes kanban chargées en vague 1 (premier paint). */
 export const MISSION_OPEN_KANBAN_STATUSES: MissionKanbanStatus[] = [
   "a_faire",
