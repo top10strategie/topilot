@@ -7,6 +7,20 @@ import type {
 
 export const OPPORTUNITIES_PAGE_SIZE = 24;
 
+/** Colonnes kanban chargées en vague 1 (premier paint). */
+export const OPPORTUNITY_OPEN_KANBAN_STATUSES: OpportunityKanbanStatus[] = [
+  "suspect",
+  "prospect",
+  "besoin_specifie",
+  "proposition_envoyee",
+];
+
+/** Colonnes kanban chargées en vague 2 (après affichage). */
+export const OPPORTUNITY_CLOSED_KANBAN_STATUSES: OpportunityKanbanStatus[] = [
+  "gagne",
+  "perdue",
+];
+
 export type OpportunitiesListView = "kanban" | "cards" | "table";
 
 export type OpportunityAmountBucket = "all" | "lt5k" | "5to20k" | "gt20k";
@@ -223,4 +237,13 @@ export function opportunitiesListHref(
 ): string {
   const qs = serializeOpportunitiesListSearchParams(filters);
   return qs ? `/opportunities?${qs}` : "/opportunities";
+}
+
+/**
+ * Kanban sans filtre statut explicite : ouverts d’abord, closes en 2ᵉ requête.
+ */
+export function shouldDeferClosedKanbanColumns(
+  filters: OpportunitiesListFilters,
+): boolean {
+  return filters.view === "kanban" && filters.statuses.length === 0;
 }

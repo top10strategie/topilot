@@ -1,5 +1,53 @@
 # Suivi des actions — TOPilot
 
+## **[2026-09-18] — Knip : exports BOARD_CAP inutilisés**
+
+**Type :** `fix`
+**Fichiers concernés :** `lib/{missions,opportunities}/list-filters.ts`, `suivi.md`
+
+### Description
+
+Suppression de `MISSIONS_BOARD_CAP` / `OPPORTUNITIES_BOARD_CAP` (non référencés — le cap 200 est uniquement côté SQL).
+
+---
+## **[2026-09-17] — Perf listes : kanban 2 vagues + options différées**
+
+**Type :** `perf`
+**Fichiers concernés :** `app/(app)/{missions,opportunities,clients}/page.tsx`, `components/{missions,opportunities,clients}/*-page-client.tsx`, `components/{missions,opportunities}/*-kanban.tsx`, `components/layout/entity-kanban.tsx`, `actions/{missions,opportunities,clients}.ts`, `lib/{missions,opportunities}/list-filters.ts`, `lib/settings/queries.ts`, `supabase/migrations/20260917180{000,100}_*.sql`, `suivi.md`
+
+### Description
+
+Accélération du premier paint sur `/missions`, `/opportunities` et `/clients` (prod Vercel) : kanban ouvert d’abord puis colonnes closes en 2ᵉ requête, cap board 200, options de filtres chargées à la demande, waterfall préférences missions réduit, indexes SQL ciblés.
+
+### Détails techniques
+
+- Kanban défaut : vague 1 = statuts ouverts ; vague 2 = `fetch*ClosedBoard` (Terminé/Archivé ou Gagné/Perdu) avec « Chargement… » sur les colonnes closes
+- Cap SQL board `500 → 200` (`list_missions_page` / `list_opportunities_page`)
+- Pages RSC : plus de `listCollaborators` / `listClientOptions` / catégories / villes au premier rendu ; Server Actions `fetch*ListFilterOptions`
+- `getPreferredMissionCategoryIds` : `React.cache` + réutilise `getCurrentCollaborator`
+- Indexes : `created_at`, `is_active`, `address_city`, `(collaborator_id, created_at)`
+
+> **À appliquer sur Supabase** : migrations `20260917180000_list_board_cap_200.sql` et `20260917180100_list_page_perf_indexes.sql` (déjà appliquées via MCP).
+
+---
+## **[2026-09-18] — Perf fiche `/opportunities/[id]`**
+
+**Type :** `perf`
+**Fichiers concernés :** `app/(app)/opportunities/[id]/page.tsx`, `components/opportunities/opportunity-detail-page-client.tsx`, `components/{clients,missions}/*-consultation-drawer-lazy.tsx`, `actions/{clients,missions}.ts`, `suivi.md`
+
+### Description
+
+Premier paint de la fiche opportunité allégé : RSC ne charge plus que l’opportunité + collab courant. Options tiroirs, missions et client consultation sont différés (actions + lazy drawers).
+
+### Détails techniques
+
+- Suppression du waterfall `getClientById` et des `listCollaborators` / `listClientOptions` / catégories / missions au SSR
+- `fetchOpportunitiesListFilterOptions` à l’édition / duplication / création mission
+- `fetchMissionsForOpportunity` à l’ouverture de l’onglet Missions (skeleton)
+- `fetchClientForConsultation` au clic sur le nom client
+- Drawers consultation en `next/dynamic`
+
+---
 ## **[2026-09-14] — Knip : listMissions + types lazy drawers**
 
 **Type :** `fix`

@@ -76,10 +76,15 @@ function buildBoard(items: MissionListItem[]): Board {
 
 type MissionsKanbanProps = {
   items: MissionListItem[];
+  /** Colonnes closes en vague 2 : skeletons de cartes jusqu’à réception. */
+  closedColumnsLoading?: boolean;
 };
 
 /** Vue Kanban missions — shell générique + contenu carte domaine. */
-export function MissionsKanban({ items }: MissionsKanbanProps) {
+export function MissionsKanban({
+  items,
+  closedColumnsLoading = false,
+}: MissionsKanbanProps) {
   const router = useRouter();
 
   return (
@@ -89,6 +94,9 @@ export function MissionsKanban({ items }: MissionsKanbanProps) {
       items={items}
       buildBoard={buildBoard}
       getColumnTitle={getMissionKanbanStatusLabel}
+      loadingColumnIds={
+        closedColumnsLoading ? TERMINAL_STATUSES : undefined
+      }
       renderCard={(item) => <MissionKanbanCardContent item={item} />}
       onOpenItem={(id) => router.push(`/missions/${id}`)}
       persistUpdates={updateMissionsKanban}

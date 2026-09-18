@@ -45,6 +45,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  fetchMissionsClosedBoard,
+  fetchMissionsListFilterOptions,
+} from "@/actions/missions";
 import type { CategoryItem } from "@/lib/categories/types";
 import type { ClientOption } from "@/lib/clients/types";
 import { getCollaboratorFullName } from "@/lib/collaborators/labels";
@@ -96,10 +100,9 @@ type MissionsPageClientProps = {
   missions: MissionListItem[];
   totalCount: number;
   filters?: MissionsListFilters;
-  collaborators: CollaboratorListItem[];
-  clients: ClientOption[];
-  categories: CategoryItem[];
   currentCollaboratorId: string;
+  /** Kanban défaut : vague 2 (colonnes closes) après le premier paint. */
+  deferClosedColumns?: boolean;
 };
 
 type DialogFilters = Pick<
@@ -147,13 +150,11 @@ function hasActiveDialogFilters(filters: MissionsListFilters): boolean {
 }
 
 export function MissionsPageClient({
-  missions,
-  totalCount,
+  missions: missionsProp,
+  totalCount: totalCountProp,
   filters: filtersProp,
-  collaborators,
-  clients,
-  categories,
   currentCollaboratorId,
+  deferClosedColumns = false,
 }: MissionsPageClientProps) {
   const filters = filtersProp ?? DEFAULT_MISSIONS_LIST_FILTERS;
   const router = useRouter();
@@ -168,6 +169,21 @@ export function MissionsPageClient({
     useState<MissionListItem | null>(null);
   const filterPortalRef = useRef<HTMLDivElement>(null);
 
+  const [collaborators, setCollaborators] = useState<CollaboratorListItem[]>(
+    [],
+  );
+  const [clients, setClients] = useState<ClientOption[]>([]);
+  const [categories, setCategories] = useState<CategoryItem[]>([]);
+  const [optionsLoaded, setOptionsLoaded] = useState(false);
+  const [optionsLoading, setOptionsLoading] = useState(false);
+
+  const [boardMissions, setBoardMissions] =
+    useState<MissionListItem[]>(missionsProp);
+  const [totalCount, setTotalCount] = useState(totalCountProp);
+  const [closedColumnsLoading, setClosedColumnsLoading] =
+    useState(deferClosedColumns);
+  const categoryIdsKey = filters.categoryIds.join(",");
+
   const navigate = (next: MissionsListFilters) => {
     startTransition(() => {
       router.push(missionsListHref(next));
@@ -181,6 +197,62 @@ export function MissionsPageClient({
   useEffect(() => {
     setDraftFilters(toDialogFilters(filters));
   }, [filters]);
+
+  useEffect(() => {
+    setBoardMissions(missionsProp);
+    setTotalCount(totalCountProp);
+    setClosedColumnsLoading(deferClosedColumns);
+  }, [missionsProp, totalCountProp, deferClosedColumns]);
+
+  useEffect(() => {
+    if (!deferClosedColumns) return;
+    let cancelled = false;
+    void (async () => {
+      const result = await fetchMissionsClosedBoard(filters);
+      if (cancelled) return;
+      if (result.success) {
+        setBoardMissions((prev) => {
+          const openIds = new Set(prev.map((m) => m.id));
+          const closed = result.missions.filter((m) => !openIds.has(m.id));
+          return [...prev, ...closed];
+        });
+        setTotalCount((prev) => prev + result.totalCount);
+      }
+      setClosedColumnsLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // Relance uniquement quand les filtres / vague changent (pas à chaque render).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    deferClosedColumns,
+    filters.q,
+    filters.clientId,
+    filters.responsibleId,
+    filters.teamId,
+    categoryIdsKey,
+    filters.scope,
+    filters.startFrom,
+    filters.startTo,
+    filters.endFrom,
+    filters.endTo,
+    filters.skipPreferredCategories,
+  ]);
+
+  const ensureFilterOptions = async (): Promise<boolean> => {
+    if (optionsLoaded) return true;
+    if (optionsLoading) return false;
+    setOptionsLoading(true);
+    const result = await fetchMissionsListFilterOptions();
+    setOptionsLoading(false);
+    if (!result.success) return false;
+    setCollaborators(result.collaborators);
+    setClients(result.clients);
+    setCategories(result.categories);
+    setOptionsLoaded(true);
+    return true;
+  };
 
   useEffect(() => {
     const trimmed = query.trim();
@@ -237,15 +309,31 @@ export function MissionsPageClient({
   const totalPages = Math.max(1, Math.ceil(totalCount / MISSIONS_PAGE_SIZE));
   const hasActiveFilters = hasActiveDialogFilters(filters);
 
-  const openCreate = (duplicateSource?: MissionListItem) => {
+  const openCreate = async (duplicateSource?: MissionListItem) => {
+    let collabs = collaborators;
+    let clientOpts = clients;
+    let cats = categories;
+    if (!optionsLoaded) {
+      setOptionsLoading(true);
+      const result = await fetchMissionsListFilterOptions();
+      setOptionsLoading(false);
+      if (!result.success) return;
+      collabs = result.collaborators;
+      clientOpts = result.clients;
+      cats = result.categories;
+      setCollaborators(collabs);
+      setClients(clientOpts);
+      setCategories(cats);
+      setOptionsLoaded(true);
+    }
     void pushDrawer({
       title: "Nouvelle mission",
       content: (helpers) => (
         <MissionFormDrawer
           mode="create"
-          collaborators={collaborators}
-          clients={clients}
-          availableCategories={categories}
+          collaborators={collabs}
+          clients={clientOpts}
+          availableCategories={cats}
           currentCollaboratorId={currentCollaboratorId}
           duplicatePrefill={
             duplicateSource
@@ -305,6 +393,7 @@ export function MissionsPageClient({
             onClick={() => {
               setDraftFilters(toDialogFilters(filters));
               setFilterOpen(true);
+              void ensureFilterOptions();
             }}
           >
             <FunnelSimple
@@ -577,11 +666,14 @@ export function MissionsPageClient({
         )}
       >
         <ListViewTabsContent value="kanban" className="min-h-0 flex-1">
-          <MissionsKanban items={missions} />
+          <MissionsKanban
+            items={boardMissions}
+            closedColumnsLoading={closedColumnsLoading}
+          />
         </ListViewTabsContent>
 
         <ListViewTabsContent value="cards" className="flex-none">
-          {missions.length === 0 ? (
+          {boardMissions.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               {filters.q.trim() || hasActiveFilters
                 ? "Aucune mission ne correspond aux critères."
@@ -589,7 +681,7 @@ export function MissionsPageClient({
             </p>
           ) : (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {missions.map((item) => (
+              {boardMissions.map((item) => (
                 <Link key={item.id} href={`/missions/${item.id}`}>
                   <Card className="h-full transition-colors hover:bg-muted/40">
                     <CardHeader className="space-y-2 p-4 pb-2">
@@ -682,7 +774,7 @@ export function MissionsPageClient({
                 </tr>
               </thead>
               <tbody>
-                {missions.length === 0 ? (
+                {boardMissions.length === 0 ? (
                   <tr>
                     <td
                       colSpan={10}
@@ -694,7 +786,7 @@ export function MissionsPageClient({
                     </td>
                   </tr>
                 ) : (
-                  missions.map((item) => (
+                  boardMissions.map((item) => (
                     <tr
                       key={item.id}
                       className="cursor-pointer border-b last:border-0 hover:bg-muted/30"

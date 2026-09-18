@@ -2,10 +2,8 @@ import { Suspense } from "react";
 import { ClientsPageClient } from "@/components/clients/clients-page-client";
 import { PageHero } from "@/components/layout/page-hero";
 import { Skeleton } from "@/components/ui/skeleton";
-import { listBusinessCategories } from "@/lib/categories/queries";
 import { parseClientsListSearchParams, CLIENTS_PAGE_SIZE } from "@/lib/clients/list-filters";
-import { listClientCities, listClientsPage } from "@/lib/clients/queries";
-import { listCollaborators } from "@/lib/collaborators/queries";
+import { listClientsPage } from "@/lib/clients/queries";
 
 async function ClientsContent({
   searchParams,
@@ -15,13 +13,7 @@ async function ClientsContent({
   const params = await searchParams;
   let filters = parseClientsListSearchParams(params ?? {});
 
-  const [pageResult, collaborators, categories, cities] = await Promise.all([
-    listClientsPage(filters),
-    listCollaborators({ includeAvatar: false }),
-    listBusinessCategories(),
-    listClientCities(),
-  ]);
-  let { clients, totalCount } = pageResult;
+  let { clients, totalCount } = await listClientsPage(filters);
 
   const totalPages = Math.max(1, Math.ceil(totalCount / CLIENTS_PAGE_SIZE));
   if (filters.page > totalPages) {
@@ -34,9 +26,6 @@ async function ClientsContent({
       clients={clients}
       totalCount={totalCount}
       filters={filters}
-      cities={cities}
-      collaborators={collaborators}
-      categories={categories}
     />
   );
 }
