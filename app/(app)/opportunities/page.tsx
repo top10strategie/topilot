@@ -2,16 +2,14 @@ import { Suspense } from "react";
 import { OpportunitiesPageClient } from "@/components/opportunities/opportunities-page-client";
 import { PageHero } from "@/components/layout/page-hero";
 import { Skeleton } from "@/components/ui/skeleton";
-import { listBusinessCategories } from "@/lib/categories/queries";
-import { listClientOptions } from "@/lib/clients/queries";
-import { listCollaborators } from "@/lib/collaborators/queries";
 import {
+  OPPORTUNITY_OPEN_KANBAN_STATUSES,
   OPPORTUNITIES_PAGE_SIZE,
   parseOpportunitiesListSearchParams,
+  shouldDeferClosedKanbanColumns,
+  type OpportunitiesListFilters,
 } from "@/lib/opportunities/list-filters";
-import {
-  listOpportunitiesPage,
-} from "@/lib/opportunities/queries";
+import { listOpportunitiesPage } from "@/lib/opportunities/queries";
 
 async function OpportunitiesContent({
   searchParams,
@@ -20,16 +18,13 @@ async function OpportunitiesContent({
 }) {
   const params = await searchParams;
   let filters = parseOpportunitiesListSearchParams(params ?? {});
+  const deferClosedColumns = shouldDeferClosedKanbanColumns(filters);
 
-  const [collaborators, clients, categories, pageResult] =
-    await Promise.all([
-      listCollaborators({ includeAvatar: false }),
-      listClientOptions(),
-      listBusinessCategories(),
-      listOpportunitiesPage(filters),
-    ]);
+  const queryFilters: OpportunitiesListFilters = deferClosedColumns
+    ? { ...filters, statuses: [...OPPORTUNITY_OPEN_KANBAN_STATUSES] }
+    : filters;
 
-  let { opportunities, totalCount } = pageResult;
+  let { opportunities, totalCount } = await listOpportunitiesPage(queryFilters);
 
   if (filters.view !== "kanban") {
     const totalPages = Math.max(
@@ -47,9 +42,7 @@ async function OpportunitiesContent({
       opportunities={opportunities}
       totalCount={totalCount}
       filters={filters}
-      collaborators={collaborators}
-      clients={clients}
-      categories={categories}
+      deferClosedColumns={deferClosedColumns}
     />
   );
 }

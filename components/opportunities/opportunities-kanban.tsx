@@ -101,10 +101,15 @@ function columnPriceTotals(items: OpportunityListItem[]): {
 
 type OpportunitiesKanbanProps = {
   items: OpportunityListItem[];
+  /** Colonnes closes en vague 2 : skeletons de cartes jusqu’à réception. */
+  closedColumnsLoading?: boolean;
 };
 
 /** Vue Kanban opportunités — shell générique + totaux colonne + carte domaine. */
-export function OpportunitiesKanban({ items }: OpportunitiesKanbanProps) {
+export function OpportunitiesKanban({
+  items,
+  closedColumnsLoading = false,
+}: OpportunitiesKanbanProps) {
   const router = useRouter();
 
   return (
@@ -114,7 +119,14 @@ export function OpportunitiesKanban({ items }: OpportunitiesKanbanProps) {
       items={items}
       buildBoard={buildBoard}
       getColumnTitle={getOpportunityKanbanStatusLabel}
-      renderColumnMeta={(columnItems) => {
+      loadingColumnIds={
+        closedColumnsLoading ? TERMINAL_STATUSES : undefined
+      }
+      renderColumnMeta={(columnItems, status) => {
+        if (closedColumnsLoading && TERMINAL_STATUSES.includes(status)) {
+          // Garde la hauteur d’en-tête (évite le saut vs totaux prix).
+          return <p className="min-h-4 text-xs text-ring">{"\u00A0"}</p>;
+        }
         const totals = columnPriceTotals(columnItems);
         return (
           <p className="min-h-4 text-xs text-ring">

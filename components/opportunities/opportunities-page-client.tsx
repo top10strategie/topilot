@@ -44,6 +44,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  fetchOpportunitiesClosedBoard,
+  fetchOpportunitiesListFilterOptions,
+} from "@/actions/opportunities";
 import type { CategoryItem } from "@/lib/categories/types";
 import type { ClientOption } from "@/lib/clients/types";
 import { getCollaboratorFullName } from "@/lib/collaborators/labels";
@@ -98,9 +102,8 @@ type OpportunitiesPageClientProps = {
   opportunities: OpportunityListItem[];
   totalCount: number;
   filters?: OpportunitiesListFilters;
-  collaborators: CollaboratorListItem[];
-  clients: ClientOption[];
-  categories: CategoryItem[];
+  /** Kanban défaut : vague 2 (colonnes closes) après le premier paint. */
+  deferClosedColumns?: boolean;
 };
 
 type DialogFilters = Pick<
@@ -145,12 +148,10 @@ function hasActiveDialogFilters(filters: OpportunitiesListFilters): boolean {
 }
 
 export function OpportunitiesPageClient({
-  opportunities,
-  totalCount,
+  opportunities: opportunitiesProp,
+  totalCount: totalCountProp,
   filters: filtersProp,
-  collaborators,
-  clients,
-  categories,
+  deferClosedColumns = false,
 }: OpportunitiesPageClientProps) {
   const filters = filtersProp ?? DEFAULT_OPPORTUNITIES_LIST_FILTERS;
   const router = useRouter();
@@ -165,6 +166,21 @@ export function OpportunitiesPageClient({
     useState<OpportunityListItem | null>(null);
   const filterPortalRef = useRef<HTMLDivElement>(null);
 
+  const [collaborators, setCollaborators] = useState<CollaboratorListItem[]>(
+    [],
+  );
+  const [clients, setClients] = useState<ClientOption[]>([]);
+  const [categories, setCategories] = useState<CategoryItem[]>([]);
+  const [optionsLoaded, setOptionsLoaded] = useState(false);
+  const [optionsLoading, setOptionsLoading] = useState(false);
+
+  const [boardOpportunities, setBoardOpportunities] =
+    useState<OpportunityListItem[]>(opportunitiesProp);
+  const [totalCount, setTotalCount] = useState(totalCountProp);
+  const [closedColumnsLoading, setClosedColumnsLoading] =
+    useState(deferClosedColumns);
+  const categoryIdsKey = filters.categoryIds.join(",");
+
   const navigate = (next: OpportunitiesListFilters) => {
     startTransition(() => {
       router.push(opportunitiesListHref(next));
@@ -178,6 +194,60 @@ export function OpportunitiesPageClient({
   useEffect(() => {
     setDraftFilters(toDialogFilters(filters));
   }, [filters]);
+
+  useEffect(() => {
+    setBoardOpportunities(opportunitiesProp);
+    setTotalCount(totalCountProp);
+    setClosedColumnsLoading(deferClosedColumns);
+  }, [opportunitiesProp, totalCountProp, deferClosedColumns]);
+
+  useEffect(() => {
+    if (!deferClosedColumns) return;
+    let cancelled = false;
+    void (async () => {
+      const result = await fetchOpportunitiesClosedBoard(filters);
+      if (cancelled) return;
+      if (result.success) {
+        setBoardOpportunities((prev) => {
+          const openIds = new Set(prev.map((o) => o.id));
+          const closed = result.opportunities.filter((o) => !openIds.has(o.id));
+          return [...prev, ...closed];
+        });
+        setTotalCount((prev) => prev + result.totalCount);
+      }
+      setClosedColumnsLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // Relance uniquement quand les filtres / vague changent (pas à chaque render).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    deferClosedColumns,
+    filters.q,
+    filters.clientId,
+    filters.responsibleId,
+    filters.teamId,
+    categoryIdsKey,
+    filters.amountBucket,
+    filters.probabilityBucket,
+    filters.priority,
+    filters.includeArchived,
+  ]);
+
+  const ensureFilterOptions = async (): Promise<boolean> => {
+    if (optionsLoaded) return true;
+    if (optionsLoading) return false;
+    setOptionsLoading(true);
+    const result = await fetchOpportunitiesListFilterOptions();
+    setOptionsLoading(false);
+    if (!result.success) return false;
+    setCollaborators(result.collaborators);
+    setClients(result.clients);
+    setCategories(result.categories);
+    setOptionsLoaded(true);
+    return true;
+  };
 
   useEffect(() => {
     const trimmed = query.trim();
@@ -234,15 +304,31 @@ export function OpportunitiesPageClient({
   const totalPages = Math.max(1, Math.ceil(totalCount / OPPORTUNITIES_PAGE_SIZE));
   const hasActiveFilters = hasActiveDialogFilters(filters);
 
-  const openCreate = (duplicateSource?: OpportunityListItem) => {
+  const openCreate = async (duplicateSource?: OpportunityListItem) => {
+    let collabs = collaborators;
+    let clientOpts = clients;
+    let cats = categories;
+    if (!optionsLoaded) {
+      setOptionsLoading(true);
+      const result = await fetchOpportunitiesListFilterOptions();
+      setOptionsLoading(false);
+      if (!result.success) return;
+      collabs = result.collaborators;
+      clientOpts = result.clients;
+      cats = result.categories;
+      setCollaborators(collabs);
+      setClients(clientOpts);
+      setCategories(cats);
+      setOptionsLoaded(true);
+    }
     void pushDrawer({
       title: "Nouvelle opportunité",
       content: (helpers) => (
         <OpportunityFormDrawer
           mode="create"
-          collaborators={collaborators}
-          clients={clients}
-          availableCategories={categories}
+          collaborators={collabs}
+          clients={clientOpts}
+          availableCategories={cats}
           duplicatePrefill={
             duplicateSource
               ? buildOpportunityDuplicatePrefill(duplicateSource)
@@ -304,6 +390,7 @@ export function OpportunitiesPageClient({
             onClick={() => {
               setDraftFilters(toDialogFilters(filters));
               setFilterOpen(true);
+              void ensureFilterOptions();
             }}
           >
             <FunnelSimple
@@ -590,11 +677,14 @@ export function OpportunitiesPageClient({
         )}
       >
         <ListViewTabsContent value="kanban" className="min-h-0 flex-1">
-          <OpportunitiesKanban items={opportunities} />
+          <OpportunitiesKanban
+            items={boardOpportunities}
+            closedColumnsLoading={closedColumnsLoading}
+          />
         </ListViewTabsContent>
 
         <ListViewTabsContent value="cards" className="flex-none">
-          {opportunities.length === 0 ? (
+          {boardOpportunities.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               {filters.q.trim() || hasActiveFilters
                 ? "Aucune opportunité ne correspond aux critères."
@@ -602,7 +692,7 @@ export function OpportunitiesPageClient({
             </p>
           ) : (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {opportunities.map((item) => (
+              {boardOpportunities.map((item) => (
                 <Link key={item.id} href={`/opportunities/${item.id}`}>
                   <Card className="h-full transition-colors hover:bg-muted/40">
                     <CardHeader className="space-y-2 p-4 pb-2">
@@ -691,7 +781,7 @@ export function OpportunitiesPageClient({
                 </tr>
               </thead>
               <tbody>
-                {opportunities.length === 0 ? (
+                {boardOpportunities.length === 0 ? (
                   <tr>
                     <td
                       colSpan={9}
@@ -703,7 +793,7 @@ export function OpportunitiesPageClient({
                     </td>
                   </tr>
                 ) : (
-                  opportunities.map((item) => (
+                  boardOpportunities.map((item) => (
                     <tr
                       key={item.id}
                       className="cursor-pointer border-b last:border-0 hover:bg-muted/30"

@@ -1,4 +1,5 @@
 import { cache } from "react";
+import { getCurrentCollaborator } from "@/lib/auth/get-current-collaborator";
 import { createClient } from "@/lib/supabase/server";
 import { resolveVisualPublicUrl } from "@/lib/visuels/public-url";
 import type { AppTheme, OwnProfile } from "./types";
@@ -30,41 +31,30 @@ function parseUuidArray(value: unknown): string[] {
   return [];
 }
 
-/** Préférences catégories missions du collaborateur connecté. */
-export async function getPreferredMissionCategoryIds(): Promise<string[]> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return [];
+/**
+ * Préférences catégories missions du collaborateur connecté.
+ * Request-scoped : réutilise `getCurrentCollaborator` (évite 2 RTT auth/collab).
+ */
+export const getPreferredMissionCategoryIds = cache(
+  async (): Promise<string[]> => {
+    const collaborator = await getCurrentCollaborator();
+    if (!collaborator) return [];
 
-  const { data: collaborator, error: collabError } = await supabase
-    .from("collaborator")
-    .select("id")
-    .eq("auth_user_id", user.id)
-    .eq("status", "actif")
-    .maybeSingle();
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("setting")
+      .select("preferred_mission_category_ids")
+      .eq("collaborator_id", collaborator.id)
+      .maybeSingle();
 
-  if (collabError || !collaborator) {
-    if (collabError) {
-      console.error("getPreferredMissionCategoryIds collaborator:", collabError);
+    if (error) {
+      console.error("getPreferredMissionCategoryIds:", error);
+      return [];
     }
-    return [];
-  }
 
-  const { data, error } = await supabase
-    .from("setting")
-    .select("preferred_mission_category_ids")
-    .eq("collaborator_id", collaborator.id)
-    .maybeSingle();
-
-  if (error) {
-    console.error("getPreferredMissionCategoryIds:", error);
-    return [];
-  }
-
-  return parseUuidArray(data?.preferred_mission_category_ids);
-}
+    return parseUuidArray(data?.preferred_mission_category_ids);
+  },
+);
 
 export const getOwnProfile = cache(async (): Promise<OwnProfile | null> => {
   const supabase = await createClient();

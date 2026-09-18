@@ -2,15 +2,29 @@
 
 import { revalidatePath } from "next/cache";
 import { requireActiveCollaboratorAction } from "@/lib/auth/require-action";
+import { listBusinessCategories } from "@/lib/categories/queries";
+import type { CategoryItem } from "@/lib/categories/types";
+import { listClientOptions } from "@/lib/clients/queries";
+import type { ClientOption } from "@/lib/clients/types";
+import { listCollaborators } from "@/lib/collaborators/queries";
+import type { CollaboratorListItem } from "@/lib/collaborators/types";
 import { todayParisYmd } from "@/lib/dates/paris";
 import { formCategoryIds, formOptional, formText } from "@/lib/form-data";
+import {
+  OPPORTUNITY_CLOSED_KANBAN_STATUSES,
+  type OpportunitiesListFilters,
+} from "@/lib/opportunities/list-filters";
 import type {
   OpportunityContactOption,
   OpportunityInvoiceFrequency,
   OpportunityKanbanStatus,
+  OpportunityListItem,
   OpportunityPriority,
 } from "@/lib/opportunities/types";
-import { listOpportunityContactOptions } from "@/lib/opportunities/queries";
+import {
+  listOpportunitiesPage,
+  listOpportunityContactOptions,
+} from "@/lib/opportunities/queries";
 import { createClient } from "@/lib/supabase/server";
 
 const CLOSED_KANBAN_STATUSES = new Set<OpportunityKanbanStatus>([
@@ -621,5 +635,105 @@ export async function fetchOpportunityContactOptions(): Promise<
     const message =
       error instanceof Error ? error.message : "Impossible de charger les contacts.";
     return { success: false, error: message, contacts: [] };
+  }
+}
+
+export async function fetchOpportunitiesListFilterOptions(): Promise<
+  | {
+      success: true;
+      collaborators: CollaboratorListItem[];
+      clients: ClientOption[];
+      categories: CategoryItem[];
+    }
+  | {
+      success: false;
+      error: string;
+      collaborators: [];
+      clients: [];
+      categories: [];
+    }
+> {
+  const auth = await requireActiveCollaboratorAction();
+  if (!auth.success) {
+    return {
+      success: false,
+      error: auth.error,
+      collaborators: [],
+      clients: [],
+      categories: [],
+    };
+  }
+  try {
+    const [collaborators, clients, categories] = await Promise.all([
+      listCollaborators({ includeAvatar: false }),
+      listClientOptions(),
+      listBusinessCategories(),
+    ]);
+    return { success: true, collaborators, clients, categories };
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Impossible de charger les options de filtres.";
+    return {
+      success: false,
+      error: message,
+      collaborators: [],
+      clients: [],
+      categories: [],
+    };
+  }
+}
+
+/**
+ * Vague 2 kanban : colonnes closes (gagné / perdu), mêmes filtres hors statuts.
+ */
+export async function fetchOpportunitiesClosedBoard(
+  filters: OpportunitiesListFilters,
+): Promise<
+  | {
+      success: true;
+      opportunities: OpportunityListItem[];
+      totalCount: number;
+    }
+  | {
+      success: false;
+      error: string;
+      opportunities: [];
+      totalCount: 0;
+    }
+> {
+  const auth = await requireActiveCollaboratorAction();
+  if (!auth.success) {
+    return {
+      success: false,
+      error: auth.error,
+      opportunities: [],
+      totalCount: 0,
+    };
+  }
+  try {
+    const result = await listOpportunitiesPage({
+      ...filters,
+      view: "kanban",
+      page: 1,
+      statuses: [...OPPORTUNITY_CLOSED_KANBAN_STATUSES],
+    });
+    return {
+      success: true,
+      opportunities: result.opportunities,
+      totalCount: result.totalCount,
+    };
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Impossible de charger les opportunités closes.";
+    return {
+      success: false,
+      error: message,
+      opportunities: [],
+      totalCount: 0,
+    };
   }
 }

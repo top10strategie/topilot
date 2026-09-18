@@ -29,9 +29,11 @@ import { CSS } from "@dnd-kit/utilities";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
 const COLUMN_WIDTH_CLASS = "w-72";
+const LOADING_SKELETON_CARD_COUNT = 3;
 
 export type EntityKanbanUpdate<TStatus extends string> = {
   id: string;
@@ -57,13 +59,15 @@ type EntityKanbanProps<
   buildBoard: (items: TItem[]) => Board<TStatus, TItem>;
   getColumnTitle: (status: TStatus) => string;
   /** Sous le titre/badge (ex. totaux prix opportunités). */
-  renderColumnMeta?: (items: TItem[]) => ReactNode;
+  renderColumnMeta?: (items: TItem[], status: TStatus) => ReactNode;
   renderCard: (item: TItem) => ReactNode;
   onOpenItem: (id: string) => void;
   persistUpdates: (
     updates: EntityKanbanUpdate<TStatus>[],
   ) => Promise<{ success: boolean; error?: string }>;
   countLabel: string;
+  /** Colonnes dont le contenu arrive en vague 2 — skeletons de cartes à l’intérieur. */
+  loadingColumnIds?: readonly TStatus[];
 };
 
 function findColumnForItem<
@@ -100,6 +104,34 @@ function boardToUpdates<
     });
   }
   return updates;
+}
+
+function KanbanColumnSkeletonCards({
+  count = LOADING_SKELETON_CARD_COUNT,
+}: {
+  count?: number;
+}) {
+  return (
+    <div
+      className="flex flex-col gap-2"
+      aria-busy="true"
+      aria-label="Chargement des cartes"
+    >
+      {Array.from({ length: count }, (_, index) => (
+        <Card
+          key={index}
+          className="pointer-events-none space-y-2 p-3 shadow-none"
+        >
+          <Skeleton className="h-4 w-3/4" />
+          <Skeleton className="h-3 w-1/2" />
+          <div className="flex items-center justify-between gap-2 pt-1">
+            <Skeleton className="h-3 w-2/5" />
+            <Skeleton className="h-3 w-1/4" />
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
 }
 
 function KanbanColumnShell({
@@ -250,6 +282,7 @@ function KanbanColumn<
   columnMeta,
   onOpen,
   renderCard,
+  isLoading,
 }: {
   status: TStatus;
   title: string;
@@ -257,6 +290,7 @@ function KanbanColumn<
   columnMeta?: ReactNode;
   onOpen: (id: string) => void;
   renderCard: (item: TItem) => ReactNode;
+  isLoading?: boolean;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
 
@@ -270,23 +304,27 @@ function KanbanColumn<
     >
       <KanbanColumnShell
         title={title}
-        itemsCount={items.length}
+        itemsCount={isLoading ? 0 : items.length}
         columnMeta={columnMeta}
       >
-        <SortableContext
-          items={items.map((item) => item.id)}
-          strategy={verticalListSortingStrategy}
-        >
-          {items.map((item) => (
-            <SortableKanbanCard
-              key={item.id}
-              itemId={item.id}
-              onOpen={onOpen}
-            >
-              {renderCard(item)}
-            </SortableKanbanCard>
-          ))}
-        </SortableContext>
+        {isLoading && items.length === 0 ? (
+          <KanbanColumnSkeletonCards />
+        ) : (
+          <SortableContext
+            items={items.map((item) => item.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            {items.map((item) => (
+              <SortableKanbanCard
+                key={item.id}
+                itemId={item.id}
+                onOpen={onOpen}
+              >
+                {renderCard(item)}
+              </SortableKanbanCard>
+            ))}
+          </SortableContext>
+        )}
       </KanbanColumnShell>
     </div>
   );
@@ -310,6 +348,7 @@ export function EntityKanban<
   onOpenItem,
   persistUpdates,
   countLabel,
+  loadingColumnIds,
 }: EntityKanbanProps<TStatus, TItem>) {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
@@ -320,6 +359,10 @@ export function EntityKanban<
   const [activeId, setActiveId] = useState<string | null>(null);
   const syncTokenRef = useRef(0);
   const columnIdSet = useMemo(() => new Set<string>(columnIds), [columnIds]);
+  const loadingColumnIdSet = useMemo(
+    () => new Set<string>(loadingColumnIds ?? []),
+    [loadingColumnIds],
+  );
 
   useEffect(() => {
     setMounted(true);
@@ -453,7 +496,8 @@ export function EntityKanban<
       {columnIds.map((status) => {
         const columnItems = board[status];
         const title = getColumnTitle(status);
-        const columnMeta = renderColumnMeta?.(columnItems);
+        const columnMeta = renderColumnMeta?.(columnItems, status);
+        const isLoading = loadingColumnIdSet.has(status);
 
         return mounted ? (
           <KanbanColumn
@@ -464,23 +508,28 @@ export function EntityKanban<
             columnMeta={columnMeta}
             onOpen={onOpenItem}
             renderCard={renderCard}
+            isLoading={isLoading}
           />
         ) : (
           <KanbanColumnShell
             key={status}
             title={title}
-            itemsCount={columnItems.length}
+            itemsCount={isLoading ? 0 : columnItems.length}
             columnMeta={columnMeta}
           >
-            {columnItems.map((item) => (
-              <StaticKanbanCard
-                key={item.id}
-                itemId={item.id}
-                onOpen={onOpenItem}
-              >
-                {renderCard(item)}
-              </StaticKanbanCard>
-            ))}
+            {isLoading && columnItems.length === 0 ? (
+              <KanbanColumnSkeletonCards />
+            ) : (
+              columnItems.map((item) => (
+                <StaticKanbanCard
+                  key={item.id}
+                  itemId={item.id}
+                  onOpen={onOpenItem}
+                >
+                  {renderCard(item)}
+                </StaticKanbanCard>
+              ))
+            )}
           </KanbanColumnShell>
         );
       })}
