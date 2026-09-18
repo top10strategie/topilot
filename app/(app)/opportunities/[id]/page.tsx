@@ -5,10 +5,6 @@ import { PageHero } from "@/components/layout/page-hero";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrentCollaborator } from "@/lib/auth/get-current-collaborator";
 import { isManagerOrDirection } from "@/lib/auth/roles";
-import { listBusinessCategories } from "@/lib/categories/queries";
-import { getClientById, listClientOptions } from "@/lib/clients/queries";
-import { listCollaborators } from "@/lib/collaborators/queries";
-import { listMissionsByOpportunityId } from "@/lib/missions/queries";
 import { getOpportunityById } from "@/lib/opportunities/queries";
 
 type OpportunityDetailPageProps = {
@@ -21,19 +17,8 @@ async function OpportunityDetailContent({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [
-    opportunity,
-    collaborators,
-    clients,
-    categories,
-    missions,
-    currentCollaborator,
-  ] = await Promise.all([
+  const [opportunity, currentCollaborator] = await Promise.all([
     getOpportunityById(id),
-    listCollaborators({ includeAvatar: false }),
-    listClientOptions(),
-    listBusinessCategories(),
-    listMissionsByOpportunityId(id),
     getCurrentCollaborator(),
   ]);
 
@@ -41,25 +26,9 @@ async function OpportunityDetailContent({
     redirect("/opportunities");
   }
 
-  const linkedClient = await getClientById(opportunity.client_id);
-
-  const opportunityOptions = [
-    {
-      id: opportunity.id,
-      opportunity_name: opportunity.opportunity_name,
-      client_id: opportunity.client_id,
-    },
-  ];
-
   return (
     <OpportunityDetailPageClient
       opportunity={opportunity}
-      collaborators={collaborators}
-      clients={clients}
-      linkedClient={linkedClient}
-      categories={categories}
-      missions={missions}
-      opportunityOptions={opportunityOptions}
       currentCollaboratorId={currentCollaborator?.id ?? ""}
       canManagePrivacy={
         currentCollaborator

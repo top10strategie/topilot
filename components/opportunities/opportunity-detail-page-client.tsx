@@ -1,6 +1,12 @@
 "use client";
 
-import { useMemo, useState, type MouseEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type MouseEvent,
+} from "react";
 import { useRouter } from "next/navigation";
 import {
   CirclesThreePlus,
@@ -9,9 +15,15 @@ import {
   PencilSimple,
   Trash,
 } from "@phosphor-icons/react";
-import { markOpportunityAsLost } from "@/actions/opportunities";
+import { toast } from "sonner";
+import { fetchClientForConsultation } from "@/actions/clients";
+import { fetchMissionsForOpportunity } from "@/actions/missions";
+import {
+  fetchOpportunitiesListFilterOptions,
+  markOpportunityAsLost,
+} from "@/actions/opportunities";
 import { AuditHistoryButton } from "@/components/audit/audit-history-button";
-import { ClientConsultationDrawer } from "@/components/clients/client-consultation-drawer";
+import { ClientConsultationDrawer } from "@/components/clients/client-consultation-drawer-lazy";
 import { useDrawerStack } from "@/components/drawers/drawer-stack-context";
 import { ConfirmStatusDialog } from "@/components/layout/confirm-status-dialog";
 import { DuplicateConfirmDialog } from "@/components/layout/duplicate-confirm-dialog";
@@ -19,15 +31,16 @@ import { EntityDetailsColumns } from "@/components/layout/entity-details-columns
 import { EntityFormDocumentationBlock } from "@/components/layout/entity-form-documentation-block";
 import { IconActionButton } from "@/components/layout/icon-action-button";
 import { PageHero } from "@/components/layout/page-hero";
-import { MissionConsultationDrawer } from "@/components/missions/mission-consultation-drawer";
+import { MissionConsultationDrawer } from "@/components/missions/mission-consultation-drawer-lazy";
 import { MissionFormDrawer } from "@/components/missions/mission-form-drawer-lazy";
 import { OpportunityFormDrawer } from "@/components/opportunities/opportunity-form-drawer-lazy";
 import { EntityNotesEditor } from "@/components/notes/entity-notes-editor";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { CategoryItem } from "@/lib/categories/types";
-import type { ClientDetail, ClientOption } from "@/lib/clients/types";
+import type { ClientOption } from "@/lib/clients/types";
 import { getContactFullName } from "@/lib/clients/labels";
 import type { CollaboratorListItem } from "@/lib/collaborators/types";
 import {
@@ -55,18 +68,10 @@ import type {
   MissionListItem,
   MissionOpportunityOption,
 } from "@/lib/missions/types";
-import type {
-  OpportunityDetail,
-} from "@/lib/opportunities/types";
+import type { OpportunityDetail } from "@/lib/opportunities/types";
 
 type OpportunityDetailPageClientProps = {
   opportunity: OpportunityDetail;
-  collaborators: CollaboratorListItem[];
-  clients: ClientOption[];
-  linkedClient: ClientDetail | null;
-  categories: CategoryItem[];
-  missions: MissionListItem[];
-  opportunityOptions: MissionOpportunityOption[];
   currentCollaboratorId: string;
   canManagePrivacy: boolean;
   canViewHistory: boolean;
@@ -74,12 +79,6 @@ type OpportunityDetailPageClientProps = {
 
 export function OpportunityDetailPageClient({
   opportunity,
-  collaborators,
-  clients,
-  linkedClient,
-  categories,
-  missions,
-  opportunityOptions,
   currentCollaboratorId,
   canManagePrivacy,
   canViewHistory,
@@ -92,6 +91,89 @@ export function OpportunityDetailPageClient({
   const [duplicateOpen, setDuplicateOpen] = useState(false);
   const [missionDuplicateTarget, setMissionDuplicateTarget] =
     useState<MissionListItem | null>(null);
+
+  const [collaborators, setCollaborators] = useState<CollaboratorListItem[]>(
+    [],
+  );
+  const [clients, setClients] = useState<ClientOption[]>([]);
+  const [categories, setCategories] = useState<CategoryItem[]>([]);
+  const [optionsLoaded, setOptionsLoaded] = useState(false);
+  const [optionsLoading, setOptionsLoading] = useState(false);
+
+  const [missions, setMissions] = useState<MissionListItem[]>([]);
+  const [missionsLoaded, setMissionsLoaded] = useState(false);
+  const [missionsLoading, setMissionsLoading] = useState(false);
+
+  const opportunityOptions = useMemo<MissionOpportunityOption[]>(
+    () => [
+      {
+        id: opportunity.id,
+        opportunity_name: opportunity.opportunity_name,
+        client_id: opportunity.client_id,
+      },
+    ],
+    [opportunity.id, opportunity.opportunity_name, opportunity.client_id],
+  );
+
+  const loadFilterOptions = useCallback(async (): Promise<{
+    collaborators: CollaboratorListItem[];
+    clients: ClientOption[];
+    categories: CategoryItem[];
+  } | null> => {
+    if (optionsLoaded) {
+      return { collaborators, clients, categories };
+    }
+    if (optionsLoading) return null;
+    setOptionsLoading(true);
+    const result = await fetchOpportunitiesListFilterOptions();
+    setOptionsLoading(false);
+    if (!result.success) {
+      toast.error(result.error);
+      return null;
+    }
+    setCollaborators(result.collaborators);
+    setClients(result.clients);
+    setCategories(result.categories);
+    setOptionsLoaded(true);
+    return {
+      collaborators: result.collaborators,
+      clients: result.clients,
+      categories: result.categories,
+    };
+  }, [
+    optionsLoaded,
+    optionsLoading,
+    collaborators,
+    clients,
+    categories,
+  ]);
+
+  const loadMissions = useCallback(async () => {
+    if (missionsLoaded || missionsLoading) return;
+    setMissionsLoading(true);
+    const result = await fetchMissionsForOpportunity(opportunity.id);
+    setMissionsLoading(false);
+    if (!result.success) {
+      toast.error(result.error);
+      return;
+    }
+    setMissions(result.missions);
+    setMissionsLoaded(true);
+  }, [missionsLoaded, missionsLoading, opportunity.id]);
+
+  useEffect(() => {
+    setMissions([]);
+    setMissionsLoaded(false);
+  }, [opportunity.id]);
+
+  useEffect(() => {
+    if (tab === "missions") {
+      void loadMissions();
+    }
+    if (tab === "documentations") {
+      void loadFilterOptions();
+    }
+  }, [tab, loadMissions, loadFilterOptions]);
 
   const matchesQuery = useMemo(() => {
     const q = query.trim().toLocaleLowerCase("fr");
@@ -115,16 +197,18 @@ export function OpportunityDetailPageClient({
     return blob.includes(q);
   }, [opportunity, query, tab]);
 
-  const openEdit = () => {
+  const openEdit = async () => {
+    const opts = await loadFilterOptions();
+    if (!opts) return;
     void pushDrawer({
       title: "Édition Opportunité",
       content: (helpers) => (
         <OpportunityFormDrawer
           mode="edit"
           opportunity={opportunity}
-          collaborators={collaborators}
-          clients={clients}
-          availableCategories={categories}
+          collaborators={opts.collaborators}
+          clients={opts.clients}
+          availableCategories={opts.categories}
           canManagePrivacy={canManagePrivacy}
           helpers={helpers}
         />
@@ -134,15 +218,17 @@ export function OpportunityDetailPageClient({
     });
   };
 
-  const openDuplicate = () => {
+  const openDuplicate = async () => {
+    const opts = await loadFilterOptions();
+    if (!opts) return;
     void pushDrawer({
       title: "Nouvelle opportunité",
       content: (helpers) => (
         <OpportunityFormDrawer
           mode="create"
-          collaborators={collaborators}
-          clients={clients}
-          availableCategories={categories}
+          collaborators={opts.collaborators}
+          clients={opts.clients}
+          availableCategories={opts.categories}
           canManagePrivacy={canManagePrivacy}
           duplicatePrefill={buildOpportunityDuplicatePrefill(opportunity)}
           helpers={helpers}
@@ -153,15 +239,17 @@ export function OpportunityDetailPageClient({
     });
   };
 
-  const openDuplicateMission = (source: MissionListItem) => {
+  const openDuplicateMission = async (source: MissionListItem) => {
+    const opts = await loadFilterOptions();
+    if (!opts) return;
     void pushDrawer({
       title: "Nouvelle mission",
       content: (helpers) => (
         <MissionFormDrawer
           mode="create"
-          collaborators={collaborators}
-          clients={clients}
-          availableCategories={categories}
+          collaborators={opts.collaborators}
+          clients={opts.clients}
+          availableCategories={opts.categories}
           opportunityOptions={opportunityOptions}
           currentCollaboratorId={currentCollaboratorId}
           canManagePrivacy={canManagePrivacy}
@@ -183,25 +271,32 @@ export function OpportunityDetailPageClient({
     setMissionDuplicateTarget(mission);
   };
 
-  const openClientConsultation = () => {
-    if (!linkedClient) return;
+  const openClientConsultation = async () => {
+    const result = await fetchClientForConsultation(opportunity.client_id);
+    if (!result.success || !result.client) {
+      toast.error(result.error || "Client introuvable.");
+      return;
+    }
+    const client = result.client;
     void pushDrawer({
-      title: linkedClient.client_name,
+      title: client.client_name,
       content: (helpers) => (
-        <ClientConsultationDrawer client={linkedClient} helpers={helpers} />
+        <ClientConsultationDrawer client={client} helpers={helpers} />
       ),
     });
   };
 
-  const openCreateMission = () => {
+  const openCreateMission = async () => {
+    const opts = await loadFilterOptions();
+    if (!opts) return;
     void pushDrawer({
       title: "Nouvelle mission",
       content: (helpers) => (
         <MissionFormDrawer
           mode="create"
-          collaborators={collaborators}
-          clients={clients}
-          availableCategories={categories}
+          collaborators={opts.collaborators}
+          clients={opts.clients}
+          availableCategories={opts.categories}
           opportunityOptions={opportunityOptions}
           currentCollaboratorId={currentCollaboratorId}
           canManagePrivacy={canManagePrivacy}
@@ -227,7 +322,7 @@ export function OpportunityDetailPageClient({
           helpers={helpers}
           onDuplicate={() => {
             helpers.dismiss();
-            openDuplicateMission(mission);
+            void openDuplicateMission(mission);
           }}
         />
       ),
@@ -256,7 +351,7 @@ export function OpportunityDetailPageClient({
             </div>
             <IconActionButton
               label="Édition Opportunité"
-              onClick={openEdit}
+              onClick={() => void openEdit()}
             >
               <PencilSimple className="size-4" />
             </IconActionButton>
@@ -327,19 +422,13 @@ export function OpportunityDetailPageClient({
                       </div>
                       <div>
                         <p className="text-muted-foreground">Client</p>
-                        {linkedClient ? (
-                          <button
-                            type="button"
-                            onClick={openClientConsultation}
-                            className="font-bold text-primary-foreground underline-offset-4 hover:underline"
-                          >
-                            {opportunity.client.client_name}
-                          </button>
-                        ) : (
-                          <p className="font-bold text-primary-foreground">
-                            {opportunity.client.client_name}
-                          </p>
-                        )}
+                        <button
+                          type="button"
+                          onClick={() => void openClientConsultation()}
+                          className="font-bold text-primary-foreground underline-offset-4 hover:underline"
+                        >
+                          {opportunity.client.client_name}
+                        </button>
                       </div>
                       <div>
                         <p className="text-muted-foreground">
@@ -494,7 +583,7 @@ export function OpportunityDetailPageClient({
             <div className="flex justify-end">
               <IconActionButton
                 label="Nouvelle mission"
-                onClick={openCreateMission}
+                onClick={() => void openCreateMission()}
               >
                 <CirclesThreePlus className="size-4" />
               </IconActionButton>
@@ -513,7 +602,15 @@ export function OpportunityDetailPageClient({
                   </tr>
                 </thead>
                 <tbody>
-                  {missions.length === 0 ? (
+                  {missionsLoading && !missionsLoaded ? (
+                    Array.from({ length: 3 }).map((_, index) => (
+                      <tr key={index} className="border-b last:border-0">
+                        <td className="px-3 py-3" colSpan={7}>
+                          <Skeleton className="h-5 w-full" />
+                        </td>
+                      </tr>
+                    ))
+                  ) : missions.length === 0 ? (
                     <tr>
                       <td
                         colSpan={7}
@@ -577,13 +674,20 @@ export function OpportunityDetailPageClient({
 
           <TabsContent value="documentations" className="mt-4">
             {tab === "documentations" ? (
-              <EntityFormDocumentationBlock
-                entity="opportunity"
-                entityId={opportunity.id}
-                includeWikis={false}
-                collaborators={collaborators}
-                canManagePrivacy={canManagePrivacy}
-              />
+              optionsLoaded ? (
+                <EntityFormDocumentationBlock
+                  entity="opportunity"
+                  entityId={opportunity.id}
+                  includeWikis={false}
+                  collaborators={collaborators}
+                  canManagePrivacy={canManagePrivacy}
+                />
+              ) : (
+                <div className="space-y-3">
+                  <Skeleton className="h-8 w-48" />
+                  <Skeleton className="h-32 w-full" />
+                </div>
+              )
             ) : null}
           </TabsContent>
         </Tabs>
@@ -594,7 +698,7 @@ export function OpportunityDetailPageClient({
         onOpenChange={setDuplicateOpen}
         entityLabel="opportunité"
         entityName={opportunity.opportunity_name}
-        onConfirm={openDuplicate}
+        onConfirm={() => void openDuplicate()}
       />
 
       <DuplicateConfirmDialog
@@ -606,7 +710,7 @@ export function OpportunityDetailPageClient({
         entityName={missionDuplicateTarget?.mission_name ?? ""}
         onConfirm={() => {
           if (missionDuplicateTarget) {
-            openDuplicateMission(missionDuplicateTarget);
+            void openDuplicateMission(missionDuplicateTarget);
           }
         }}
       />

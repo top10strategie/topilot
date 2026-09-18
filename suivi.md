@@ -20,14 +20,22 @@ Accélération du premier paint sur `/missions`, `/opportunities` et `/clients` 
 > **À appliquer sur Supabase** : migrations `20260917180000_list_board_cap_200.sql` et `20260917180100_list_page_perf_indexes.sql` (déjà appliquées via MCP).
 
 ---
-## **[2026-09-17] — Kanban closes : skeletons de cartes**
+## **[2026-09-18] — Perf fiche `/opportunities/[id]`**
 
 **Type :** `perf`
-**Fichiers concernés :** `components/layout/entity-kanban.tsx`, `components/missions/missions-kanban.tsx`, `components/opportunities/opportunities-kanban.tsx`, `suivi.md`
+**Fichiers concernés :** `app/(app)/opportunities/[id]/page.tsx`, `components/opportunities/opportunity-detail-page-client.tsx`, `components/{clients,missions}/*-consultation-drawer-lazy.tsx`, `actions/{clients,missions}.ts`, `suivi.md`
 
 ### Description
 
-Pendant la vague 2 (colonnes closes), les colonnes restent fixes et affichent des skeletons de cartes à la place du texte « Chargement… » (évite l’apparition/disparition visuelle).
+Premier paint de la fiche opportunité allégé : RSC ne charge plus que l’opportunité + collab courant. Options tiroirs, missions et client consultation sont différés (actions + lazy drawers).
+
+### Détails techniques
+
+- Suppression du waterfall `getClientById` et des `listCollaborators` / `listClientOptions` / catégories / missions au SSR
+- `fetchOpportunitiesListFilterOptions` à l’édition / duplication / création mission
+- `fetchMissionsForOpportunity` à l’ouverture de l’onglet Missions (skeleton)
+- `fetchClientForConsultation` au clic sur le nom client
+- Drawers consultation en `next/dynamic`
 
 ---
 ## **[2026-09-14] — Knip : listMissions + types lazy drawers**

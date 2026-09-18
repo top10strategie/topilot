@@ -22,9 +22,11 @@ import type {
 } from "@/lib/missions/types";
 import {
   listMissionOpportunityOptions,
+  listMissionsByOpportunityId,
   listMissionsPage,
 } from "@/lib/missions/queries";
 import { createClient } from "@/lib/supabase/server";
+import { isUuid } from "@/lib/uuid";
 
 export type MissionActionResult =
   | { success: true; id: string }
@@ -561,5 +563,37 @@ export async function fetchMissionsClosedBoard(
       missions: [],
       totalCount: 0,
     };
+  }
+}
+
+/**
+ * Missions liées à une opportunité (onglet fiche — chargé à la demande).
+ */
+export async function fetchMissionsForOpportunity(
+  opportunityId: string,
+): Promise<
+  | { success: true; missions: MissionListItem[] }
+  | { success: false; error: string; missions: [] }
+> {
+  const auth = await requireActiveCollaboratorAction();
+  if (!auth.success) {
+    return { success: false, error: auth.error, missions: [] };
+  }
+  if (!isUuid(opportunityId)) {
+    return {
+      success: false,
+      error: "Identifiant invalide.",
+      missions: [],
+    };
+  }
+  try {
+    const missions = await listMissionsByOpportunityId(opportunityId);
+    return { success: true, missions };
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Impossible de charger les missions.";
+    return { success: false, error: message, missions: [] };
   }
 }
