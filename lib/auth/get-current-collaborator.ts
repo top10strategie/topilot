@@ -1,4 +1,5 @@
 import { cache } from "react";
+import { getAuthUser } from "@/lib/auth/get-auth-user";
 import { createClient } from "@/lib/supabase/server";
 import type { CurrentCollaborator } from "@/lib/auth/collaborator-display";
 import type { CollaboratorRole } from "@/lib/collaborators/types";
@@ -24,14 +25,12 @@ function unwrapOne<T>(value: T | T[] | null | undefined): T | null {
  */
 export const getCurrentCollaborator = cache(
   async (): Promise<CurrentCollaborator | null> => {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
+    const user = await getAuthUser();
     if (!user) {
       return null;
     }
+
+    const supabase = await createClient();
 
     const { data, error } = await supabase
       .from("collaborator")

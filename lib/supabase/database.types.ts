@@ -1518,6 +1518,14 @@ export type Database = {
       }
       is_active_collaborator: { Args: never; Returns: boolean }
       is_manager_or_direction: { Args: never; Returns: boolean }
+      load_analyses_payload: {
+        Args: {
+          p_missions?: boolean
+          p_opportunities?: boolean
+          p_subscriptions?: boolean
+        }
+        Returns: Json
+      }
       list_clients_page: {
         Args: {
           p_category_ids?: string[]
