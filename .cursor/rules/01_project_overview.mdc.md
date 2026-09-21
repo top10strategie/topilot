@@ -46,7 +46,7 @@ Centraliser l'information client, opportunité, missions et réduire la dispersi
 12. Historique automatique
 13. Préférences utilisateur et page profil
 14. Analyse CA par catégorie de mission et par équipe sur période définie (basée sur `opportunity.price` / `average_price`)
-15. Analyse du budget client mensuel (basée sur `opportunity.price` / `average_price`)
+15. Analyse du budget client mensuel (basée sur `opportunity.price` / `average_price`) et objectifs de CA annuel (`revenue_aim`, courbe mensuelle = `amount / 12`)
 16. Missions récurrentes, répétitives et dupliquées
 17. Versionning documentaire avancé (diff, restauration)
 18. Ré-authentification avant changement de mot de passe

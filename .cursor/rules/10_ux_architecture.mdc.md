@@ -454,9 +454,9 @@ Page à **plat, sans onglets** (contrairement à Client/Opportunité/Mission) :
 - **Missions** :
     - 4 cartes KPI : Nombre de missions (`COUNT`) ; Nombre de missions en production (`kanban_status = en_cours`) ; Nombre de missions abandonnées (`kanban_status = archivee AND completed_at IS NULL`) ; Nombre de missions complétées (`completed_at IS NOT NULL`, cf. `03_business_rules.mdc`/`04_database_schema.mdc`).
     - Comparaison par statut : diagramme en barres horizontales par `kanban_status`.
-    - Evolution du pipeline Produit : diagramme en barres verticales dans le temps.
-    - Comparaison par catégories : diagramme en barres horizontales par `mission_category`.
+    - Evolution du pipeline Produit : diagramme en barres verticales ; **métrique** = `COUNT` des missions dont `start_at` tombe dans le mois ; **sélecteur d’année** (années dérivées des `start_at` présents ; défaut = année calendaire Paris courante si disponible).
     - Comparaison par pôle : diagramme en barres horizontales, nombre de missions par pôle (via `collaborator_id` → équipe).
+    - Pas de graphique « comparaison par catégories » sur cet onglet : le décompte par `mission_category` n’est pas retenu.
 - **Abonnements** :
     - "Dépenses du mois" : un total séparé **par devise réellement utilisée** dans les abonnements actifs du mois courant (somme des `tool_subscription_price` actives, groupée par `currency`) — pas de nombre de devises fixé à l'avance, pas de conversion/agrégation inter-devises. Si une seule devise est utilisée (ex. uniquement EUR), un seul total s'affiche.
     - Coût par Outil - mois : diagramme en barres verticales, coût actif du mois par outil.

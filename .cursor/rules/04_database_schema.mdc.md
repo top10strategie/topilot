@@ -505,6 +505,7 @@ CREATE TABLE public.mission (
   estimated_charge  numeric CHECK (estimated_charge IS NULL OR estimated_charge >= 0),
   start_at          date NOT NULL DEFAULT CURRENT_DATE,
   end_at            date NOT NULL,
+  series_id         uuid REFERENCES public.mission_series(id) ON DELETE SET NULL,
   created_at        timestamptz NOT NULL DEFAULT now(),
   updated_at        timestamptz,
   CONSTRAINT mission_scope_client_coherence CHECK (
@@ -516,8 +517,10 @@ CREATE TABLE public.mission (
 CREATE INDEX idx_mission_client_id ON public.mission(client_id);
 CREATE INDEX idx_mission_collaborator_id ON public.mission(collaborator_id);
 CREATE INDEX idx_mission_opportunity_id ON public.mission(opportunity_id);
+CREATE INDEX idx_mission_series_id ON public.mission(series_id);
 ```
 
+> **`series_id`** : `NULL` = mission non récurrente ; sinon rattachement à une règle `mission_series` partagée (occurrences générées par le cron J−10).
 > **`mission` n'est jamais supprimée physiquement** — aucune policy `DELETE` (voir `05_security_rls.mdc`). `mission_scope` est garanti cohérent avec `client_id` par la contrainte `mission_scope_client_coherence` (pas de trigger de synchronisation : `client.status` n'existe pas, seul `client.is_active` existe et n'a aucun impact sur `mission_scope`). `kanban_status` par défaut vaut `a_faire`, cohérent avec l'enum officiel (voir `03_business_rules.mdc`).
 
 > **`kanban_order`** : trace la position de la carte au sein de sa colonne Kanban, mise à jour à chaque glisser-déposer — même comportement que sur `opportunity` (cf. section 8 de `07_ux_composants_reutilisable.mdc`).
@@ -555,6 +558,39 @@ CREATE TRIGGER trg_set_mission_archived_at
 BEFORE INSERT OR UPDATE ON public.mission
 FOR EACH ROW EXECUTE FUNCTION public.set_mission_archived_at();
 ```
+
+## `mission_series`
+
+Règle de récurrence partagée par plusieurs occurrences `mission` (`series_id`).
+
+```sql
+CREATE TYPE public.mission_recurrence_frequency AS ENUM (
+  'hebdomadaire',
+  'mensuelle',
+  'trimestrielle',
+  'annuelle'
+);
+
+CREATE TABLE public.mission_series (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  frequency   public.mission_recurrence_frequency NOT NULL,
+  starts_on   date NOT NULL,
+  ends_on     date,
+  created_at  timestamptz NOT NULL DEFAULT now(),
+  updated_at  timestamptz,
+  CONSTRAINT mission_series_ends_on_coherence CHECK (
+    ends_on IS NULL OR ends_on >= starts_on
+  )
+);
+
+CREATE INDEX idx_mission_series_active ON public.mission_series(ends_on, starts_on);
+```
+
+> **Cron** : génération des prochaines occurrences à J−10 avant `start_at` (route `/api/cron/mission-recurrence`). **Arrêt de série** : poser `ends_on` (pas de `DELETE` côté client — aucune policy DELETE, malgré un `GRANT DELETE` technique).
+>
+> **Triggers** : `trg_set_updated_at` ; `trg_audit` (INSERT/UPDATE/DELETE) — `entity_type = 'mission_series'` déjà dans le CHECK `audit_log`.
+>
+> **RLS** : SELECT / INSERT / UPDATE pour tout collaborateur actif ; pas de policy DELETE.
 
 ## `tool_access`
 
@@ -671,6 +707,25 @@ FOR EACH ROW EXECUTE FUNCTION public.create_default_setting_for_collaborator();
 ```
 
 > Les valeurs par défaut (`theme = 'systeme'`, `must_change_password = true`) sont déjà posées par les `DEFAULT` de la colonne — l'`INSERT` ci-dessus n'a donc besoin de fournir que `collaborator_id`.
+
+## `revenue_aim`
+
+Objectifs de CA annuel (courbe objectif sur `/analyses` onglet Opportunités / widgets Home).
+
+```sql
+CREATE TABLE public.revenue_aim (
+  id      uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  amount  numeric NOT NULL,
+  year    integer NOT NULL,
+  CONSTRAINT revenue_aim_year_unique UNIQUE (year)
+);
+```
+
+> Montant en euros (décimales OK). La courbe mensuelle d’objectif utilise `amount / 12`. Une seule ligne par année calendaire.
+>
+> **RLS** : SELECT pour tout collaborateur actif ; INSERT / UPDATE / DELETE réservés Manager / Direction (`is_manager_or_direction()`).
+>
+> **Pas d’audit** : table absente du CHECK `audit_log.entity_type` et sans `trg_audit` (volontaire à ce stade).
 
 ## `audit_log`
 
@@ -943,4 +998,4 @@ END;
 $$ LANGUAGE plpgsql;
 ```
 
-À appliquer (`BEFORE UPDATE ... FOR EACH ROW`) sur : `team, tool, collaborator, client, contact_client, opportunity, mission, document, tool_access, tool_subscription, wiki, setting`.
+À appliquer (`BEFORE UPDATE ... FOR EACH ROW`) sur : `team, tool, collaborator, client, contact_client, opportunity, mission, mission_series, document, tool_access, tool_subscription, wiki, setting`.

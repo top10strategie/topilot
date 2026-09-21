@@ -1,5 +1,21 @@
 # Suivi des actions — TOPilot
 
+## **[2026-09-21] — Analyses Missions : pipeline Produit ; doc schéma**
+
+**Type :** `feature`
+**Fichiers concernés :** `lib/analyses/{types,queries,empty-payload}.ts`, `components/analyses/missions-analysis-panel.tsx`, `.cursor/rules/{01_project_overview,03_business_rules,04_database_schema,10_ux_architecture}.mdc.md`, `suivi.md`
+
+### Description
+
+Complétion de l’onglet Analyses Missions (pipeline Produit) et alignement de la documentation schéma/métier sur `mission_series` et `revenue_aim`. Le graphique « Comparaison par catégories » n’est pas retenu : il n’apporte pas d’information utile et ne doit pas être réintroduit.
+
+### Détails techniques
+
+- Pipeline Produit : `COUNT` des missions par mois selon `start_at`, sélecteur d’année
+- Doc `04` : `series_id`, section `mission_series`, section `revenue_aim` (sans audit) ; `03` / `01` / `10` alignés
+- Hors scope : widgets Home, migration audit `revenue_aim`, comparaison par catégories de mission
+
+---
 ## **[2026-09-18] — Knip : exports BOARD_CAP inutilisés**
 
 **Type :** `fix`
