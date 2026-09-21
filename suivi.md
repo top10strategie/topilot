@@ -16,6 +16,22 @@ Complétion de l’onglet Analyses Missions (pipeline Produit) et alignement de 
 - Hors scope : widgets Home, migration audit `revenue_aim`, comparaison par catégories de mission
 
 ---
+## **[2026-09-18] — Sécurité P1/P2 : RLS setting, collaborator, jonctions, crons, URLs**
+
+**Type :** `fix`
+**Fichiers concernés :** `supabase/migrations/20260918120000_security_p1_setting_collaborator.sql`, `supabase/migrations/20260918120100_security_p2_rls_writes.sql`, `actions/auth.ts`, `actions/documents.ts`, `actions/search.ts`, `components/update-password-form.tsx`, `lib/supabase/proxy.ts`, `lib/auth/cron-secret.ts`, `lib/documents/external-url.ts`, `app/api/cron/*/route.ts`, `app/api/documents/[id]/file/route.ts`, `.cursor/rules/05_security_rls.mdc.md`, `suivi.md`
+
+### Description
+
+Remédiation des findings critiques et élevés de l’audit : figer `must_change_password`, restreindre UPDATE collaborator / setting, durcir les écritures RLS (tool_access privé, jonctions, contact_client), protéger les crons et les URL documents externes.
+
+### Détails techniques
+
+- **P1** : `setting` SELECT/UPDATE = propre ligne ; trigger `must_change_password` réservé `service_role` ; `completeForcedPasswordChange` (updateUser + clear) ; UPDATE collaborator self vs Manager/Direction ; `auth_user_id` immuable
+- **P2** : INSERT `tool_access` privé + trigger INSERT ; jonctions `can_access_*` + `can_link_business_category` ; `contact_client` INSERT ; `search_global` garde actif ; proxy `/api/cron` exempté session ; `timingSafeEqual` sur `CRON_SECRET` ; allowlist http(s) anti-SSRF
+- Migrations appliquées via MCP Supabase (`security_p1_setting_collaborator`, `security_p2_rls_writes_part1`, `security_p2_junction_writes`, `security_p2_junction_opp_team`, `security_p2_search_active_guard`)
+
+---
 ## **[2026-09-18] — Knip : exports BOARD_CAP inutilisés**
 
 **Type :** `fix`

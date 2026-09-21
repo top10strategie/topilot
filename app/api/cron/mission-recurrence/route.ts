@@ -1,23 +1,16 @@
 import { NextResponse } from "next/server";
+import { verifyBearerCronSecret } from "@/lib/auth/cron-secret";
 import { generateDueMissionOccurrences } from "@/lib/missions/generate-recurrence";
 
 /** Limite Vercel pour génération des occurrences récurrentes. */
 export const maxDuration = 60;
-
-function verifyCronSecret(request: Request): boolean {
-  const secret = process.env.CRON_SECRET?.trim();
-  if (!secret) return false;
-  const header = request.headers.get("authorization");
-  if (!header?.startsWith("Bearer ")) return false;
-  return header.slice("Bearer ".length) === secret;
-}
 
 /**
  * Cron Vercel — génération des missions récurrentes (J−10).
  * Auth : `Authorization: Bearer <CRON_SECRET>`.
  */
 export async function GET(request: Request) {
-  if (!verifyCronSecret(request)) {
+  if (!verifyBearerCronSecret(request)) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 

@@ -1,5 +1,6 @@
 "use server";
 
+import { requireActiveCollaboratorAction } from "@/lib/auth/require-action";
 import { createClient } from "@/lib/supabase/server";
 import type { GlobalSearchResult, SearchEntityType } from "@/lib/search/types";
 
@@ -8,6 +9,11 @@ const MIN_QUERY_LENGTH = 2;
 export async function searchGlobalAction(
   query: string,
 ): Promise<{ results: GlobalSearchResult[]; error?: string }> {
+  const auth = await requireActiveCollaboratorAction();
+  if (!auth.success) {
+    return { results: [], error: auth.error };
+  }
+
   const trimmed = query.trim();
   if (trimmed.length < MIN_QUERY_LENGTH) {
     return { results: [] };

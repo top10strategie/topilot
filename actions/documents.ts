@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireActiveCollaboratorAction } from "@/lib/auth/require-action";
+import { assertSafeExternalUrl } from "@/lib/documents/external-url";
 import { mirrorOpportunityDocumentToClient } from "@/lib/documents/mirror-opportunity-to-client";
 import {
   copyStorageObject,
@@ -137,11 +138,8 @@ export async function createDocument(
     if (!url) {
       fieldErrors.url = "L'URL est obligatoire.";
     } else {
-      try {
-        new URL(url);
-      } catch {
-        fieldErrors.url = "URL invalide.";
-      }
+      const safe = assertSafeExternalUrl(url);
+      if (!safe.ok) fieldErrors.url = safe.error;
     }
   }
   if (linkEntity && (!linkEntityId || !isUuid(linkEntityId))) {
@@ -360,11 +358,8 @@ export async function updateDocument(
     if (!url) {
       fieldErrors.url = "L'URL est obligatoire.";
     } else {
-      try {
-        new URL(url);
-      } catch {
-        fieldErrors.url = "URL invalide.";
-      }
+      const safe = assertSafeExternalUrl(url);
+      if (!safe.ok) fieldErrors.url = safe.error;
     }
   }
 
@@ -467,11 +462,8 @@ async function createDocumentVersion(
   if (storageType === "url") {
     if (!url) fieldErrors.url = "L'URL est obligatoire.";
     else {
-      try {
-        new URL(url);
-      } catch {
-        fieldErrors.url = "URL invalide.";
-      }
+      const safe = assertSafeExternalUrl(url);
+      if (!safe.ok) fieldErrors.url = safe.error;
     }
   }
 

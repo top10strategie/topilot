@@ -296,9 +296,17 @@ CREATE POLICY "team_delete_manager_direction" ON public.team
 ## `must_change_password`
 
 - **Ne jamais exposer** ce champ dans l'UI.
-- Mis à jour **exclusivement** via server action avec `SUPABASE_SERVICE_ROLE_KEY`.
+- Mis à jour **exclusivement** via service role (`SUPABASE_SERVICE_ROLE_KEY`) — trigger `enforce_setting_must_change_password` refuse toute modification hors `service_role`.
+- RLS `setting` : SELECT/UPDATE limités à **sa propre ligne** (`current_collaborator_id()`). Pas de policy INSERT/DELETE authenticated (création via trigger collaborateur).
+- Flux forcé `/auth/update-password` : server action `completeForcedPasswordChange(password)` qui fait `updateUser` **puis** clear du flag — ne pas exposer un clear autonome.
 - Si `true` au moment du login : bloquer l'accès aux routes métier jusqu'au changement effectif.
-- Après changement réussi : remettre à `false` via server action.
+
+## `collaborator` — UPDATE
+
+- Policy `collaborator_update_self` : sa propre ligne (`auth_user_id = auth.uid()`).
+- Policy `collaborator_update_manager_direction` : Manager/Direction pour toute ligne.
+- Trigger `enforce_collaborator_sensitive_fields` : `role` / `status`.
+- Trigger `enforce_collaborator_auth_user_id_immutable` : `auth_user_id` non modifiable.
 
 ## Ré-authentification avant changement de mot de passe (`/settings`)
 

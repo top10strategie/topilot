@@ -1,6 +1,6 @@
 "use client";
 
-import { clearMustChangePassword } from "@/actions/auth";
+import { completeForcedPasswordChange } from "@/actions/auth";
 import { LOGIN_PATH } from "@/lib/auth/constants";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
@@ -49,26 +49,21 @@ export function UpdatePasswordForm({
 
   const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    const supabase = createClient();
     setIsLoading(true);
     setError(null);
 
     try {
-      const { error: updateError } = await supabase.auth.updateUser({
-        password,
-      });
-      if (updateError) throw updateError;
-
-      const result = await clearMustChangePassword();
+      const result = await completeForcedPasswordChange(password);
       if (!result.success) {
         throw new Error(
           result.error ??
-            "Mot de passe mis à jour, mais la préférence n'a pas pu être synchronisée.",
+            "Une erreur est survenue lors du changement de mot de passe.",
         );
       }
 
       // Déconnexion + navigation hard : le soft router échoue souvent après
       // mutation des cookies Auth (l'utilisateur restait sur cette page).
+      const supabase = createClient();
       await supabase.auth.signOut();
       window.location.assign(LOGIN_PATH);
     } catch (err: unknown) {
