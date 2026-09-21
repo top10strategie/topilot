@@ -1,18 +1,30 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { HomePageClient } from "@/components/home/home-page-client";
+import { HomeWidgetSlot } from "@/components/home/home-widget-slot";
 import { PageHero } from "@/components/layout/page-hero";
 import { Skeleton } from "@/components/ui/skeleton";
-import { emptyAnalysesPayload } from "@/lib/analyses/empty-payload";
-import { loadAnalysesPayload } from "@/lib/analyses/queries";
 import {
   isCollaboratorHomeWidgetId,
   isHomeWidgetId,
   type HomeWidgetId,
 } from "@/lib/analyses/types";
-import { listHomeMissionsBoard } from "@/lib/missions/queries";
-import { listHomeOpportunitiesBoard } from "@/lib/opportunities/queries";
 import { getOwnProfile } from "@/lib/settings/queries";
+
+const OPPORTUNITY_ANALYSIS_WIDGETS = [
+  "kpi_opportunities",
+  "opp_by_status",
+  "opp_ca_by_client",
+  "opp_pipeline",
+  "opp_by_team",
+] as const;
+
+const MISSION_ANALYSIS_WIDGETS = ["kpi_missions", "mission_by_status"] as const;
+
+const SUBSCRIPTION_ANALYSIS_WIDGETS = [
+  "tools_monthly_spend",
+  "tools_category_year",
+] as const;
 
 function resolveHomeWidgets(
   widgets: string[],
@@ -30,6 +42,28 @@ function resolveHomeWidgets(
   return normalized.filter(isHomeWidgetId);
 }
 
+function analysesScopeKey(widgets: HomeWidgetId[]): string {
+  const needOpportunities = widgets.some((id) =>
+    (OPPORTUNITY_ANALYSIS_WIDGETS as readonly string[]).includes(id),
+  );
+  const needMissions = widgets.some((id) =>
+    (MISSION_ANALYSIS_WIDGETS as readonly string[]).includes(id),
+  );
+  const needSubscriptions = widgets.some((id) =>
+    (SUBSCRIPTION_ANALYSIS_WIDGETS as readonly string[]).includes(id),
+  );
+  return `${needOpportunities ? "1" : "0"}${needMissions ? "1" : "0"}${needSubscriptions ? "1" : "0"}`;
+}
+
+function HomeWidgetFallback() {
+  return (
+    <div className="space-y-3">
+      <Skeleton className="h-5 w-56" />
+      <Skeleton className="h-36 w-full" />
+    </div>
+  );
+}
+
 async function HomeContent() {
   const profile = await getOwnProfile();
   if (!profile) {
@@ -37,52 +71,21 @@ async function HomeContent() {
   }
 
   const widgets = resolveHomeWidgets(profile.home_widgets, profile.role);
-  const needOpportunities = widgets.includes("kanban_opportunities");
-  const needMissions = widgets.includes("kanban_missions");
-  const needOppAnalyses = widgets.some((id) =>
-    (
-      [
-        "kpi_opportunities",
-        "opp_by_status",
-        "opp_ca_by_client",
-        "opp_pipeline",
-        "opp_by_team",
-      ] as const
-    ).includes(id as never),
-  );
-  const needMissionAnalyses = widgets.some((id) =>
-    (["kpi_missions", "mission_by_status"] as const).includes(id as never),
-  );
-  const needSubsAnalyses = widgets.some((id) =>
-    (["tools_monthly_spend", "tools_category_year"] as const).includes(
-      id as never,
-    ),
-  );
-  const needAnalyses =
-    needOppAnalyses || needMissionAnalyses || needSubsAnalyses;
-
-  const [analyses, opportunities, missions] = await Promise.all([
-    needAnalyses
-      ? loadAnalysesPayload({
-          opportunities: needOppAnalyses,
-          missions: needMissionAnalyses,
-          subscriptions: needSubsAnalyses,
-        })
-      : Promise.resolve(emptyAnalysesPayload()),
-    needOpportunities
-      ? listHomeOpportunitiesBoard(profile.id)
-      : Promise.resolve([]),
-    needMissions ? listHomeMissionsBoard(profile.id) : Promise.resolve([]),
-  ]);
+  const scopeKey = analysesScopeKey(widgets);
 
   return (
-    <HomePageClient
-      analyses={analyses}
-      opportunities={opportunities}
-      missions={missions}
-      initialWidgets={widgets}
-      role={profile.role}
-    />
+    <HomePageClient initialWidgets={widgets} role={profile.role}>
+      {widgets.map((id) => (
+        <Suspense key={id} fallback={<HomeWidgetFallback />}>
+          <HomeWidgetSlot
+            widgetId={id}
+            collaboratorId={profile.id}
+            role={profile.role}
+            analysesScopeKey={scopeKey}
+          />
+        </Suspense>
+      ))}
+    </HomePageClient>
   );
 }
 

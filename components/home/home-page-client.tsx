@@ -1,26 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { GearSix } from "@phosphor-icons/react";
-import { HomeWidgetRenderer } from "@/components/home/home-widget-renderer";
 import { HomeWidgetsDialog } from "@/components/home/home-widgets-dialog";
 import { IconActionButton } from "@/components/layout/icon-action-button";
 import { PageHero } from "@/components/layout/page-hero";
-import type { AnalysesPayload, HomeWidgetId } from "@/lib/analyses/types";
+import type { HomeWidgetId } from "@/lib/analyses/types";
 import {
   isCollaboratorHomeWidgetId,
   isHomeWidgetId,
 } from "@/lib/analyses/types";
-import type { MissionListItem } from "@/lib/missions/types";
-import type { OpportunityListItem } from "@/lib/opportunities/types";
 
 type HomePageClientProps = {
-  analyses: AnalysesPayload;
-  opportunities: OpportunityListItem[];
-  missions: MissionListItem[];
   initialWidgets: string[];
   role: string;
+  children: ReactNode;
 };
 
 function filterWidgetsForRole(
@@ -40,11 +35,9 @@ function filterWidgetsForRole(
 }
 
 export function HomePageClient({
-  analyses,
-  opportunities,
-  missions,
   initialWidgets,
   role,
+  children,
 }: HomePageClientProps) {
   const router = useRouter();
   const [widgets, setWidgets] = useState<HomeWidgetId[]>(() =>
@@ -77,18 +70,7 @@ export function HomePageClient({
             personnaliser votre page d&apos;accueil.
           </p>
         ) : (
-          <div className="space-y-8">
-            {widgets.map((id) => (
-              <HomeWidgetRenderer
-                key={id}
-                widgetId={id}
-                analyses={analyses}
-                opportunities={opportunities}
-                missions={missions}
-                role={role}
-              />
-            ))}
-          </div>
+          <div className="space-y-8">{children}</div>
         )}
       </div>
       <HomeWidgetsDialog

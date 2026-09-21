@@ -1,4 +1,5 @@
 import { cache } from "react";
+import { getAuthUser } from "@/lib/auth/get-auth-user";
 import { getCurrentCollaborator } from "@/lib/auth/get-current-collaborator";
 import { createClient } from "@/lib/supabase/server";
 import { resolveVisualPublicUrl } from "@/lib/visuels/public-url";
@@ -57,11 +58,10 @@ export const getPreferredMissionCategoryIds = cache(
 );
 
 export const getOwnProfile = cache(async (): Promise<OwnProfile | null> => {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) return null;
+
+  const supabase = await createClient();
 
   const { data, error } = await supabase
     .from("collaborator")
