@@ -1,7 +1,9 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { AnalysisBarChart } from "@/components/analyses/analysis-bar-chart-lazy";
 import { AnalysisKpiGrid } from "@/components/analyses/analysis-kpi-grid";
+import { AnalysisYearSelect } from "@/components/analyses/analysis-period-selects";
 import type { MissionsAnalysis } from "@/lib/analyses/types";
 
 type Props = {
@@ -9,6 +11,21 @@ type Props = {
 };
 
 export function MissionsAnalysisPanel({ data }: Props) {
+  const years = useMemo(
+    () =>
+      data.availableYears.length
+        ? data.availableYears
+        : [data.defaultYear],
+    [data.availableYears, data.defaultYear],
+  );
+  const [pipelineYear, setPipelineYear] = useState(data.defaultYear);
+
+  const selectedYear = years.includes(pipelineYear)
+    ? pipelineYear
+    : (years[0] ?? data.defaultYear);
+
+  const pipelineData = data.pipelineByYear[selectedYear] ?? [];
+
   return (
     <div className="space-y-6">
       <AnalysisKpiGrid
@@ -40,6 +57,19 @@ export function MissionsAnalysisPanel({ data }: Props) {
           layout="horizontal"
         />
       </div>
+      <AnalysisBarChart
+        title="Évolution du pipeline Produit"
+        data={pipelineData}
+        layout="vertical"
+        emptyMessage="Aucune mission démarrée sur cette année."
+        headerAction={
+          <AnalysisYearSelect
+            years={years}
+            value={selectedYear}
+            onChange={setPipelineYear}
+          />
+        }
+      />
     </div>
   );
 }

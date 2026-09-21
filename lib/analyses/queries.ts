@@ -263,6 +263,56 @@ function countMissionStatusCurrentMonth(
   }));
 }
 
+function emptyMissionPipelineYear(): ChartDatum[] {
+  return Array.from({ length: 12 }, (_, i) => ({
+    key: String(i + 1),
+    label: monthLabelShort(i + 1),
+    value: 0,
+  }));
+}
+
+/** Pipeline Produit : COUNT par mois selon `start_at`. */
+function buildMissionPipelineByYear(rows: MissionRow[]): {
+  availableYears: number[];
+  defaultYear: number;
+  pipelineByYear: Record<number, ChartDatum[]>;
+} {
+  const parisYear = getParisParts().year;
+  const yearSet = new Set<number>([parisYear]);
+  const byYear = new Map<number, number[]>();
+
+  const ensureYear = (year: number) => {
+    if (!byYear.has(year)) {
+      byYear.set(year, Array.from({ length: 12 }, () => 0));
+    }
+    return byYear.get(year)!;
+  };
+
+  for (const row of rows) {
+    const parts = partsFromDateOnly(row.start_at);
+    if (!parts) continue;
+    yearSet.add(parts.year);
+    const counts = ensureYear(parts.year);
+    counts[parts.month - 1] = (counts[parts.month - 1] ?? 0) + 1;
+  }
+
+  const availableYears = [...yearSet].sort((a, b) => b - a);
+  const defaultYear = availableYears.includes(parisYear)
+    ? parisYear
+    : (availableYears[0] ?? parisYear);
+
+  const pipelineByYear: Record<number, ChartDatum[]> = {};
+  for (const year of availableYears) {
+    const counts = byYear.get(year) ?? Array.from({ length: 12 }, () => 0);
+    pipelineByYear[year] = emptyMissionPipelineYear().map((point, i) => ({
+      ...point,
+      value: counts[i] ?? 0,
+    }));
+  }
+
+  return { availableYears, defaultYear, pipelineByYear };
+}
+
 function mapToSortedChart(
   map: Map<string, { label: string; value: number }>,
 ): ChartDatum[] {
@@ -589,6 +639,8 @@ export async function loadAnalysesPayload(
     });
 
   // —— Missions ——
+  const missionPipeline = buildMissionPipelineByYear(missions);
+
   const missionByTeamMap = new Map<string, number>();
   for (const row of missions) {
     const team = teamByCollaborator.get(row.collaborator_id) ?? "Sans pôle";
@@ -733,6 +785,9 @@ export async function loadAnalysesPayload(
         paris.month,
       ),
       byTeam: missionByTeam,
+      availableYears: missionPipeline.availableYears,
+      defaultYear: missionPipeline.defaultYear,
+      pipelineByYear: missionPipeline.pipelineByYear,
     },
     subscriptions: {
       currentYear: paris.year,

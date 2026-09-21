@@ -86,6 +86,14 @@ export type MissionsAnalysis = {
   /** Statuts a_faire|en_cours|terminee, missions dont `end_at` ∈ mois calendaire Paris. */
   byStatus: ChartDatum[];
   byTeam: ChartDatum[];
+  /** Années disponibles pour le pipeline Produit (dérivées de `start_at`). */
+  availableYears: number[];
+  defaultYear: number;
+  /**
+   * Pipeline Produit : 12 points Jan→Déc par année,
+   * `value` = COUNT des missions dont `start_at` tombe dans le mois.
+   */
+  pipelineByYear: Record<number, ChartDatum[]>;
 };
 
 /** Première année affichée pour les graphiques abonnements. */
