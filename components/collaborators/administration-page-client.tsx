@@ -601,10 +601,13 @@ export function AdministrationPageClient({
                           .includes(q);
                       })
                       .map((team) => {
-                        const activeCount = team.members.filter(
+                        const presentMembers = team.members.filter(
+                          (m) => m.status !== "sorti",
+                        );
+                        const activeCount = presentMembers.filter(
                           (m) => m.status === "actif",
                         ).length;
-                        const totalCount = team.members.length;
+                        const totalCount = presentMembers.length;
                         return (
                           <Card key={team.id}>
                             <CardHeader className="space-y-3 pb-2">

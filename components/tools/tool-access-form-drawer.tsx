@@ -39,7 +39,11 @@ type ToolAccessFormDrawerProps = {
   availableCategories?: CategoryItem[];
   /** Manager / Direction — bascule Privé. */
   canManagePrivacy: boolean;
-  helpers: DrawerHelpers<{ id: string; label?: string }>;
+  helpers: DrawerHelpers<{
+    id: string;
+    label?: string;
+    identifier?: string;
+  }>;
 };
 
 /**
@@ -134,7 +138,11 @@ export function ToolAccessFormDrawer({
           return;
         }
         toast.success("Accès créé.");
-        helpers.resolve({ id: result.id, label: trimmedLabel });
+        helpers.resolve({
+          id: result.id,
+          label: trimmedLabel,
+          identifier: trimmedIdentifier,
+        });
         return;
       }
 
@@ -156,7 +164,11 @@ export function ToolAccessFormDrawer({
         return;
       }
       toast.success("Accès mis à jour.");
-      helpers.resolve({ id: result.id, label: trimmedLabel });
+      helpers.resolve({
+        id: result.id,
+        label: trimmedLabel,
+        identifier: trimmedIdentifier,
+      });
     });
   };
 

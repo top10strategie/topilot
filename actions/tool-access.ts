@@ -281,3 +281,52 @@ export async function deleteToolAccessRecord(
   revalidateTool(row.tool_id as string);
   return { success: true };
 }
+
+export type ToolAccessSummary = {
+  id: string;
+  label: string;
+  identifier: string;
+};
+
+/**
+ * Lecture légère des accès d'un outil (sans secret Vault).
+ * Sert de filet au tiroir de création si le tiroir empilé se ferme sans valeur.
+ */
+export async function listToolAccessSummaries(
+  toolId: string,
+): Promise<
+  { success: true; accesses: ToolAccessSummary[] } | { success: false; error: string }
+> {
+  const auth = await requireActiveCollaboratorAction();
+  if (!auth.success) {
+    return { success: false, error: auth.error };
+  }
+
+  if (!isUuid(toolId)) {
+    return { success: false, error: "Outil invalide." };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("tool_access")
+    .select("id, label, identifier")
+    .eq("tool_id", toolId)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    console.error("listToolAccessSummaries:", error.message);
+    return {
+      success: false,
+      error: `Impossible de charger les accès : ${error.message}`,
+    };
+  }
+
+  return {
+    success: true,
+    accesses: (data ?? []).map((row) => ({
+      id: row.id,
+      label: row.label,
+      identifier: row.identifier,
+    })),
+  };
+}
