@@ -37,12 +37,14 @@ export async function searchGlobalAction(
       title: string;
       subtitle: string | null;
       rank: number;
+      parent_id: string | null;
     }) => ({
       entity_type: row.entity_type as SearchEntityType,
       entity_id: row.entity_id,
       title: row.title,
       subtitle: row.subtitle,
       rank: Number(row.rank),
+      parent_id: row.parent_id,
     }),
   );
 

@@ -16,6 +16,8 @@ export type GlobalSearchResult = {
   title: string;
   subtitle: string | null;
   rank: number;
+  /** Client du contact ; null pour les autres types. */
+  parent_id: string | null;
 };
 
 const ENTITY_LABELS: Record<SearchEntityType, string> = {
@@ -41,7 +43,9 @@ export function getSearchResultHref(result: GlobalSearchResult): string {
     case "client":
       return `/clients/${result.entity_id}`;
     case "contact_client":
-      return `/clients/${result.entity_id}`;
+      return result.parent_id
+        ? `/clients/${result.parent_id}`
+        : "/clients";
     case "collaborator":
     case "team":
       return "/top10";
