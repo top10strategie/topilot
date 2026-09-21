@@ -55,6 +55,7 @@ opportunity.kanban_status       : suspect | prospect | besoin_specifie | proposi
 opportunity.priority            : faible | normal | urgente | prioritaire
 document.storage_type           : supabase | url
 tool_subscription.subscription_plan : annuel | mensuel
+mission_series.frequency            : hebdomadaire | mensuelle | trimestrielle | annuelle
 audit_log.action                : INSERT | UPDATE | DELETE
 ```
 
@@ -106,10 +107,24 @@ Même dans un formulaire d'ajout rapide (ex : depuis le drawer de création de m
 - Une mission peut avoir plusieurs **catégories métier** (`mission_category` → `category_business`), **outils liés** (`mission_tool`), **wikis liés** (`mission_wiki`) et **documents liés** (`mission_document`).
 - `start_at` (défaut = date du jour à la création) et `end_at` sont **obligatoires**.
     - **pas d'identifiants/mot de passe** (`tool_access` n'a pas de colonne `mission_id`).
+- **Récurrence** (`mission_series` + `mission.series_id`) :
+    - `series_id` nullable : `NULL` = mission ponctuelle ; sinon toutes les occurrences partagent la même règle (`frequency`, `starts_on`, `ends_on`).
+    - Fréquences : `hebdomadaire | mensuelle | trimestrielle | annuelle`.
+    - Arrêt de série : renseigner `ends_on` (pas de suppression physique de la série côté app).
+    - Génération automatique des prochaines occurrences à **J−10** avant la date de début (cron `/api/cron/mission-recurrence`).
 - Champ de texte libre : **`notes`**, couplé à `notes_updated_at`, historisé dans `audit_log`.
 - Création et édition via **drawer latéral droit** (sans URL) accessible depuis : `/missions`, en **deux temps**:
     - un premier bloc identification (Titre, Responsable mission, Interne, Client) sauvegardé via un bouton "Enregistrer" dédié — nécessaire pour permettre l'ajout de documents/outils/wikis liés qui requièrent un `mission_id` existant.
     - puis un bloc complémentaire sauvegardé via le footer "Annuler"/"Créer".
+
+---
+
+## Objectif de CA annuel (`revenue_aim`)
+
+- Une ligne par année calendaire (`UNIQUE (year)`) : montant cible en euros (`amount`).
+- CRUD réservé **Manager / Direction** ; lecture pour tout collaborateur actif.
+- Sur `/analyses` (pipeline Commercial) et widgets Home associés : la courbe d’objectif mensuelle utilise `amount / 12`.
+- Non historisé dans `audit_log` à ce stade.
 
 ---
 

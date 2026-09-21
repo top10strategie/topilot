@@ -45,6 +45,9 @@ export function emptyAnalysesPayload(): AnalysesPayload {
       },
       byStatus: [],
       byTeam: [],
+      availableYears: [year],
+      defaultYear: year,
+      pipelineByYear: {},
     },
     subscriptions: {
       currentYear: year,
