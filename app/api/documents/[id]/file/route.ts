@@ -5,6 +5,7 @@ import {
   DOCUMENTS_BUCKET,
   VISUELS_BUCKET,
 } from "@/lib/documents/constants";
+import { assertSafeExternalUrl } from "@/lib/documents/external-url";
 import { publicVisuelUrl } from "@/lib/documents/storage";
 import { isUuid } from "@/lib/uuid";
 
@@ -79,11 +80,15 @@ export async function GET(request: Request, context: RouteContext) {
     if (!document.url) {
       return NextResponse.json({ error: "URL manquante." }, { status: 404 });
     }
+    const safe = assertSafeExternalUrl(document.url);
+    if (!safe.ok) {
+      return NextResponse.json({ error: safe.error }, { status: 400 });
+    }
     if (!wantDownload) {
-      return NextResponse.redirect(document.url);
+      return NextResponse.redirect(safe.href);
     }
     try {
-      const remote = await fetch(document.url);
+      const remote = await fetch(safe.href);
       if (!remote.ok) {
         return NextResponse.json(
           { error: "Téléchargement distant impossible." },

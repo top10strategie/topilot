@@ -47,6 +47,14 @@ export async function updateSession(request: NextRequest) {
     return supabaseResponse;
   }
 
+  const { pathname } = request.nextUrl;
+
+  // Les crons Vercel s’authentifient via Bearer CRON_SECRET dans le handler —
+  // ne pas exiger de session cookie (sinon redirect /login avant le secret).
+  if (pathname.startsWith("/api/cron")) {
+    return supabaseResponse;
+  }
+
   const supabase = createServerClient<Database>(getSupabaseUrl(), getSupabaseAnonKey(), {
     cookies: {
       getAll() {
@@ -72,7 +80,6 @@ export async function updateSession(request: NextRequest) {
   // Ne pas intercaler de code entre createServerClient et getClaims().
   const { data } = await supabase.auth.getClaims();
   const user = data?.claims;
-  const { pathname } = request.nextUrl;
 
   if (!user) {
     if (isPublicAuthPath(pathname) || pathname === FORCE_PASSWORD_CHANGE_PATH) {

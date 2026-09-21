@@ -24,13 +24,22 @@ export async function signOutAction(): Promise<{
 }
 
 /**
- * Remet must_change_password à false après un changement de mot de passe réussi.
- * Utilise le service role (champ jamais exposé / modifiable côté client).
+ * Flux forcé `/auth/update-password` : met à jour le mot de passe **puis**
+ * remet `must_change_password` à false via service role.
+ * Ne peut plus être appelé seul pour contourner le flag sans changer le MDP.
  */
-export async function clearMustChangePassword(): Promise<{
+export async function completeForcedPasswordChange(password: string): Promise<{
   success: boolean;
   error?: string;
 }> {
+  const trimmed = password.trim();
+  if (trimmed.length < 8) {
+    return {
+      success: false,
+      error: "Le mot de passe doit contenir au moins 8 caractères.",
+    };
+  }
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -39,6 +48,17 @@ export async function clearMustChangePassword(): Promise<{
 
   if (userError || !user) {
     return { success: false, error: "Session invalide ou expirée." };
+  }
+
+  const { error: updateError } = await supabase.auth.updateUser({
+    password: trimmed,
+  });
+  if (updateError) {
+    console.error("completeForcedPasswordChange — updateUser:", updateError);
+    return {
+      success: false,
+      error: updateError.message || "Impossible de mettre à jour le mot de passe.",
+    };
   }
 
   const admin = createAdminClient();
@@ -51,28 +71,35 @@ export async function clearMustChangePassword(): Promise<{
     .maybeSingle();
 
   if (collaboratorError) {
-    console.error("clearMustChangePassword — lecture collaborator:", collaboratorError);
+    console.error(
+      "completeForcedPasswordChange — lecture collaborator:",
+      collaboratorError,
+    );
     return {
       success: false,
-      error: `Impossible de vérifier le collaborateur : ${collaboratorError.message}`,
+      error: `Mot de passe mis à jour, mais la préférence n'a pas pu être synchronisée : ${collaboratorError.message}`,
     };
   }
 
   if (!collaborator) {
     return {
       success: false,
-      error: "Collaborateur actif introuvable pour cette session.",
+      error:
+        "Mot de passe mis à jour, mais collaborateur actif introuvable pour cette session.",
     };
   }
 
-  const { error: updateError } = await admin
+  const { error: settingError } = await admin
     .from("setting")
     .update({ must_change_password: false })
     .eq("collaborator_id", collaborator.id);
 
-  if (updateError) {
-    console.error("clearMustChangePassword — update setting:", updateError);
-    return { success: false, error: updateError.message };
+  if (settingError) {
+    console.error("completeForcedPasswordChange — update setting:", settingError);
+    return {
+      success: false,
+      error: `Mot de passe mis à jour, mais la préférence n'a pas pu être synchronisée : ${settingError.message}`,
+    };
   }
 
   return { success: true };

@@ -1,16 +1,9 @@
 import { NextResponse } from "next/server";
+import { verifyBearerCronSecret } from "@/lib/auth/cron-secret";
 import { syncAllUsedCurrencies } from "@/lib/exchange-rate/sync-rates";
 
 /** Limite Vercel pour le sync Frankfurter multi-devises. */
 export const maxDuration = 60;
-
-function verifyCronSecret(request: Request): boolean {
-  const secret = process.env.CRON_SECRET?.trim();
-  if (!secret) return false;
-  const header = request.headers.get("authorization");
-  if (!header?.startsWith("Bearer ")) return false;
-  return header.slice("Bearer ".length) === secret;
-}
 
 /**
  * Cron Vercel — mise à jour des taux de change au 1er de chaque mois.
@@ -19,7 +12,7 @@ function verifyCronSecret(request: Request): boolean {
  * `export const dynamic` (incompatible avec `cacheComponents`).
  */
 export async function GET(request: Request) {
-  if (!verifyCronSecret(request)) {
+  if (!verifyBearerCronSecret(request)) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 
