@@ -14,6 +14,7 @@ import { useDrawerStack } from "@/components/drawers/drawer-stack-context";
 import { ToolAccessFormDrawer } from "@/components/tools/tool-access-form-drawer";
 import { ToolSubscriptionInlineForm } from "@/components/tools/tool-subscription-inline-form";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -342,18 +343,17 @@ export function ToolFormDrawer({
                 ) : null}
               </div>
               {firstAccess ? (
-                <div className="space-y-1">
-                  <p className="text-sm">
-                    <span className="font-medium">
+                <div className="space-y-2">
+                  <Card className="p-3">
+                    <p className="truncate text-sm font-medium">
                       {firstAccess.label || "Accès"}
-                    </span>
+                    </p>
                     {firstAccess.identifier ? (
-                      <span className="text-muted-foreground">
-                        {" "}
-                        — {firstAccess.identifier}
-                      </span>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {firstAccess.identifier}
+                      </p>
                     ) : null}
-                  </p>
+                  </Card>
                   <p className="text-sm text-muted-foreground">
                     Vous pourrez en ajouter d&apos;autres depuis la fiche de
                     l&apos;outil.
