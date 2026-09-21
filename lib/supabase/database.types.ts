@@ -1704,6 +1704,7 @@ export type Database = {
         Returns: {
           entity_id: string
           entity_type: string
+          parent_id: string | null
           rank: number
           subtitle: string
           title: string

@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { FolderSimplePlus, StackPlus } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { createCategory, updateCategory } from "@/actions/categories";
+import { listToolAccessSummaries } from "@/actions/tool-access";
 import { createToolRecord, updateToolRecord } from "@/actions/tools";
 import { CategoryMultiCombobox } from "@/components/categories/category-multi-combobox";
 import { LabelEntityFormDrawer } from "@/components/categories/label-entity-form-drawer";
@@ -21,6 +22,12 @@ import type { CollaboratorListItem } from "@/lib/collaborators/types";
 import type { ToolCategoryItem, ToolDetail } from "@/lib/tools/types";
 
 type ClientOption = { id: string; client_name: string };
+
+type CreatedAccess = {
+  id: string;
+  label?: string;
+  identifier?: string;
+};
 
 type ToolFormDrawerProps = {
   mode: "create" | "edit";
@@ -53,12 +60,15 @@ export function ToolFormDrawer({
   const [identificationSaved, setIdentificationSaved] = useState(
     mode === "edit",
   );
-  const [hasFirstAccess, setHasFirstAccess] = useState(
-    (tool?.accesses?.length ?? 0) > 0,
-  );
-  const [firstAccessLabel, setFirstAccessLabel] = useState<string | null>(
-    () => tool?.accesses?.[0]?.label ?? null,
-  );
+  const [firstAccess, setFirstAccess] = useState<CreatedAccess | null>(() => {
+    const access = tool?.accesses?.[0];
+    if (!access) return null;
+    return {
+      id: access.id,
+      label: access.label,
+      identifier: access.identifier,
+    };
+  });
   const [hasSubscription, setHasSubscription] = useState(
     (tool?.subscriptions?.length ?? 0) > 0,
   );
@@ -120,9 +130,20 @@ export function ToolFormDrawer({
     if (created) injectCategory(created);
   };
 
+  const injectAccess = (created: CreatedAccess) => {
+    setFirstAccess((prev) => {
+      if (prev && prev.id !== created.id) return prev;
+      return {
+        id: created.id,
+        label: created.label || prev?.label,
+        identifier: created.identifier || prev?.identifier,
+      };
+    });
+  };
+
   const openFirstAccess = async () => {
-    if (!toolId || hasFirstAccess) return;
-    const created = await pushDrawer<{ id: string; label?: string }>({
+    if (!toolId || firstAccess) return;
+    const created = await pushDrawer<CreatedAccess>({
       title: "Premier accès",
       content: (nested) => (
         <ToolAccessFormDrawer
@@ -132,13 +153,24 @@ export function ToolFormDrawer({
           collaborators={collaborators}
           availableCategories={availableCategories}
           canManagePrivacy={canManagePrivacy}
-          helpers={nested}
+          helpers={{
+            dismiss: nested.dismiss,
+            resolve: (value) => {
+              injectAccess(value);
+              nested.resolve(value);
+            },
+          }}
         />
       ),
     });
     if (created) {
-      setHasFirstAccess(true);
-      if (created.label) setFirstAccessLabel(created.label);
+      injectAccess(created);
+      return;
+    }
+
+    const listed = await listToolAccessSummaries(toolId);
+    if (listed.success && listed.accesses[0]) {
+      injectAccess(listed.accesses[0]);
     }
   };
 
@@ -295,7 +327,7 @@ export function ToolFormDrawer({
                 <h4 className="text-sm font-medium">
                   Premier accès (optionnel)
                 </h4>
-                {!hasFirstAccess ? (
+                {!firstAccess ? (
                   <Button
                     type="button"
                     variant="outline"
@@ -309,20 +341,24 @@ export function ToolFormDrawer({
                   </Button>
                 ) : null}
               </div>
-              {hasFirstAccess ? (
-                <p className="text-sm text-muted-foreground">
-                  {firstAccessLabel ? (
-                    <>
-                      Accès « {firstAccessLabel} » créé. Vous pourrez en ajouter
-                      d&apos;autres depuis la fiche de l&apos;outil.
-                    </>
-                  ) : (
-                    <>
-                      Un premier accès a été créé. Vous pourrez en ajouter
-                      d&apos;autres depuis la fiche de l&apos;outil.
-                    </>
-                  )}
-                </p>
+              {firstAccess ? (
+                <div className="space-y-1">
+                  <p className="text-sm">
+                    <span className="font-medium">
+                      {firstAccess.label || "Accès"}
+                    </span>
+                    {firstAccess.identifier ? (
+                      <span className="text-muted-foreground">
+                        {" "}
+                        — {firstAccess.identifier}
+                      </span>
+                    ) : null}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Vous pourrez en ajouter d&apos;autres depuis la fiche de
+                    l&apos;outil.
+                  </p>
+                </div>
               ) : (
                 <p className="text-sm text-muted-foreground">
                   Identifiant et mot de passe (Vault). Client optionnel ;
