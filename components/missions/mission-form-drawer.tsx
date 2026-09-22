@@ -51,7 +51,6 @@ import {
 import type {
   MissionCategoryItem,
   MissionDetail,
-  MissionDuplicatePrefill,
   MissionKanbanStatus,
   MissionOpportunityOption,
   MissionScope,
@@ -68,8 +67,6 @@ type MissionFormDrawerProps = {
   currentCollaboratorId: string;
   canManagePrivacy?: boolean;
   helpers: DrawerHelpers<{ id: string; mission_name: string }>;
-  /** Prefill création (duplication). */
-  duplicatePrefill?: MissionDuplicatePrefill;
   /** Verrouillage FK phase C */
   lockedFields?: {
     mission_scope?: MissionScope;
@@ -93,7 +90,6 @@ export function MissionFormDrawer({
   currentCollaboratorId,
   canManagePrivacy = false,
   helpers,
-  duplicatePrefill,
   lockedFields,
 }: MissionFormDrawerProps) {
   const { pushDrawer } = useDrawerStack();
@@ -156,37 +152,27 @@ export function MissionFormDrawer({
   }, [initialOpportunityOptions]);
 
   const [missionName, setMissionName] = useState(
-    duplicatePrefill?.mission_name ?? mission?.mission_name ?? "",
+    mission?.mission_name ?? "",
   );
   const [isInterne, setIsInterne] = useState(
     () =>
-      (lockedScope ??
-        duplicatePrefill?.mission_scope ??
-        mission?.mission_scope ??
-        "client") === "interne",
+      (lockedScope ?? mission?.mission_scope ?? "client") === "interne",
   );
   const [clientId, setClientId] = useState(
-    lockedClientId ??
-      duplicatePrefill?.client_id ??
-      mission?.client_id ??
-      "",
+    lockedClientId ?? mission?.client_id ?? "",
   );
   const [responsibleId, setResponsibleId] = useState(
-    duplicatePrefill?.collaborator_id ??
-      mission?.collaborator_id ??
-      currentCollaboratorId,
+    mission?.collaborator_id ?? currentCollaboratorId,
   );
   const [opportunityId, setOpportunityId] = useState(
-    lockedOpportunityId ??
-      (duplicatePrefill ? "" : (mission?.opportunity_id ?? "")),
+    lockedOpportunityId ?? mission?.opportunity_id ?? "",
   );
   const [estimatedCharge, setEstimatedCharge] = useState(() => {
-    const charge =
-      duplicatePrefill?.estimated_charge ?? mission?.estimated_charge;
+    const charge = mission?.estimated_charge;
     return charge != null ? String(charge) : "";
   });
   const [kanbanStatus, setKanbanStatus] = useState<MissionKanbanStatus>(
-    duplicatePrefill ? "a_faire" : (mission?.kanban_status ?? "a_faire"),
+    mission?.kanban_status ?? "a_faire",
   );
   const [startAt, setStartAt] = useState(
     mode === "create"
@@ -196,9 +182,7 @@ export function MissionFormDrawer({
   const [endAt, setEndAt] = useState(
     mode === "create" ? "" : (mission?.end_at ?? ""),
   );
-  const [notes, setNotes] = useState(
-    duplicatePrefill?.notes ?? mission?.notes ?? "",
-  );
+  const [notes, setNotes] = useState(mission?.notes ?? "");
   const [recurrence, setRecurrence] = useState<MissionRecurrenceDraft>(() =>
     createEmptyRecurrenceDraft(mission?.series ?? null),
   );
@@ -214,14 +198,13 @@ export function MissionFormDrawer({
     const byId = new Map<string, MissionCategoryItem>();
     for (const item of availableCategories) byId.set(item.id, item);
     for (const item of mission?.categories ?? []) byId.set(item.id, item);
-    for (const item of duplicatePrefill?.categories ?? []) byId.set(item.id, item);
     return [...byId.values()].sort((a, b) =>
       a.label.localeCompare(b.label, "fr"),
     );
   });
   const [selectedCategories, setSelectedCategories] = useState<
     MissionCategoryItem[]
-  >(() => [...(duplicatePrefill?.categories ?? mission?.categories ?? [])]);
+  >(() => [...(mission?.categories ?? [])]);
 
   const missionScope: MissionScope = lockedScope
     ? lockedScope

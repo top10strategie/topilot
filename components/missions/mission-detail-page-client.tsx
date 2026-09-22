@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CopySimple, MagnifyingGlass, PencilSimple, Trash } from "@phosphor-icons/react";
-import { archiveMission } from "@/actions/missions";
+import { archiveMission, duplicateMissionRecord } from "@/actions/missions";
 import { AuditHistoryButton } from "@/components/audit/audit-history-button";
 import { ClientConsultationDrawer } from "@/components/clients/client-consultation-drawer";
 import { useDrawerStack } from "@/components/drawers/drawer-stack-context";
@@ -22,7 +22,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { CategoryItem } from "@/lib/categories/types";
 import type { ClientDetail, ClientOption } from "@/lib/clients/types";
 import type { CollaboratorListItem } from "@/lib/collaborators/types";
-import { buildMissionDuplicatePrefill } from "@/lib/crm/duplicate-prefill";
 import { getEndDateToneClass } from "@/lib/dates/end-date-tone";
 import {
   formatMissionCharge,
@@ -32,7 +31,7 @@ import {
 } from "@/lib/missions/labels";
 import { cn } from "@/lib/utils";
 import type { MissionDetail } from "@/lib/missions/types";
-
+import { toast } from "sonner";
 type MissionDetailPageClientProps = {
   mission: MissionDetail;
   collaborators: CollaboratorListItem[];
@@ -98,23 +97,28 @@ export function MissionDetailPageClient({
     });
   };
 
-  const openDuplicate = () => {
+  const openDuplicate = async () => {
+    const result = await duplicateMissionRecord(mission.id);
+    if (!result.success) {
+      toast.error(result.error);
+      return;
+    }
     void pushDrawer({
-      title: "Nouvelle mission",
+      title: "Édition Mission",
       content: (helpers) => (
         <MissionFormDrawer
-          mode="create"
+          mode="edit"
+          mission={result.mission}
           collaborators={collaborators}
           clients={clients}
           availableCategories={categories}
           currentCollaboratorId={currentCollaboratorId}
           canManagePrivacy={canManagePrivacy}
-          duplicatePrefill={buildMissionDuplicatePrefill(mission)}
           helpers={helpers}
         />
       ),
-    }).then((created) => {
-      if (created) router.refresh();
+    }).then((updated) => {
+      if (updated) router.refresh();
     });
   };
 
@@ -343,7 +347,7 @@ export function MissionDetailPageClient({
         onOpenChange={setDuplicateOpen}
         entityLabel="mission"
         entityName={mission.mission_name}
-        onConfirm={openDuplicate}
+        onConfirm={() => void openDuplicate()}
       />
 
       <ConfirmStatusDialog

@@ -15,12 +15,14 @@ import {
   type MissionsListFilters,
 } from "@/lib/missions/list-filters";
 import type {
+  MissionDetail,
   MissionKanbanStatus,
   MissionListItem,
   MissionOpportunityOption,
   MissionScope,
 } from "@/lib/missions/types";
 import {
+  getMissionById,
   listMissionOpportunityOptions,
   listMissionsByOpportunityId,
   listMissionsPage,
@@ -221,6 +223,106 @@ export async function createMissionRecord(
     opportunityId: opportunity_id,
   });
   return { success: true, id: data.id };
+}
+
+/**
+ * Duplique une mission (champs métier + catégories + dates + statut),
+ * sans docs/outils/wikis ni série de récurrence.
+ */
+export async function duplicateMissionRecord(
+  sourceId: string,
+): Promise<
+  | { success: true; mission: MissionDetail }
+  | { success: false; error: string }
+> {
+  const auth = await requireActiveCollaboratorAction();
+  if (!auth.success) {
+    return { success: false, error: auth.error };
+  }
+  if (!isUuid(sourceId)) {
+    return { success: false, error: "Identifiant mission invalide." };
+  }
+
+  const source = await getMissionById(sourceId);
+  if (!source) {
+    return { success: false, error: "Mission introuvable." };
+  }
+  if (!source.end_at) {
+    return {
+      success: false,
+      error: "La mission source n'a pas de date de fin ; duplication impossible.",
+    };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("mission")
+    .insert({
+      mission_name: source.mission_name,
+      mission_scope: source.mission_scope,
+      collaborator_id: source.collaborator_id,
+      client_id: source.client_id,
+      opportunity_id: source.opportunity_id,
+      estimated_charge: source.estimated_charge,
+      notes: source.notes,
+      start_at: source.start_at ?? todayParisYmd(),
+      end_at: source.end_at,
+      kanban_status: source.kanban_status,
+      series_id: null,
+    })
+    .select("id")
+    .single();
+
+  if (error) {
+    console.error("duplicateMissionRecord:", error);
+    return {
+      success: false,
+      error: `Impossible de dupliquer la mission : ${error.message}`,
+    };
+  }
+
+  const categoryIds = source.categories.map((c) => c.id);
+  if (categoryIds.length > 0) {
+    const sync = await syncMissionCategories(supabase, data.id, categoryIds);
+    if (!sync.success) {
+      return { success: false, error: sync.error };
+    }
+  }
+
+  // Conserver les horodatages source si le trigger vient d'en poser de nouveaux.
+  const stampPatch: {
+    completed_at?: string | null;
+    archived_at?: string | null;
+  } = {};
+  if (source.completed_at) stampPatch.completed_at = source.completed_at;
+  if (source.archived_at) stampPatch.archived_at = source.archived_at;
+  if (Object.keys(stampPatch).length > 0) {
+    const { error: stampError } = await supabase
+      .from("mission")
+      .update(stampPatch)
+      .eq("id", data.id);
+    if (stampError) {
+      console.error("duplicateMissionRecord stamps:", stampError);
+      return {
+        success: false,
+        error: `Mission dupliquée mais dates de clôture non reprises : ${stampError.message}`,
+      };
+    }
+  }
+
+  const mission = await getMissionById(data.id);
+  if (!mission) {
+    return {
+      success: false,
+      error: "Mission dupliquée introuvable après création.",
+    };
+  }
+
+  revalidateMissions(mission.id, {
+    clientId: mission.client_id,
+    opportunityId: mission.opportunity_id,
+  });
+  return { success: true, mission };
 }
 
 /** Mise à jour complète (édition / complément). */

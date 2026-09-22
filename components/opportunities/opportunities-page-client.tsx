@@ -45,6 +45,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  duplicateOpportunityRecord,
   fetchOpportunitiesClosedBoard,
   fetchOpportunitiesListFilterOptions,
 } from "@/actions/opportunities";
@@ -52,7 +53,6 @@ import type { CategoryItem } from "@/lib/categories/types";
 import type { ClientOption } from "@/lib/clients/types";
 import { getCollaboratorFullName } from "@/lib/collaborators/labels";
 import type { CollaboratorListItem } from "@/lib/collaborators/types";
-import { buildOpportunityDuplicatePrefill } from "@/lib/crm/duplicate-prefill";
 import { getEndDateToneClass } from "@/lib/dates/end-date-tone";
 import {
   DEFAULT_OPPORTUNITIES_LIST_FILTERS,
@@ -79,7 +79,7 @@ import type {
   OpportunityPriority,
 } from "@/lib/opportunities/types";
 import { cn } from "@/lib/utils";
-
+import { toast } from "sonner";
 const OPPORTUNITY_VIEW_TABS: ListViewTab[] = [
   {
     value: "kanban",
@@ -304,7 +304,7 @@ export function OpportunitiesPageClient({
   const totalPages = Math.max(1, Math.ceil(totalCount / OPPORTUNITIES_PAGE_SIZE));
   const hasActiveFilters = hasActiveDialogFilters(filters);
 
-  const openCreate = async (duplicateSource?: OpportunityListItem) => {
+  const openCreate = async () => {
     let collabs = collaborators;
     let clientOpts = clients;
     let cats = categories;
@@ -329,16 +329,55 @@ export function OpportunitiesPageClient({
           collaborators={collabs}
           clients={clientOpts}
           availableCategories={cats}
-          duplicatePrefill={
-            duplicateSource
-              ? buildOpportunityDuplicatePrefill(duplicateSource)
-              : undefined
-          }
           helpers={helpers}
         />
       ),
     }).then((created) => {
       if (created) router.refresh();
+    });
+  };
+
+  const openDuplicate = async (source: OpportunityListItem) => {
+    let collabs = collaborators;
+    let clientOpts = clients;
+    let cats = categories;
+    if (!optionsLoaded) {
+      setOptionsLoading(true);
+      const result = await fetchOpportunitiesListFilterOptions();
+      setOptionsLoading(false);
+      if (!result.success) {
+        toast.error(result.error || "Impossible de charger les options.");
+        return;
+      }
+      collabs = result.collaborators;
+      clientOpts = result.clients;
+      cats = result.categories;
+      setCollaborators(collabs);
+      setClients(clientOpts);
+      setCategories(cats);
+      setOptionsLoaded(true);
+    }
+
+    const result = await duplicateOpportunityRecord(source.id);
+    if (!result.success) {
+      toast.error(result.error);
+      return;
+    }
+
+    void pushDrawer({
+      title: "Édition Opportunité",
+      content: (helpers) => (
+        <OpportunityFormDrawer
+          mode="edit"
+          opportunity={result.opportunity}
+          collaborators={collabs}
+          clients={clientOpts}
+          availableCategories={cats}
+          helpers={helpers}
+        />
+      ),
+    }).then((updated) => {
+      if (updated) router.refresh();
     });
   };
 
@@ -427,7 +466,7 @@ export function OpportunitiesPageClient({
         entityLabel: "opportunité",
         entityName: duplicateTarget?.opportunity_name ?? "",
         onConfirm: () => {
-          if (duplicateTarget) openCreate(duplicateTarget);
+          if (duplicateTarget) void openDuplicate(duplicateTarget);
         },
       }}
       filterDialog={{
@@ -680,6 +719,7 @@ export function OpportunitiesPageClient({
           <OpportunitiesKanban
             items={boardOpportunities}
             closedColumnsLoading={closedColumnsLoading}
+            includeArchived={filters.includeArchived}
           />
         </ListViewTabsContent>
 

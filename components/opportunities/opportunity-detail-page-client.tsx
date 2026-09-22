@@ -17,8 +17,12 @@ import {
 } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { fetchClientForConsultation } from "@/actions/clients";
-import { fetchMissionsForOpportunity } from "@/actions/missions";
 import {
+  duplicateMissionRecord,
+  fetchMissionsForOpportunity,
+} from "@/actions/missions";
+import {
+  duplicateOpportunityRecord,
   fetchOpportunitiesListFilterOptions,
   markOpportunityAsLost,
 } from "@/actions/opportunities";
@@ -43,10 +47,6 @@ import type { CategoryItem } from "@/lib/categories/types";
 import type { ClientOption } from "@/lib/clients/types";
 import { getContactFullName } from "@/lib/clients/labels";
 import type { CollaboratorListItem } from "@/lib/collaborators/types";
-import {
-  buildMissionDuplicatePrefill,
-  buildOpportunityDuplicatePrefill,
-} from "@/lib/crm/duplicate-prefill";
 import { getEndDateToneClass } from "@/lib/dates/end-date-tone";
 import {
   formatOpportunityDate,
@@ -221,44 +221,54 @@ export function OpportunityDetailPageClient({
   const openDuplicate = async () => {
     const opts = await loadFilterOptions();
     if (!opts) return;
+    const result = await duplicateOpportunityRecord(opportunity.id);
+    if (!result.success) {
+      toast.error(result.error);
+      return;
+    }
     void pushDrawer({
-      title: "Nouvelle opportunité",
+      title: "Édition Opportunité",
       content: (helpers) => (
         <OpportunityFormDrawer
-          mode="create"
+          mode="edit"
+          opportunity={result.opportunity}
           collaborators={opts.collaborators}
           clients={opts.clients}
           availableCategories={opts.categories}
           canManagePrivacy={canManagePrivacy}
-          duplicatePrefill={buildOpportunityDuplicatePrefill(opportunity)}
           helpers={helpers}
         />
       ),
-    }).then((created) => {
-      if (created) router.refresh();
+    }).then((updated) => {
+      if (updated) router.refresh();
     });
   };
 
   const openDuplicateMission = async (source: MissionListItem) => {
     const opts = await loadFilterOptions();
     if (!opts) return;
+    const result = await duplicateMissionRecord(source.id);
+    if (!result.success) {
+      toast.error(result.error);
+      return;
+    }
     void pushDrawer({
-      title: "Nouvelle mission",
+      title: "Édition Mission",
       content: (helpers) => (
         <MissionFormDrawer
-          mode="create"
+          mode="edit"
+          mission={result.mission}
           collaborators={opts.collaborators}
           clients={opts.clients}
           availableCategories={opts.categories}
           opportunityOptions={opportunityOptions}
           currentCollaboratorId={currentCollaboratorId}
           canManagePrivacy={canManagePrivacy}
-          duplicatePrefill={buildMissionDuplicatePrefill(source)}
           helpers={helpers}
         />
       ),
-    }).then((created) => {
-      if (created) router.refresh();
+    }).then((updated) => {
+      if (updated) router.refresh();
     });
   };
 

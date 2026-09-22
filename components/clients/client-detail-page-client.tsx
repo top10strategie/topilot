@@ -14,6 +14,7 @@ import {
 } from "@phosphor-icons/react";
 import { deleteContactClient } from "@/actions/contact-clients";
 import { deactivateClient } from "@/actions/clients";
+import { duplicateMissionRecord } from "@/actions/missions";
 import { AuditHistoryButton } from "@/components/audit/audit-history-button";
 import { ClientFormDrawer } from "@/components/clients/client-form-drawer-lazy";
 import { ClientLogo } from "@/components/clients/client-logo";
@@ -38,7 +39,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { CategoryItem } from "@/lib/categories/types";
-import { buildMissionDuplicatePrefill } from "@/lib/crm/duplicate-prefill";
 import { getEndDateToneClass } from "@/lib/dates/end-date-tone";
 import {
   getClientResponsibleName,
@@ -53,7 +53,7 @@ import {
   getMissionKanbanStatusLabel,
   getMissionResponsibleName,
 } from "@/lib/missions/labels";
-import { cn } from "@/lib/utils";
+import { toast } from "sonner";import { cn } from "@/lib/utils";
 import type { MissionListItem } from "@/lib/missions/types";
 
 type ClientDetailPageClientProps = {
@@ -180,23 +180,28 @@ export function ClientDetailPageClient({
     });
   };
 
-  const openDuplicateMission = (source: MissionListItem) => {
+  const openDuplicateMission = async (source: MissionListItem) => {
+    const result = await duplicateMissionRecord(source.id);
+    if (!result.success) {
+      toast.error(result.error);
+      return;
+    }
     void pushDrawer({
-      title: "Nouvelle mission",
+      title: "Édition Mission",
       content: (helpers) => (
         <MissionFormDrawer
-          mode="create"
+          mode="edit"
+          mission={result.mission}
           collaborators={collaborators}
           clients={clients}
           availableCategories={categories}
           currentCollaboratorId={currentCollaboratorId}
           canManagePrivacy={canManagePrivacy}
-          duplicatePrefill={buildMissionDuplicatePrefill(source)}
           helpers={helpers}
         />
       ),
-    }).then((created) => {
-      if (created) router.refresh();
+    }).then((updated) => {
+      if (updated) router.refresh();
     });
   };
 
@@ -218,7 +223,7 @@ export function ClientDetailPageClient({
           helpers={helpers}
           onDuplicate={() => {
             helpers.dismiss();
-            openDuplicateMission(mission);
+            void openDuplicateMission(mission);
           }}
         />
       ),
@@ -618,7 +623,7 @@ export function ClientDetailPageClient({
         entityName={missionDuplicateTarget?.mission_name ?? ""}
         onConfirm={() => {
           if (missionDuplicateTarget) {
-            openDuplicateMission(missionDuplicateTarget);
+            void openDuplicateMission(missionDuplicateTarget);
           }
         }}
       />

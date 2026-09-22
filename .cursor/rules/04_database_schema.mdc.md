@@ -525,7 +525,7 @@ CREATE INDEX idx_mission_series_id ON public.mission(series_id);
 
 > **`kanban_order`** : trace la position de la carte au sein de sa colonne Kanban, mise à jour à chaque glisser-déposer — même comportement que sur `opportunity` (cf. section 8 de `07_ux_composants_reutilisable.mdc`).
 
-> **`archived_at`** : horodatage de l'entrée en statut `archivee`, posé automatiquement par trigger (et remis à `NULL` si la mission ressort de ce statut). Sert à filtrer la colonne Kanban "Archivée" sur les 3 derniers mois uniquement (cf. `ux_architecture.mdc`) — les missions archivées plus anciennes restent accessibles via les vues Cartes/Tableau avec filtre.
+> **`archived_at`** : horodatage de l'entrée en statut `archivee`, posé automatiquement par trigger (et remis à `NULL` si la mission ressort de ce statut). Avec `completed_at` (missions `terminee`), sert à masquer les missions terminées depuis plus d'**un mois** sur Kanban / Cartes / Tableau (cf. `ux_architecture.mdc`) — les plus anciennes restent accessibles via filtre de statut hors board.
 
 > **`completed_at`** : horodatage posé la première fois que la mission atteint `terminee`, et **conservé même si la mission passe ensuite à `archivee`** (contrairement à `archived_at`, il n'est remis à `NULL` que si la mission est rouverte vers `a_faire`/`en_cours`). Permet de distinguer, pour les analyses (`/analyses` onglet Missions) :
 > 
