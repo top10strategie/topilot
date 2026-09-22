@@ -46,6 +46,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  duplicateMissionRecord,
   fetchMissionsClosedBoard,
   fetchMissionsListFilterOptions,
 } from "@/actions/missions";
@@ -53,7 +54,6 @@ import type { CategoryItem } from "@/lib/categories/types";
 import type { ClientOption } from "@/lib/clients/types";
 import { getCollaboratorFullName } from "@/lib/collaborators/labels";
 import type { CollaboratorListItem } from "@/lib/collaborators/types";
-import { buildMissionDuplicatePrefill } from "@/lib/crm/duplicate-prefill";
 import { getEndDateToneClass } from "@/lib/dates/end-date-tone";
 import {
   DEFAULT_MISSIONS_LIST_FILTERS,
@@ -77,7 +77,7 @@ import type {
   MissionScope,
 } from "@/lib/missions/types";
 import { cn } from "@/lib/utils";
-
+import { toast } from "sonner";
 const MISSION_VIEW_TABS: ListViewTab[] = [
   {
     value: "kanban",
@@ -309,7 +309,7 @@ export function MissionsPageClient({
   const totalPages = Math.max(1, Math.ceil(totalCount / MISSIONS_PAGE_SIZE));
   const hasActiveFilters = hasActiveDialogFilters(filters);
 
-  const openCreate = async (duplicateSource?: MissionListItem) => {
+  const openCreate = async () => {
     let collabs = collaborators;
     let clientOpts = clients;
     let cats = categories;
@@ -335,16 +335,56 @@ export function MissionsPageClient({
           clients={clientOpts}
           availableCategories={cats}
           currentCollaboratorId={currentCollaboratorId}
-          duplicatePrefill={
-            duplicateSource
-              ? buildMissionDuplicatePrefill(duplicateSource)
-              : undefined
-          }
           helpers={helpers}
         />
       ),
     }).then((created) => {
       if (created) router.refresh();
+    });
+  };
+
+  const openDuplicate = async (source: MissionListItem) => {
+    let collabs = collaborators;
+    let clientOpts = clients;
+    let cats = categories;
+    if (!optionsLoaded) {
+      setOptionsLoading(true);
+      const result = await fetchMissionsListFilterOptions();
+      setOptionsLoading(false);
+      if (!result.success) {
+        toast.error(result.error || "Impossible de charger les options.");
+        return;
+      }
+      collabs = result.collaborators;
+      clientOpts = result.clients;
+      cats = result.categories;
+      setCollaborators(collabs);
+      setClients(clientOpts);
+      setCategories(cats);
+      setOptionsLoaded(true);
+    }
+
+    const result = await duplicateMissionRecord(source.id);
+    if (!result.success) {
+      toast.error(result.error);
+      return;
+    }
+
+    void pushDrawer({
+      title: "Édition Mission",
+      content: (helpers) => (
+        <MissionFormDrawer
+          mode="edit"
+          mission={result.mission}
+          collaborators={collabs}
+          clients={clientOpts}
+          availableCategories={cats}
+          currentCollaboratorId={currentCollaboratorId}
+          helpers={helpers}
+        />
+      ),
+    }).then((updated) => {
+      if (updated) router.refresh();
     });
   };
 
@@ -430,7 +470,7 @@ export function MissionsPageClient({
         entityLabel: "mission",
         entityName: duplicateTarget?.mission_name ?? "",
         onConfirm: () => {
-          if (duplicateTarget) openCreate(duplicateTarget);
+          if (duplicateTarget) void openDuplicate(duplicateTarget);
         },
       }}
       filterDialog={{

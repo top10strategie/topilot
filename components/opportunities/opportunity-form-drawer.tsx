@@ -51,7 +51,6 @@ import {
   OPPORTUNITY_KANBAN_STATUSES,
   OPPORTUNITY_PRIORITIES,
 } from "@/lib/opportunities/labels";
-import type { OpportunityDuplicatePrefill } from "@/lib/crm/duplicate-prefill";
 import type {
   OpportunityCategoryItem,
   OpportunityContactOption,
@@ -71,8 +70,6 @@ type OpportunityFormDrawerProps = {
   availableCategories: CategoryItem[];
   canManagePrivacy?: boolean;
   helpers: DrawerHelpers<{ id: string; opportunity_name: string }>;
-  /** Prefill création (duplication). */
-  duplicatePrefill?: OpportunityDuplicatePrefill;
 };
 
 type LocalClient = ClientOption;
@@ -90,7 +87,6 @@ export function OpportunityFormDrawer({
   availableCategories = [],
   canManagePrivacy = false,
   helpers,
-  duplicatePrefill,
 }: OpportunityFormDrawerProps) {
   const { pushDrawer } = useDrawerStack();
   const activeCollaborators = useMemo(
@@ -107,48 +103,32 @@ export function OpportunityFormDrawer({
   );
 
   const [opportunityName, setOpportunityName] = useState(
-    duplicatePrefill?.opportunity_name ?? opportunity?.opportunity_name ?? "",
+    opportunity?.opportunity_name ?? "",
   );
-  const [clientId, setClientId] = useState(
-    duplicatePrefill?.client_id ?? opportunity?.client_id ?? "",
-  );
+  const [clientId, setClientId] = useState(opportunity?.client_id ?? "");
   const [contactClientId, setContactClientId] = useState(
-    duplicatePrefill?.contact_client_id ??
-      opportunity?.contact_client_id ??
-      "",
+    opportunity?.contact_client_id ?? "",
   );
   const [responsibleId, setResponsibleId] = useState(
-    duplicatePrefill?.collaborator_id ?? opportunity?.collaborator_id ?? "",
+    opportunity?.collaborator_id ?? "",
   );
   const [lastMeetingAt, setLastMeetingAt] = useState(
-    duplicatePrefill?.last_meeting_at ?? opportunity?.last_meeting_at ?? "",
+    opportunity?.last_meeting_at ?? "",
   );
-  const [dueDateAt, setDueDateAt] = useState(
-    duplicatePrefill ? "" : (opportunity?.due_date_at ?? ""),
-  );
-  const [closedAt, setClosedAt] = useState(
-    duplicatePrefill ? "" : (opportunity?.closed_at ?? ""),
-  );
-  const [endAt, setEndAt] = useState(
-    duplicatePrefill ? "" : (opportunity?.end_at ?? ""),
-  );
+  const [dueDateAt, setDueDateAt] = useState(opportunity?.due_date_at ?? "");
+  const [closedAt, setClosedAt] = useState(opportunity?.closed_at ?? "");
+  const [endAt, setEndAt] = useState(opportunity?.end_at ?? "");
   const [invoiceFrequency, setInvoiceFrequency] = useState<
     OpportunityInvoiceFrequency | ""
-  >(duplicatePrefill ? "" : (opportunity?.invoice_frequency ?? ""));
+  >(opportunity?.invoice_frequency ?? "");
 
   const [price, setPrice] = useState(
-    duplicatePrefill
-      ? ""
-      : opportunity?.price != null
-        ? String(opportunity.price)
-        : "",
+    opportunity?.price != null ? String(opportunity.price) : "",
   );
   const [probability, setProbability] = useState(
-    duplicatePrefill
-      ? "10"
-      : opportunity?.probability_confirmation != null
-        ? String(opportunity.probability_confirmation)
-        : "10",
+    opportunity?.probability_confirmation != null
+      ? String(opportunity.probability_confirmation)
+      : "10",
   );
   const [priority, setPriority] = useState<OpportunityPriority>(
     opportunity?.priority ?? "normal",
@@ -156,15 +136,9 @@ export function OpportunityFormDrawer({
   const [kanbanStatus, setKanbanStatus] = useState<OpportunityKanbanStatus>(
     opportunity?.kanban_status ?? "suspect",
   );
-  const [action, setAction] = useState(
-    duplicatePrefill?.action ?? opportunity?.action ?? "",
-  );
-  const [source, setSource] = useState(
-    duplicatePrefill?.source ?? opportunity?.source ?? "",
-  );
-  const [notes, setNotes] = useState(
-    duplicatePrefill?.notes ?? opportunity?.notes ?? "",
-  );
+  const [action, setAction] = useState(opportunity?.action ?? "");
+  const [source, setSource] = useState(opportunity?.source ?? "");
+  const [notes, setNotes] = useState(opportunity?.notes ?? "");
 
   const [clients, setClients] = useState<LocalClient[]>(() =>
     [...initialClients]
@@ -217,8 +191,6 @@ export function OpportunityFormDrawer({
       const byId = new Map<string, OpportunityCategoryItem>();
       for (const item of availableCategories) byId.set(item.id, item);
       for (const item of opportunity?.categories ?? []) byId.set(item.id, item);
-      for (const item of duplicatePrefill?.categories ?? [])
-        byId.set(item.id, item);
       return [...byId.values()].sort((a, b) =>
         a.label.localeCompare(b.label, "fr"),
       );
@@ -226,9 +198,7 @@ export function OpportunityFormDrawer({
   );
   const [selectedCategories, setSelectedCategories] = useState<
     OpportunityCategoryItem[]
-  >(() => [
-    ...(duplicatePrefill?.categories ?? opportunity?.categories ?? []),
-  ]);
+  >(() => [...(opportunity?.categories ?? [])]);
 
   const clientContacts = useMemo(
     () =>

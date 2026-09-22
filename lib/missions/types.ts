@@ -67,17 +67,6 @@ export type MissionDetail = MissionListItem & {
   notes: string | null;
 };
 
-/** Prefill tiroir création (duplication B1). */
-export type MissionDuplicatePrefill = {
-  mission_name: string;
-  mission_scope: MissionScope;
-  client_id: string | null;
-  collaborator_id: string;
-  estimated_charge: number | null;
-  notes: string | null;
-  categories: MissionCategoryItem[];
-};
-
 /** Options légères pour sélecteurs (création / édition). */
 export type MissionOpportunityOption = {
   id: string;

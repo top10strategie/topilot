@@ -14,18 +14,21 @@ import {
   OPPORTUNITY_CLOSED_KANBAN_STATUSES,
   type OpportunitiesListFilters,
 } from "@/lib/opportunities/list-filters";
+import {
+  getOpportunityById,
+  listOpportunitiesPage,
+  listOpportunityContactOptions,
+} from "@/lib/opportunities/queries";
 import type {
   OpportunityContactOption,
+  OpportunityDetail,
   OpportunityInvoiceFrequency,
   OpportunityKanbanStatus,
   OpportunityListItem,
   OpportunityPriority,
 } from "@/lib/opportunities/types";
-import {
-  listOpportunitiesPage,
-  listOpportunityContactOptions,
-} from "@/lib/opportunities/queries";
 import { createClient } from "@/lib/supabase/server";
+import { isUuid } from "@/lib/uuid";
 
 const CLOSED_KANBAN_STATUSES = new Set<OpportunityKanbanStatus>([
   "gagne",
@@ -297,6 +300,110 @@ export async function createOpportunityRecord(
     kanban_status: data.kanban_status as OpportunityKanbanStatus,
     probability_confirmation: Number(data.probability_confirmation),
   };
+}
+
+/**
+ * Duplique une opportunité (champs métier + catégories + dates + statut),
+ * sans docs/outils/wikis. Le trigger INSERT force le statut initial :
+ * un UPDATE rétablit ensuite le statut (et closed_at) de la source.
+ */
+export async function duplicateOpportunityRecord(
+  sourceId: string,
+): Promise<
+  | { success: true; opportunity: OpportunityDetail }
+  | { success: false; error: string }
+> {
+  const auth = await requireActiveCollaboratorAction();
+  if (!auth.success) {
+    return { success: false, error: auth.error };
+  }
+  if (!isUuid(sourceId)) {
+    return { success: false, error: "Identifiant opportunité invalide." };
+  }
+
+  const source = await getOpportunityById(sourceId);
+  if (!source) {
+    return { success: false, error: "Opportunité introuvable." };
+  }
+  if (!source.due_date_at) {
+    return {
+      success: false,
+      error:
+        "L'opportunité source n'a pas d'échéance ; duplication impossible.",
+    };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("opportunity")
+    .insert({
+      opportunity_name: source.opportunity_name,
+      client_id: source.client_id,
+      contact_client_id: source.contact_client_id,
+      collaborator_id: source.collaborator_id,
+      last_meeting_at: source.last_meeting_at,
+      due_date_at: source.due_date_at,
+      end_at: source.end_at,
+      closed_at: source.closed_at,
+      invoice_frequency: source.invoice_frequency,
+      price: source.price,
+      priority: source.priority,
+      action: source.action,
+      source: source.source,
+      notes: source.notes,
+      // Placeholder : écrasé par le trigger INSERT.
+      kanban_status: "suspect",
+    })
+    .select("id")
+    .single();
+
+  if (error) {
+    console.error("duplicateOpportunityRecord:", error);
+    return {
+      success: false,
+      error: `Impossible de dupliquer l'opportunité : ${error.message}`,
+    };
+  }
+
+  const { error: statusError } = await supabase
+    .from("opportunity")
+    .update({
+      kanban_status: source.kanban_status,
+      probability_confirmation: source.probability_confirmation,
+      closed_at: source.closed_at,
+    })
+    .eq("id", data.id);
+
+  if (statusError) {
+    console.error("duplicateOpportunityRecord status:", statusError);
+    return {
+      success: false,
+      error: `Opportunité créée mais statut non repris : ${statusError.message}`,
+    };
+  }
+
+  const categoryIds = source.categories.map((c) => c.id);
+  if (categoryIds.length > 0) {
+    const sync = await syncOpportunityCategories(
+      supabase,
+      data.id,
+      categoryIds,
+    );
+    if (!sync.success) {
+      return { success: false, error: sync.error };
+    }
+  }
+
+  const opportunity = await getOpportunityById(data.id);
+  if (!opportunity) {
+    return {
+      success: false,
+      error: "Opportunité dupliquée introuvable après création.",
+    };
+  }
+
+  revalidateOpportunities(opportunity.id);
+  return { success: true, opportunity };
 }
 
 /** Mise à jour complète (édition / complément après création). */

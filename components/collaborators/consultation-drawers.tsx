@@ -17,7 +17,11 @@ import type {
   TeamListItem,
 } from "@/lib/collaborators/types";
 import { getEndDateToneClass } from "@/lib/dates/end-date-tone";
-import { formatMissionDate } from "@/lib/missions/labels";
+import {
+  formatMissionDate,
+  getMissionKanbanStatusLabel,
+} from "@/lib/missions/labels";
+import type { MissionKanbanStatus } from "@/lib/missions/types";
 import { cn } from "@/lib/utils";
 
 type AdminMissionSummary = {
@@ -55,6 +59,7 @@ function RecentMissionsTable({
               <th className="px-3 py-2 font-medium">Mission</th>
               <th className="px-3 py-2 font-medium">Client</th>
               <th className="px-3 py-2 font-medium">Catégories</th>
+              <th className="px-3 py-2 font-medium">Statut</th>
               <th className="px-3 py-2 font-medium">Début</th>
               <th className="px-3 py-2 font-medium">Fin</th>
             </tr>
@@ -63,7 +68,7 @@ function RecentMissionsTable({
             {missions.length === 0 ? (
               <tr>
                 <td
-                  colSpan={5}
+                  colSpan={6}
                   className="px-3 py-4 text-sm text-muted-foreground"
                 >
                   Aucune mission récente.
@@ -95,6 +100,11 @@ function RecentMissionsTable({
                         ))
                       )}
                     </div>
+                  </td>
+                  <td className="px-3 py-2 text-muted-foreground">
+                    {getMissionKanbanStatusLabel(
+                      mission.kanban_status as MissionKanbanStatus,
+                    )}
                   </td>
                   <td className="px-3 py-2 text-muted-foreground">
                     {formatMissionDate(mission.start_at)}

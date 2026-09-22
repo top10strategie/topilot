@@ -5,6 +5,10 @@ import { updateOpportunitiesKanban } from "@/actions/opportunities";
 import { EntityKanban } from "@/components/layout/entity-kanban";
 import { OpportunityKanbanCardContent } from "@/components/opportunities/opportunity-kanban-card";
 import {
+  isWithinTerminalRetention,
+  opportunityTerminalReference,
+} from "@/lib/crm/terminal-retention";
+import {
   formatOpportunityPrice,
   getOpportunityKanbanStatusLabel,
   OPPORTUNITY_KANBAN_STATUSES,
@@ -29,12 +33,8 @@ function emptyBoard(): Board {
   };
 }
 
-function isRecentDue(opportunity: OpportunityListItem): boolean {
-  if (!opportunity.due_date_at) return false;
-  const dueDate = new Date(`${opportunity.due_date_at}T00:00:00`);
-  const threeMonthsAgo = new Date();
-  threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-  return dueDate >= threeMonthsAgo;
+function isRecentTerminal(opportunity: OpportunityListItem): boolean {
+  return isWithinTerminalRetention(opportunityTerminalReference(opportunity));
 }
 
 function compareByKanbanOrder(
@@ -64,11 +64,14 @@ function compareByDueDateDesc(
   return a.opportunity_name.localeCompare(b.opportunity_name, "fr");
 }
 
-function buildBoard(items: OpportunityListItem[]): Board {
+function buildBoard(
+  items: OpportunityListItem[],
+  includeArchived: boolean,
+): Board {
   const board = emptyBoard();
   for (const item of items) {
     if (TERMINAL_STATUSES.includes(item.kanban_status)) {
-      if (isRecentDue(item)) {
+      if (includeArchived || isRecentTerminal(item)) {
         board[item.kanban_status].push(item);
       }
     } else {
@@ -103,12 +106,15 @@ type OpportunitiesKanbanProps = {
   items: OpportunityListItem[];
   /** Colonnes closes en vague 2 : skeletons de cartes jusqu’à réception. */
   closedColumnsLoading?: boolean;
+  /** Si true, n’applique pas la fenêtre de rétention 1 mois (Gagné / Perdue). */
+  includeArchived?: boolean;
 };
 
 /** Vue Kanban opportunités — shell générique + totaux colonne + carte domaine. */
 export function OpportunitiesKanban({
   items,
   closedColumnsLoading = false,
+  includeArchived = false,
 }: OpportunitiesKanbanProps) {
   const router = useRouter();
 
@@ -117,7 +123,7 @@ export function OpportunitiesKanban({
       dndId="opportunities-kanban"
       columnIds={OPPORTUNITY_KANBAN_STATUSES}
       items={items}
-      buildBoard={buildBoard}
+      buildBoard={(boardItems) => buildBoard(boardItems, includeArchived)}
       getColumnTitle={getOpportunityKanbanStatusLabel}
       loadingColumnIds={
         closedColumnsLoading ? TERMINAL_STATUSES : undefined
