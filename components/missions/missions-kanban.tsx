@@ -5,6 +5,10 @@ import { updateMissionsKanban } from "@/actions/missions";
 import { EntityKanban } from "@/components/layout/entity-kanban";
 import { MissionKanbanCardContent } from "@/components/missions/mission-kanban-card";
 import {
+  isWithinTerminalRetention,
+  missionTerminalReference,
+} from "@/lib/crm/terminal-retention";
+import {
   getMissionKanbanStatusLabel,
   MISSION_KANBAN_STATUSES,
 } from "@/lib/missions/labels";
@@ -26,12 +30,8 @@ function emptyBoard(): Board {
   };
 }
 
-function isRecentArchive(mission: MissionListItem): boolean {
-  if (!mission.archived_at) return false;
-  const archivedDate = new Date(mission.archived_at);
-  const threeMonthsAgo = new Date();
-  threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-  return archivedDate >= threeMonthsAgo;
+function isRecentTerminal(mission: MissionListItem): boolean {
+  return isWithinTerminalRetention(missionTerminalReference(mission));
 }
 
 function compareByKanbanOrder(a: MissionListItem, b: MissionListItem): number {
@@ -56,9 +56,9 @@ function compareByEndAtDesc(a: MissionListItem, b: MissionListItem): number {
 function buildBoard(items: MissionListItem[]): Board {
   const board = emptyBoard();
   for (const item of items) {
-    if (item.kanban_status === "archivee") {
-      if (isRecentArchive(item)) {
-        board.archivee.push(item);
+    if (TERMINAL_STATUSES.includes(item.kanban_status)) {
+      if (isRecentTerminal(item)) {
+        board[item.kanban_status].push(item);
       }
     } else {
       board[item.kanban_status].push(item);
