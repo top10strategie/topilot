@@ -493,24 +493,39 @@ export function AdministrationPageClient({
         >
           <TabsList
             variant="line"
-            className="scrollbar-none w-full flex-nowrap justify-start overflow-x-auto"
+            className="scrollbar-none w-full flex-nowrap justify-start overflow-x-auto lg:overflow-visible"
           >
-            <TabsTrigger value="categories_business" className="shrink-0 flex-none">
+            <TabsTrigger
+              value="categories_business"
+              className="shrink-0 flex-none lg:min-w-0 lg:flex-1"
+            >
               Catégories métier
             </TabsTrigger>
-            <TabsTrigger value="categories_utility" className="shrink-0 flex-none">
+            <TabsTrigger
+              value="categories_utility"
+              className="shrink-0 flex-none lg:min-w-0 lg:flex-1"
+            >
               Catégories utilitaire
             </TabsTrigger>
-            <TabsTrigger value="types" className="shrink-0 flex-none">
+            <TabsTrigger
+              value="types"
+              className="shrink-0 flex-none lg:min-w-0 lg:flex-1"
+            >
               Types
             </TabsTrigger>
             {canManagePeople ? (
-              <TabsTrigger value="people" className="shrink-0 flex-none">
+              <TabsTrigger
+                value="people"
+                className="shrink-0 flex-none lg:min-w-0 lg:flex-1"
+              >
                 Collaborateurs &amp; Pôles
               </TabsTrigger>
             ) : null}
             {canManagePeople ? (
-              <TabsTrigger value="donnees" className="shrink-0 flex-none">
+              <TabsTrigger
+                value="donnees"
+                className="shrink-0 flex-none lg:min-w-0 lg:flex-1"
+              >
                 Données
               </TabsTrigger>
             ) : null}
