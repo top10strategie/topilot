@@ -23,11 +23,13 @@ import type {
   OpportunityContactOption,
   OpportunityDetail,
   OpportunityInvoiceFrequency,
+  OpportunityInvoiceScheduleItem,
   OpportunityKanbanStatus,
   OpportunityListItem,
   OpportunityPriority,
 } from "@/lib/opportunities/types";
 import { createClient } from "@/lib/supabase/server";
+import type { Json } from "@/lib/supabase/database.types";
 import { isUuid } from "@/lib/uuid";
 
 const CLOSED_KANBAN_STATUSES = new Set<OpportunityKanbanStatus>([
@@ -102,6 +104,7 @@ export type OpportunityActionResult =
           | "closed_at"
           | "end_at"
           | "invoice_frequency"
+          | "invoice_schedule"
           | "price"
           | "probability_confirmation"
           | "priority"
@@ -137,7 +140,82 @@ const INVOICE_FREQUENCIES = new Set<OpportunityInvoiceFrequency>([
   "mensuel",
   "trimestriel",
   "annuel",
+  "echellonne",
 ]);
+
+type ParsedInvoiceSchedule =
+  | { ok: true; rows: OpportunityInvoiceScheduleItem[] }
+  | { ok: false; error: string };
+
+function parseInvoiceScheduleFormData(formData: FormData): ParsedInvoiceSchedule {
+  const raw = formOptional(formData, "invoice_schedule");
+  if (!raw) {
+    return { ok: true, rows: [] };
+  }
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) {
+      return { ok: false, error: "Échéancier invalide." };
+    }
+    const rows: OpportunityInvoiceScheduleItem[] = [];
+    for (const item of parsed) {
+      if (!item || typeof item !== "object") {
+        return { ok: false, error: "Échéancier invalide." };
+      }
+      const record = item as Record<string, unknown>;
+      const invoice_at =
+        typeof record.invoice_at === "string" ? record.invoice_at.trim() : "";
+      const amountRaw = record.amount;
+      const amount =
+        typeof amountRaw === "number"
+          ? amountRaw
+          : typeof amountRaw === "string"
+            ? Number(String(amountRaw).replace(",", "."))
+            : NaN;
+      if (!invoice_at) {
+        return { ok: false, error: "Chaque échelon doit avoir une date." };
+      }
+      if (!Number.isFinite(amount) || amount <= 0) {
+        return {
+          ok: false,
+          error: "Chaque échelon doit avoir un montant strictement positif.",
+        };
+      }
+      rows.push({ invoice_at, amount });
+    }
+    return { ok: true, rows };
+  } catch {
+    return { ok: false, error: "Échéancier invalide." };
+  }
+}
+
+function validateEchellonneSchedule(
+  rows: OpportunityInvoiceScheduleItem[],
+  price: number | null | undefined,
+): string | null {
+  if (price == null || !Number.isFinite(price)) {
+    return "Le montant est obligatoire pour une facturation échelonnée.";
+  }
+  if (rows.length < 2) {
+    return "Une facturation échelonnée requiert au moins 2 échéances.";
+  }
+  if (rows.length > 12) {
+    return "Une facturation échelonnée autorise au maximum 12 échéances.";
+  }
+  const months = new Set<string>();
+  for (const row of rows) {
+    const monthKey = row.invoice_at.slice(0, 7);
+    if (months.has(monthKey)) {
+      return "Une seule échéance est autorisée par mois calendaire.";
+    }
+    months.add(monthKey);
+  }
+  const sum = rows.reduce((acc, row) => acc + row.amount, 0);
+  if (Math.round(sum * 100) !== Math.round(price * 100)) {
+    return "La somme des échelons doit égaler exactement le montant de l'opportunité.";
+  }
+  return null;
+}
 
 function formOptionalNumber(
   formData: FormData,
@@ -231,6 +309,9 @@ export async function createOpportunityRecord(
   const collaborator_id = formText(formData, "collaborator_id");
   const last_meeting_at = formOptional(formData, "last_meeting_at");
   const due_date_at = formOptional(formData, "due_date_at");
+  const closed_at = formData.has("closed_at")
+    ? formOptional(formData, "closed_at")
+    : undefined;
   const end_at = formOptional(formData, "end_at");
   const invoiceFrequencyRaw = formOptional(formData, "invoice_frequency");
 
@@ -276,6 +357,7 @@ export async function createOpportunityRecord(
       collaborator_id,
       last_meeting_at,
       due_date_at,
+      closed_at: closed_at ?? null,
       end_at,
       invoice_frequency:
         (invoiceFrequencyRaw as OpportunityInvoiceFrequency | null) ?? null,
@@ -334,6 +416,10 @@ export async function duplicateOpportunityRecord(
   }
 
   const supabase = await createClient();
+  const insertFrequency =
+    source.invoice_frequency === "echellonne" ? null : source.invoice_frequency;
+  const insertEndAt =
+    source.invoice_frequency === "echellonne" ? null : source.end_at;
   const { data, error } = await supabase
     .from("opportunity")
     .insert({
@@ -343,9 +429,9 @@ export async function duplicateOpportunityRecord(
       collaborator_id: source.collaborator_id,
       last_meeting_at: source.last_meeting_at,
       due_date_at: source.due_date_at,
-      end_at: source.end_at,
+      end_at: insertEndAt,
       closed_at: source.closed_at,
-      invoice_frequency: source.invoice_frequency,
+      invoice_frequency: insertFrequency,
       price: source.price,
       priority: source.priority,
       action: source.action,
@@ -394,6 +480,31 @@ export async function duplicateOpportunityRecord(
     }
   }
 
+  if (
+    source.invoice_frequency === "echellonne" &&
+    source.price != null &&
+    source.invoice_schedule.length >= 2
+  ) {
+    const { error: scheduleError } = await supabase.rpc(
+      "sync_opportunity_echellonne_billing",
+      {
+        p_opportunity_id: data.id,
+        p_price: source.price,
+        p_rows: source.invoice_schedule.map((row) => ({
+          invoice_at: row.invoice_at,
+          amount: row.amount,
+        })) as Json,
+      },
+    );
+    if (scheduleError) {
+      console.error("duplicateOpportunityRecord schedule:", scheduleError);
+      return {
+        success: false,
+        error: `Opportunité créée mais échéancier non repris : ${scheduleError.message}`,
+      };
+    }
+  }
+
   const opportunity = await getOpportunityById(data.id);
   if (!opportunity) {
     return {
@@ -430,6 +541,9 @@ export async function updateOpportunityRecord(
     : undefined;
   const end_at = formOptional(formData, "end_at");
   const invoiceFrequencyRaw = formOptional(formData, "invoice_frequency");
+  const invoiceFrequency = (invoiceFrequencyRaw ||
+    null) as OpportunityInvoiceFrequency | null;
+  const scheduleParsed = parseInvoiceScheduleFormData(formData);
   const action = formOptional(formData, "action");
   const source = formOptional(formData, "source");
   const priorityRaw = formText(formData, "priority");
@@ -460,6 +574,9 @@ export async function updateOpportunityRecord(
   ) {
     fieldErrors.invoice_frequency = "Fréquence de facturation invalide.";
   }
+  if (!scheduleParsed.ok) {
+    fieldErrors.invoice_schedule = scheduleParsed.error;
+  }
   if (price === undefined) {
     fieldErrors.price = "Montant invalide.";
   }
@@ -477,6 +594,16 @@ export async function updateOpportunityRecord(
     fieldErrors.kanban_status = "Statut invalide.";
   }
 
+  if (invoiceFrequency === "echellonne" && scheduleParsed.ok) {
+    const scheduleError = validateEchellonneSchedule(
+      scheduleParsed.rows,
+      price ?? null,
+    );
+    if (scheduleError) {
+      fieldErrors.invoice_schedule = scheduleError;
+    }
+  }
+
   if (Object.keys(fieldErrors).length > 0) {
     return {
       success: false,
@@ -488,7 +615,7 @@ export async function updateOpportunityRecord(
   const supabase = await createClient();
   const { data: existing, error: existingError } = await supabase
     .from("opportunity")
-    .select("id, notes, kanban_status, closed_at")
+    .select("id, notes, kanban_status, closed_at, invoice_frequency")
     .eq("id", id)
     .maybeSingle();
 
@@ -505,6 +632,9 @@ export async function updateOpportunityRecord(
     ? formOptional(formData, "notes")
     : undefined;
 
+  const isEchellonne = invoiceFrequency === "echellonne";
+  const wasEchellonne = existing.invoice_frequency === "echellonne";
+
   const payload: Record<string, unknown> = {
     opportunity_name,
     client_id,
@@ -512,16 +642,21 @@ export async function updateOpportunityRecord(
     collaborator_id,
     last_meeting_at,
     due_date_at,
-    end_at,
-    invoice_frequency:
-      (invoiceFrequencyRaw as OpportunityInvoiceFrequency | null) ?? null,
     action,
     source,
     priority: priorityRaw,
     kanban_status: kanbanRaw,
-    price,
     probability_confirmation: probability ?? 10,
   };
+
+  if (isEchellonne) {
+    // price / frequency / end_at appliqués via sync_opportunity_echellonne_billing
+    // pour rester atomique avec l'échéancier.
+  } else {
+    payload.end_at = end_at;
+    payload.invoice_frequency = invoiceFrequency;
+    payload.price = price;
+  }
 
   if (closed_at !== undefined) {
     payload.closed_at = closed_at;
@@ -557,6 +692,40 @@ export async function updateOpportunityRecord(
         ? `Impossible de mettre à jour l'opportunité : ${error.message}`
         : "Opportunité introuvable.",
     };
+  }
+
+  if (isEchellonne && scheduleParsed.ok) {
+    const { error: syncError } = await supabase.rpc(
+      "sync_opportunity_echellonne_billing",
+      {
+        p_opportunity_id: id,
+        p_price: price as number,
+        p_rows: scheduleParsed.rows.map((row) => ({
+          invoice_at: row.invoice_at,
+          amount: row.amount,
+        })) as Json,
+      },
+    );
+    if (syncError) {
+      console.error("updateOpportunityRecord echellonne:", syncError);
+      return {
+        success: false,
+        error: `Impossible d'enregistrer l'échéancier : ${syncError.message}`,
+        fieldErrors: { invoice_schedule: syncError.message },
+      };
+    }
+  } else if (wasEchellonne && !isEchellonne) {
+    const { error: clearError } = await supabase.rpc(
+      "clear_opportunity_invoice_schedule",
+      { p_opportunity_id: id },
+    );
+    if (clearError) {
+      console.error("updateOpportunityRecord clear schedule:", clearError);
+      return {
+        success: false,
+        error: `Impossible de supprimer l'échéancier : ${clearError.message}`,
+      };
+    }
   }
 
   const sync = await syncOpportunityCategories(

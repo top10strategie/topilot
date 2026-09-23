@@ -1049,6 +1049,41 @@ export type Database = {
           },
         ]
       }
+      invoice_schedule: {
+        Row: {
+          id: string
+          opportunity_id: string
+          invoice_at: string
+          amount: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          opportunity_id: string
+          invoice_at: string
+          amount: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          opportunity_id?: string
+          invoice_at?: string
+          amount?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_schedule_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "opportunity"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       revenue_aim: {
         Row: {
           amount: number
@@ -1526,6 +1561,18 @@ export type Database = {
         }
         Returns: Json
       }
+      sync_opportunity_echellonne_billing: {
+        Args: {
+          p_opportunity_id: string
+          p_price: number
+          p_rows: Json
+        }
+        Returns: undefined
+      }
+      clear_opportunity_invoice_schedule: {
+        Args: { p_opportunity_id: string }
+        Returns: undefined
+      }
       list_clients_page: {
         Args: {
           p_category_ids?: string[]
@@ -1745,6 +1792,7 @@ export type Database = {
         | "mensuel"
         | "trimestriel"
         | "annuel"
+        | "echellonne"
       opportunity_kanban_status_enum:
         | "suspect"
         | "prospect"
@@ -1904,6 +1952,7 @@ export const Constants = {
         "mensuel",
         "trimestriel",
         "annuel",
+        "echellonne",
       ],
       opportunity_kanban_status_enum: [
         "suspect",

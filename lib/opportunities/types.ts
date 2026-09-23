@@ -16,7 +16,14 @@ export type OpportunityInvoiceFrequency =
   | "unique"
   | "mensuel"
   | "trimestriel"
-  | "annuel";
+  | "annuel"
+  | "echellonne";
+
+export type OpportunityInvoiceScheduleItem = {
+  id?: string;
+  invoice_at: string;
+  amount: number;
+};
 
 export type OpportunityCategoryItem = {
   id: string;
@@ -79,4 +86,5 @@ export type OpportunityDetail = OpportunityListItem & {
   source: string | null;
   notes: string | null;
   last_meeting_at: string | null;
+  invoice_schedule: OpportunityInvoiceScheduleItem[];
 };

@@ -133,7 +133,7 @@ Même dans un formulaire d'ajout rapide (ex : depuis le drawer de création de m
 - Le terme métier UI est **opportunité** (route `/opportunities`).
 - `client_id` et `collaborator_id` sont **obligatoires** ; seul `contact_client_id` reste **nullable** (une opportunité a toujours un client, mais pas nécessairement de contact identifié dès sa création).
 - Le champ `collaborator_id` est affiché en UI sous le libellé **"Responsable opportunité"**.
-- **Champs obligatoires à la création** : `opportunity_name`, `client_id`, `collaborator_id`, et `due_date_at` (« Échéance » — prochaine date de rendu prévue) — contrainte `opportunity_due_date_required`. `contact_client_id`, `price`, `end_at` (« Fin de facturation ») et `invoice_frequency` restent nullables.
+- **Champs obligatoires à la création** : `opportunity_name`, `client_id`, `collaborator_id`, et `due_date_at` (« Échéance » — prochaine date de rendu prévue) — contrainte `opportunity_due_date_required`. `contact_client_id`, `price`, `end_at` (« Fin de facturation »), `invoice_frequency`, `closed_at` (« Début de la facturation ») et l’échéancier `invoice_schedule` restent nullables / optionnels selon le mode de facturation.
 - `kanban_status` (enum) : **`suspect | prospect | besoin_specifie | proposition_envoyee | gagne | perdue`** — cet ordre de déclaration en base correspond exactement à l'**ordre d'affichage UI** (colonnes Kanban, filtres, listes déroulantes). `gagne` = opportunité gagnée (contrat signé, missions à créer) ; `perdue` = opportunité non gagnée et archivée.
     - **Valeur initiale à la création**, déterminée automatiquement selon l'historique du client (trigger `set_opportunity_kanban_defaults`, cf. `04_database_schema.mdc`) : si le client a déjà au moins une mission ou une opportunité existante → `besoin_specifie` ; sinon (nouveau client) → `suspect`.
 - `kanban_order` (int) trace la position de la carte **au sein de sa colonne**, mise à jour à chaque réorganisation par glisser-déposer (déplacement dans la même colonne ou vers une autre) — cf. `07_ux_composants_reutilisable.mdc` section 8.
@@ -160,18 +160,19 @@ Même dans un formulaire d'ajout rapide (ex : depuis le drawer de création de m
 - Colonnes Kanban **Gagné** et **Perdue** (et vues Cartes/Tableau) : n'affichent que les opportunités terminées dont `closed_at` (repli `due_date_at`) date de **moins d'un mois** ; colonnes Kanban triées par `due_date_at` **décroissant** (plus récentes en haut). Les archives plus anciennes restent consultables via le filtre « Inclure les archivées » ou un filtre de statut terminal explicite (hors board). Les colonnes actives restent triées par `kanban_order`.
 - `action` et `source` sont des champs texte libre (pas d'enum).
 - Une opportunité peut avoir plusieurs **catégories métier** (`opportunity_category` → `category_business`), **documents liés** (`opportunity_document`) et **outils liés** (`opportunity_tool`).
-- `entry_average_price` : montant pondéré figé à la création. `closed_at` (« Début de la facturation ») : date (Europe/Paris) — **saisissable en édition uniquement** ; à l’entrée dans `gagne`/`perdue`, auto-remplie avec la date du jour **uniquement si encore `NULL`** (une date déjà saisie n’est pas écrasée) ; remise à `NULL` à la réouverture ; **ne touche pas** `end_at`.
+- `entry_average_price` : montant pondéré figé à la création. `closed_at` (« Début de la facturation ») : date (Europe/Paris) — **saisissable en création et en édition** (optionnel) ; à l’entrée dans `gagne`/`perdue`, auto-remplie avec la date du jour **uniquement si encore `NULL`** (une date déjà saisie n’est pas écrasée) ; remise à `NULL` à la réouverture ; **ne touche pas** `end_at`.
 - `due_date_at` : prochaine date de rendu prévue (négociation) — obligatoire ; sert à l’affichage / couleur d’échéance sur les cartes.
-- `end_at` : fin de répartition des paiements (« Fin de facturation ») — saisie manuelle, nullable.
-- `invoice_frequency` : `NULL | unique | mensuel | trimestriel | annuel` — nullable ; avec `end_at`, sert au CA sur `/analyses` :
-  - **Engagé** : opportunités `gagne` (début = `closed_at`) ; **prévisionnel** : opportunités ouvertes (début = `due_date_at`) ; `perdue` exclue.
-  - Montant / échéance = `price / n` échéances. Dates d’échéance = dernier jour du mois.
-  - `unique` → mois de `end_at` ; `mensuel` → chaque mois de début → `end_at` inclus ; `trimestriel` / `annuel` → 1re échéance = mois suivant le début, puis +3 / +12 tant que ≤ `end_at`.
-  - Sans `end_at` ou sans fréquence → hors graphiques CA (compteur sous le pipeline).
+- `end_at` : fin de répartition des paiements (« Fin de facturation ») — saisie manuelle, nullable ; **ignorée / nullifiée** si `invoice_frequency = echellonne`.
+- `invoice_frequency` : `NULL | unique | mensuel | trimestriel | annuel | echellonne` — nullable ; sert au CA sur `/analyses` :
+  - **Engagé** : opportunités `gagne` ; **prévisionnel** : opportunités ouvertes ; `perdue` exclue.
+  - Modes **séquentiels** (`unique` / `mensuel` / `trimestriel` / `annuel`) : début = `closed_at` (engagé) ou `due_date_at` (prévisionnel) ; montant / échéance = `price / n` ; `unique` → mois de `end_at` ; `mensuel` → chaque mois de début → `end_at` inclus ; `trimestriel` / `annuel` → 1re échéance = mois suivant le début, puis +3 / +12 tant que ≤ `end_at`.
+  - Mode **`echellonne`** : table enfant `invoice_schedule` (2 à 12 lignes, `invoice_at` + `amount` > 0, un échelon max par mois calendaire, somme des `amount` = `price` exact) ; chaque échéance est placée sur le mois calendaire de `invoice_at` avec son `amount` brut ; `closed_at` / `end_at` / `due_date_at` **n’influencent pas** le placement CA.
+  - Passage séquentiel → `echellonne` : `end_at` nullifié. Passage `echellonne` → séquentiel : confirmation UI puis suppression des lignes `invoice_schedule` ; `end_at` redevient optionnel.
+  - Sans fréquence, ou fréquence séquentielle sans `end_at`, ou `echellonne` sans échéancier → hors graphiques CA (compteur sous le pipeline).
 - Champ de texte libre : **`notes`**, couplé à `notes_updated_at`, historisé dans `audit_log`.
 - Création et édition via **drawer latéral droit** (sans URL) accessible depuis `/opportunities` :
-    1. **Bloc identification** : Titre, Client, Contact, Responsable opportunité, Date de dernière rencontre, Échéance (obligatoire), Fin de facturation (`end_at`, optionnel), Fréquence de facturation (`invoice_frequency`, optionnel) — sauvegardé via un bouton "Enregistrer" dédié, qui crée l'opportunité en base (nécessaire pour permettre l'ajout de documents liés qui requièrent un `opportunity_id` existant).
-    2. **Bloc complémentaire** : Catégories, Montant, Montant pondéré (lecture seule, calculé), Probabilité, Priorité, Statut, Action, Source, Notes, Documents — sauvegardé via le footer "Annuler"/"Créer".
+    1. **Bloc identification** : Titre, Client, Contact, Responsable opportunité, Date de dernière rencontre, Échéance (obligatoire), Début de la facturation (`closed_at`, optionnel) — sauvegardé via un bouton "Enregistrer" dédié, qui crée l'opportunité en base (nécessaire pour permettre l'ajout de documents liés qui requièrent un `opportunity_id` existant).
+    2. **Bloc complémentaire** : Catégories, Montant, Montant pondéré (lecture seule, calculé), Probabilité, Priorité, Statut, Fréquence de facturation (`invoice_frequency`) puis selon le mode **Fin de facturation** (`end_at`) ou **Choix des échelons** (`invoice_schedule`), Action, Source, Notes, Documents — sauvegardé via le footer "Annuler"/"Créer".
 
 ---
 
