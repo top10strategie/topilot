@@ -21,7 +21,3 @@ export function rowsToCsv(
   ];
   return `\uFEFF${lines.join("\n")}\n`;
 }
-
-export function downloadCsvFilename(prefix: string, from: string, to: string): string {
-  return `${prefix}_${from}_${to}.csv`;
-}
