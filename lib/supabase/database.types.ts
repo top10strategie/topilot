@@ -1520,6 +1520,14 @@ export type Database = {
         Args: never
         Returns: Database["public"]["Enums"]["collaborator_role_enum"]
       }
+      opportunity_purge_eligibility_year: {
+        Args: { p_opportunity_id: string }
+        Returns: number
+      }
+      purge_year_data: {
+        Args: { p_year: number; p_dry_run?: boolean }
+        Returns: Json
+      }
       delete_document_lineage: {
         Args: { p_document_id: string }
         Returns: {

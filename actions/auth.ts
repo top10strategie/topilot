@@ -1,6 +1,8 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { PURGE_REAUTH_COOKIE } from "@/lib/data-admin/purge";
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -14,6 +16,9 @@ export async function signOutAction(): Promise<{
   success: boolean;
   error?: string;
 }> {
+  const jar = await cookies();
+  jar.delete(PURGE_REAUTH_COOKIE);
+
   const supabase = await createClient();
   const { error } = await supabase.auth.signOut();
   if (error) {
