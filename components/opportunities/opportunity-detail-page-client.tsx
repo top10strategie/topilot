@@ -566,12 +566,6 @@ export function OpportunityDetailPageClient({
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <p className="text-muted-foreground">
-                          Fin de facturation
-                        </p>
-                        <p>{formatOpportunityDate(opportunity.end_at)}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">
                           Fréquence de facturation
                         </p>
                         <p>
@@ -582,6 +576,31 @@ export function OpportunityDetailPageClient({
                             : "—"}
                         </p>
                       </div>
+                      {opportunity.invoice_frequency === "echellonne" ? (
+                        <div>
+                          <p className="text-muted-foreground">Échelons</p>
+                          {(opportunity.invoice_schedule ?? []).length === 0 ? (
+                            <p>—</p>
+                          ) : (
+                            <ul className="space-y-1">
+                              {opportunity.invoice_schedule.map((row) => (
+                                <li key={`${row.invoice_at}-${row.amount}`}>
+                                  {formatOpportunityDate(row.invoice_at)}
+                                  {" · "}
+                                  {formatOpportunityPrice(row.amount)}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      ) : (
+                        <div>
+                          <p className="text-muted-foreground">
+                            Fin de facturation
+                          </p>
+                          <p>{formatOpportunityDate(opportunity.end_at)}</p>
+                        </div>
+                      )}
                     </div>
                   </section>
                 }

@@ -398,10 +398,10 @@ CREATE TABLE public.opportunity (
   source                    text,
   last_meeting_at           date,
   due_date_at               date NOT NULL, -- échéance / prochaine date de rendu
-  end_at                    date,          -- fin de facturation (manuel)
-  invoice_frequency         public.opportunity_invoice_frequency_enum, -- NULL | unique | mensuel | trimestriel | annuel
+  end_at                    date,          -- fin de facturation (manuel ; nullifié si echellonne)
+  invoice_frequency         public.opportunity_invoice_frequency_enum, -- NULL | unique | mensuel | trimestriel | annuel | echellonne
   entry_average_price       numeric, -- figé à la création (price × probability / 100)
-  closed_at                 date,    -- début de facturation (saisie édition ; auto à clôture si NULL)
+  closed_at                 date,    -- début de facturation (saisie create/edit ; auto à clôture si NULL)
   created_at                timestamptz NOT NULL DEFAULT now(),
   updated_at                timestamptz,
   CONSTRAINT opportunity_due_date_required CHECK (due_date_at IS NOT NULL)
@@ -901,6 +901,26 @@ CREATE TABLE public.opportunity_tool (
 );
 CREATE INDEX idx_opportunity_tool_tool_id ON public.opportunity_tool(tool_id);
 ```
+
+### `invoice_schedule`
+
+Échéancier de facturation échelonnée (1 opportunité → N échéances). Utilisé uniquement si `opportunity.invoice_frequency = 'echellonne'`.
+
+```sql
+CREATE TABLE public.invoice_schedule (
+  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  opportunity_id  uuid NOT NULL REFERENCES public.opportunity(id) ON DELETE CASCADE,
+  invoice_at      date NOT NULL,
+  amount          numeric NOT NULL CHECK (amount > 0),
+  created_at      timestamptz NOT NULL DEFAULT now(),
+  updated_at      timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_invoice_schedule_opportunity_id ON public.invoice_schedule(opportunity_id);
+```
+
+- RLS alignée sur l’accès opportunité (SELECT comme les jonctions ; INSERT/UPDATE/DELETE via `can_access_opportunity`).
+- Trigger différé : si fréquence = `echellonne`, somme(`amount`) = `opportunity.price` et au moins 2 lignes.
+- RPC `sync_opportunity_echellonne_billing` / `clear_opportunity_invoice_schedule` pour synchroniser de façon atomique.
 
 ### `client_category`
 

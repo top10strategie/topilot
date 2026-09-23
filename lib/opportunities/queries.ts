@@ -11,6 +11,7 @@ import type {
   OpportunityContactOption,
   OpportunityDetail,
   OpportunityInvoiceFrequency,
+  OpportunityInvoiceScheduleItem,
   OpportunityKanbanStatus,
   OpportunityListItem,
   OpportunityPriority,
@@ -360,12 +361,34 @@ export async function getOpportunityById(
     last_meeting_at: string | null;
   };
 
+  const { data: scheduleRows, error: scheduleError } = await supabase
+    .from("invoice_schedule")
+    .select("id, invoice_at, amount")
+    .eq("opportunity_id", id)
+    .order("invoice_at", { ascending: true });
+
+  if (scheduleError) {
+    console.error("getOpportunityById invoice_schedule:", scheduleError);
+    throw new Error(
+      `Impossible de charger l'échéancier : ${scheduleError.message}`,
+    );
+  }
+
+  const invoice_schedule: OpportunityInvoiceScheduleItem[] = (
+    scheduleRows ?? []
+  ).map((item) => ({
+    id: item.id as string,
+    invoice_at: item.invoice_at as string,
+    amount: Number(item.amount),
+  }));
+
   return {
     ...mapListItem(row),
     action: row.action,
     source: row.source,
     notes: row.notes,
     last_meeting_at: row.last_meeting_at,
+    invoice_schedule,
   };
 }
 

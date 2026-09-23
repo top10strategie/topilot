@@ -26,6 +26,7 @@ export const OPPORTUNITY_INVOICE_FREQUENCIES: OpportunityInvoiceFrequency[] = [
   "mensuel",
   "trimestriel",
   "annuel",
+  "echellonne",
 ];
 
 const KANBAN_STATUS_LABELS: Record<OpportunityKanbanStatus, string> = {
@@ -49,6 +50,7 @@ const INVOICE_FREQUENCY_LABELS: Record<OpportunityInvoiceFrequency, string> = {
   mensuel: "Mensuel",
   trimestriel: "Trimestriel",
   annuel: "Annuel",
+  echellonne: "Échelonné",
 };
 
 export function getOpportunityKanbanStatusLabel(
