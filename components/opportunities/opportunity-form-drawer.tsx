@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { flushSync } from "react-dom";
-import { FolderSimplePlus, UserPlus } from "@phosphor-icons/react";
+import { FolderSimplePlus, Plus, Trash, UserPlus } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { createBusinessCategory, updateBusinessCategory } from "@/actions/categories";
 
@@ -26,6 +26,14 @@ import type { DrawerHelpers } from "@/components/drawers/drawer-stack-context";
 import { useDrawerStack } from "@/components/drawers/drawer-stack-context";
 import { EntityFormDocumentationBlock } from "@/components/layout/entity-form-documentation-block";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -75,6 +83,32 @@ type OpportunityFormDrawerProps = {
 type LocalClient = ClientOption;
 type LocalContact = OpportunityContactOption;
 
+type LocalScheduleRow = {
+  key: string;
+  invoice_at: string;
+  amount: string;
+};
+
+function createScheduleRow(
+  partial?: Partial<Pick<LocalScheduleRow, "invoice_at" | "amount">>,
+): LocalScheduleRow {
+  return {
+    key:
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `sched-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    invoice_at: partial?.invoice_at ?? "",
+    amount: partial?.amount ?? "",
+  };
+}
+
+const SEQUENTIAL_INVOICE_FREQUENCIES = new Set<OpportunityInvoiceFrequency>([
+  "unique",
+  "mensuel",
+  "trimestriel",
+  "annuel",
+]);
+
 /**
  * Tiroir Nouvelle opportunité (création 2 temps) / Édition (save unique).
  */
@@ -121,6 +155,19 @@ export function OpportunityFormDrawer({
   const [invoiceFrequency, setInvoiceFrequency] = useState<
     OpportunityInvoiceFrequency | ""
   >(opportunity?.invoice_frequency ?? "");
+  const [scheduleRows, setScheduleRows] = useState<LocalScheduleRow[]>(() => {
+    const existing = opportunity?.invoice_schedule ?? [];
+    if (existing.length === 0) return [];
+    return existing.map((row) =>
+      createScheduleRow({
+        invoice_at: row.invoice_at,
+        amount: String(row.amount),
+      }),
+    );
+  });
+  const [pendingFrequency, setPendingFrequency] = useState<
+    OpportunityInvoiceFrequency | "" | null
+  >(null);
 
   const [price, setPrice] = useState(
     opportunity?.price != null ? String(opportunity.price) : "",
@@ -220,6 +267,50 @@ export function OpportunityFormDrawer({
     if (!Number.isFinite(p) || !Number.isFinite(prob)) return null;
     return (p * prob) / 100;
   }, [price, probability]);
+
+  const scheduleTotal = useMemo(() => {
+    return scheduleRows.reduce((acc, row) => {
+      const amount = Number(row.amount.replace(",", "."));
+      return Number.isFinite(amount) ? acc + amount : acc;
+    }, 0);
+  }, [scheduleRows]);
+
+  const priceNumber = useMemo(() => {
+    if (!price.trim()) return null;
+    const n = Number(price.replace(",", "."));
+    return Number.isFinite(n) ? n : null;
+  }, [price]);
+
+  const scheduleMatchesPrice =
+    priceNumber != null &&
+    Math.round(scheduleTotal * 100) === Math.round(priceNumber * 100);
+
+  const requestInvoiceFrequencyChange = (
+    next: OpportunityInvoiceFrequency | "",
+  ) => {
+    if (
+      invoiceFrequency === "echellonne" &&
+      next !== "echellonne" &&
+      scheduleRows.length > 0
+    ) {
+      setPendingFrequency(next);
+      return;
+    }
+    if (next === "echellonne") {
+      setEndAt("");
+      if (scheduleRows.length === 0) {
+        setScheduleRows([createScheduleRow(), createScheduleRow()]);
+      }
+    }
+    setInvoiceFrequency(next);
+  };
+
+  const confirmLeaveEchellonne = () => {
+    if (pendingFrequency === null) return;
+    setScheduleRows([]);
+    setInvoiceFrequency(pendingFrequency);
+    setPendingFrequency(null);
+  };
 
   const injectCategory = (item: OpportunityCategoryItem) => {
     setCategories((prev) => {
@@ -393,11 +484,13 @@ export function OpportunityFormDrawer({
     formData.set("collaborator_id", responsibleId);
     if (lastMeetingAt) formData.set("last_meeting_at", lastMeetingAt);
     if (dueDateAt) formData.set("due_date_at", dueDateAt);
-    if (mode === "edit") {
-      formData.set("closed_at", closedAt);
+    formData.set("closed_at", closedAt);
+    if (invoiceFrequency === "echellonne") {
+      formData.set("invoice_frequency", "echellonne");
+    } else {
+      if (endAt) formData.set("end_at", endAt);
+      if (invoiceFrequency) formData.set("invoice_frequency", invoiceFrequency);
     }
-    if (endAt) formData.set("end_at", endAt);
-    if (invoiceFrequency) formData.set("invoice_frequency", invoiceFrequency);
     return formData;
   };
 
@@ -414,6 +507,17 @@ export function OpportunityFormDrawer({
     }
     for (const category of selectedCategories) {
       formData.append("category_ids", category.id);
+    }
+    if (invoiceFrequency === "echellonne") {
+      formData.set(
+        "invoice_schedule",
+        JSON.stringify(
+          scheduleRows.map((row) => ({
+            invoice_at: row.invoice_at,
+            amount: Number(row.amount.replace(",", ".")),
+          })),
+        ),
+      );
     }
     return formData;
   };
@@ -610,13 +714,7 @@ export function OpportunityFormDrawer({
             ) : null}
           </div>
 
-          <div
-            className={
-              mode === "edit"
-                ? "grid grid-cols-1 gap-4 md:grid-cols-3"
-                : "grid grid-cols-1 gap-4 md:grid-cols-2"
-            }
-          >
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <div className="grid gap-2">
               <Label htmlFor="last_meeting_at">
                 Date de dernière rencontre
@@ -648,24 +746,22 @@ export function OpportunityFormDrawer({
                 </p>
               ) : null}
             </div>
-            {mode === "edit" ? (
-              <div className="grid gap-2">
-                <Label htmlFor="closed_at">Début de la facturation</Label>
-                <Input
-                  id="closed_at"
-                  type="date"
-                  value={closedAt}
-                  onChange={(event) => setClosedAt(event.target.value)}
-                  disabled={isPending}
-                  aria-invalid={Boolean(fieldErrors.closed_at)}
-                />
-                {fieldErrors.closed_at ? (
-                  <p className="text-sm text-destructive">
-                    {fieldErrors.closed_at}
-                  </p>
-                ) : null}
-              </div>
-            ) : null}
+            <div className="grid gap-2">
+              <Label htmlFor="closed_at">Début de la facturation</Label>
+              <Input
+                id="closed_at"
+                type="date"
+                value={closedAt}
+                onChange={(event) => setClosedAt(event.target.value)}
+                disabled={isPending}
+                aria-invalid={Boolean(fieldErrors.closed_at)}
+              />
+              {fieldErrors.closed_at ? (
+                <p className="text-sm text-destructive">
+                  {fieldErrors.closed_at}
+                </p>
+              ) : null}
+            </div>
           </div>
 
           {mode === "create" && !identificationSaved ? (
@@ -809,27 +905,13 @@ export function OpportunityFormDrawer({
 
             <div className="grid gap-2 sm:grid-cols-2">
               <div className="grid gap-2">
-                <Label htmlFor="end_at">Fin de facturation</Label>
-                <Input
-                  id="end_at"
-                  type="date"
-                  value={endAt}
-                  onChange={(event) => setEndAt(event.target.value)}
-                  disabled={isPending}
-                  aria-invalid={Boolean(fieldErrors.end_at)}
-                />
-                {fieldErrors.end_at ? (
-                  <p className="text-sm text-destructive">{fieldErrors.end_at}</p>
-                ) : null}
-              </div>
-              <div className="grid gap-2">
                 <Label htmlFor="invoice_frequency">
                   Fréquence de facturation
                 </Label>
                 <Select
                   value={invoiceFrequency || "__none__"}
                   onValueChange={(value) =>
-                    setInvoiceFrequency(
+                    requestInvoiceFrequencyChange(
                       value === "__none__"
                         ? ""
                         : (value as OpportunityInvoiceFrequency),
@@ -859,7 +941,133 @@ export function OpportunityFormDrawer({
                   </p>
                 ) : null}
               </div>
+              {invoiceFrequency &&
+              SEQUENTIAL_INVOICE_FREQUENCIES.has(invoiceFrequency) ? (
+                <div className="grid gap-2">
+                  <Label htmlFor="end_at">Fin de facturation</Label>
+                  <Input
+                    id="end_at"
+                    type="date"
+                    value={endAt}
+                    onChange={(event) => setEndAt(event.target.value)}
+                    disabled={isPending}
+                    aria-invalid={Boolean(fieldErrors.end_at)}
+                  />
+                  {fieldErrors.end_at ? (
+                    <p className="text-sm text-destructive">{fieldErrors.end_at}</p>
+                  ) : null}
+                </div>
+              ) : (
+                <div className="hidden sm:block" aria-hidden />
+              )}
             </div>
+
+            {invoiceFrequency === "echellonne" ? (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <h4 className="text-sm font-semibold">Choix des échelons</h4>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    aria-label="Ajouter un échelon"
+                    title="Ajouter un échelon"
+                    disabled={isPending || scheduleRows.length >= 12}
+                    onClick={() =>
+                      setScheduleRows((prev) => [...prev, createScheduleRow()])
+                    }
+                  >
+                    <Plus className="size-4" />
+                  </Button>
+                </div>
+                <div className="space-y-2">
+                  {scheduleRows.map((row, index) => (
+                    <div
+                      key={row.key}
+                      className="grid grid-cols-[1fr_1fr_auto] items-end gap-2"
+                    >
+                      <div className="grid gap-2">
+                        <Label htmlFor={`schedule_date_${row.key}`}>
+                          Date {index + 1}
+                        </Label>
+                        <Input
+                          id={`schedule_date_${row.key}`}
+                          type="date"
+                          value={row.invoice_at}
+                          disabled={isPending}
+                          onChange={(event) => {
+                            const value = event.target.value;
+                            setScheduleRows((prev) =>
+                              prev.map((item) =>
+                                item.key === row.key
+                                  ? { ...item, invoice_at: value }
+                                  : item,
+                              ),
+                            );
+                          }}
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor={`schedule_amount_${row.key}`}>
+                          Montant (€)
+                        </Label>
+                        <Input
+                          id={`schedule_amount_${row.key}`}
+                          inputMode="decimal"
+                          value={row.amount}
+                          disabled={isPending}
+                          placeholder="0"
+                          onChange={(event) => {
+                            const value = event.target.value;
+                            setScheduleRows((prev) =>
+                              prev.map((item) =>
+                                item.key === row.key
+                                  ? { ...item, amount: value }
+                                  : item,
+                              ),
+                            );
+                          }}
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        aria-label={`Supprimer l'échelon ${index + 1}`}
+                        disabled={isPending || scheduleRows.length <= 2}
+                        onClick={() =>
+                          setScheduleRows((prev) =>
+                            prev.filter((item) => item.key !== row.key),
+                          )
+                        }
+                      >
+                        <Trash className="size-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+                <p
+                  className={
+                    scheduleMatchesPrice
+                      ? "text-sm text-muted-foreground"
+                      : "text-sm text-destructive"
+                  }
+                >
+                  Total des échelons : {formatOpportunityPrice(scheduleTotal)}
+                  {priceNumber != null
+                    ? ` / montant opportunité : ${formatOpportunityPrice(priceNumber)}`
+                    : " / montant opportunité manquant"}
+                  {!scheduleMatchesPrice
+                    ? " — la somme doit égaler le montant."
+                    : null}
+                </p>
+                {fieldErrors.invoice_schedule ? (
+                  <p className="text-sm text-destructive">
+                    {fieldErrors.invoice_schedule}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
 
             <div className="grid gap-2">
               <Label htmlFor="opportunity_action">Action</Label>
@@ -940,6 +1148,34 @@ export function OpportunityFormDrawer({
           </Button>
         </DrawerFooterActions>
       )}
+
+      <Dialog
+        open={pendingFrequency !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingFrequency(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Changer de fréquence</DialogTitle>
+            <DialogDescription>
+              Changer de fréquence supprimera les échelons saisis. Continuer ?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setPendingFrequency(null)}
+            >
+              Annuler
+            </Button>
+            <Button type="button" onClick={confirmLeaveEchellonne}>
+              Continuer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </form>
   );
 }
