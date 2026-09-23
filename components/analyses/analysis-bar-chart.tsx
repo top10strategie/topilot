@@ -21,6 +21,8 @@ export type AnalysisBarSeries = {
   color: string;
   /** Même `stackId` = barres empilées ; ids différents = groupes côte à côte. */
   stackId?: string;
+  /** Cumul annuel de la série (affiché dans le tooltip au-dessus du mois). */
+  yearTotal?: number;
 };
 
 type AnalysisBarChartProps = {
@@ -43,10 +45,68 @@ type AnalysisBarChartProps = {
   showLegend?: boolean;
 };
 
+type TooltipPayloadEntry = {
+  dataKey?: string | number;
+  name?: string | number;
+  value?: number | string;
+  color?: string;
+};
+
 const defaultFormat = (value: number) =>
   new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(value);
 
 const AXIS_TICK = { fontSize: 10 } as const;
+
+function SeriesTooltipContent({
+  active,
+  payload,
+  label,
+  series,
+  valueFormatter,
+}: {
+  active?: boolean;
+  payload?: TooltipPayloadEntry[];
+  label?: string | number;
+  series?: AnalysisBarSeries[];
+  valueFormatter: (value: number) => string;
+}) {
+  if (!active || !payload?.length) return null;
+
+  return (
+    <div className="rounded-md border border-border bg-popover px-3 py-2 text-xs text-popover-foreground shadow-md">
+      {label != null && label !== "" ? (
+        <p className="mb-1.5 font-medium">{String(label)}</p>
+      ) : null}
+      <ul className="space-y-2">
+        {payload.map((entry) => {
+          const key = String(entry.dataKey ?? entry.name ?? "");
+          const seriesDef = series?.find((s) => s.key === key);
+          const seriesLabel = seriesDef?.label ?? String(entry.name ?? key);
+          const monthValue =
+            typeof entry.value === "number" ? entry.value : Number(entry.value);
+          return (
+            <li key={key} className="space-y-0.5">
+              <p className="font-medium" style={{ color: entry.color }}>
+                {seriesLabel}
+              </p>
+              {seriesDef?.yearTotal != null ? (
+                <p className="text-muted-foreground">
+                  Total année : {valueFormatter(seriesDef.yearTotal)}
+                </p>
+              ) : null}
+              <p>
+                Mois :{" "}
+                {Number.isFinite(monthValue)
+                  ? valueFormatter(monthValue)
+                  : "—"}
+              </p>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
 
 export function AnalysisBarChart({
   title,
@@ -70,6 +130,20 @@ export function AnalysisBarChart({
     : (data as ChartDatum[]).filter((d) => d.value > 0);
 
   const isHorizontalBars = layout === "horizontal";
+
+  const tooltip = (
+    <Tooltip
+      content={(props) => (
+        <SeriesTooltipContent
+          active={props.active}
+          payload={props.payload as unknown as TooltipPayloadEntry[] | undefined}
+          label={props.label as string | number | undefined}
+          series={series}
+          valueFormatter={valueFormatter}
+        />
+      )}
+    />
+  );
 
   return (
     <Card className={className}>
@@ -111,16 +185,7 @@ export function AnalysisBarChart({
                     className="text-xs"
                     tick={{ fontSize: 11 }}
                   />
-                  <Tooltip
-                    formatter={(value, name) => {
-                      const num =
-                        typeof value === "number" ? value : Number(value);
-                      const seriesLabel =
-                        series?.find((s) => s.key === name)?.label ??
-                        String(name);
-                      return [valueFormatter(num), seriesLabel];
-                    }}
-                  />
+                  {tooltip}
                   {showLegend && series ? <Legend /> : null}
                   {isMulti && series
                     ? series.map((s) => (
@@ -160,16 +225,7 @@ export function AnalysisBarChart({
                     width={72}
                     tick={AXIS_TICK}
                   />
-                  <Tooltip
-                    formatter={(value, name) => {
-                      const num =
-                        typeof value === "number" ? value : Number(value);
-                      const seriesLabel =
-                        series?.find((s) => s.key === name)?.label ??
-                        String(name);
-                      return [valueFormatter(num), seriesLabel];
-                    }}
-                  />
+                  {tooltip}
                   {showLegend && series ? <Legend /> : null}
                   {isMulti && series
                     ? series.map((s) => (

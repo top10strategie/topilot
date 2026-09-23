@@ -28,6 +28,7 @@ import { LabelEntityFormDrawer } from "@/components/categories/label-entity-form
 import { LabelEntityGrid } from "@/components/categories/label-entity-grid";
 import { AnonymizeCollaboratorDialog } from "@/components/collaborators/anonymize-collaborator-dialog";
 import { CollaboratorCard } from "@/components/collaborators/collaborator-card";
+import { AdministrationDataPanel } from "@/components/administration/administration-data-panel";
 import { CollaboratorFormDrawer } from "@/components/collaborators/collaborator-form-drawer";
 import {
   CollaboratorConsultationContent,
@@ -103,7 +104,8 @@ type AdminTab =
   | "categories_business"
   | "categories_utility"
   | "types"
-  | "people";
+  | "people"
+  | "donnees";
 
 function recentMissionsForCollaborator(
   missions: AdminMissionSummary[],
@@ -429,7 +431,8 @@ export function AdministrationPageClient({
     // Onglet people : ajouts via user-plus des sous-sections
   };
 
-  const heroCreateDisabled = activeTab === "people";
+  const heroCreateDisabled =
+    activeTab === "people" || activeTab === "donnees";
   const heroCreateLabel =
     activeTab === "types"
       ? "Nouveau type documentaire"
@@ -454,11 +457,18 @@ export function AdministrationPageClient({
               />
               <Input
                 type="search"
+                name="admin-search"
                 placeholder="Rechercher…"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 className="pl-8"
                 aria-label="Recherche contextuelle administration"
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
+                data-1p-ignore
+                data-lpignore="true"
+                data-form-type="other"
               />
             </div>
             <IconActionButton
@@ -491,6 +501,9 @@ export function AdministrationPageClient({
             <TabsTrigger value="types">Types</TabsTrigger>
             {canManagePeople ? (
               <TabsTrigger value="people">Collaborateurs &amp; Pôles</TabsTrigger>
+            ) : null}
+            {canManagePeople ? (
+              <TabsTrigger value="donnees">Données</TabsTrigger>
             ) : null}
           </TabsList>
 
@@ -743,6 +756,15 @@ export function AdministrationPageClient({
                   </div>
                 )}
               </section>
+            </TabsContent>
+          ) : null}
+
+          {canManagePeople ? (
+            <TabsContent
+              value="donnees"
+              className="mt-4 flex min-h-0 flex-1 flex-col overflow-hidden"
+            >
+              <AdministrationDataPanel />
             </TabsContent>
           ) : null}
         </Tabs>

@@ -20,6 +20,7 @@ const ENTITY_TYPE_LABELS: Record<AuditEntityType, string> = {
   wiki: "Wiki",
   setting: "Préférences",
   note: "Note",
+  data_purge: "Purge annuelle",
 };
 
 const ACTION_LABELS: Record<AuditAction, string> = {

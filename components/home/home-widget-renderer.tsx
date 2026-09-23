@@ -168,6 +168,36 @@ export function HomeWidgetRenderer({
           engage: p.engage,
           previsionnel: p.previsionnel,
         })) ?? [];
+      let sumEngage = 0;
+      let sumPrev = 0;
+      for (const p of series?.months ?? []) {
+        sumEngage += p.engage;
+        sumPrev += p.previsionnel;
+      }
+      const barSeries = [
+        ...(sumEngage > 0
+          ? [
+              {
+                key: "engage",
+                label: `CA engagé (${formatOpportunityPrice(sumEngage)})`,
+                color: "var(--chart-2)",
+                stackId: "ca",
+                yearTotal: sumEngage,
+              },
+            ]
+          : []),
+        ...(sumPrev > 0
+          ? [
+              {
+                key: "previsionnel",
+                label: `CA prévisionnel (${formatOpportunityPrice(sumPrev)})`,
+                color: "var(--chart-1)",
+                stackId: "ca",
+                yearTotal: sumPrev,
+              },
+            ]
+          : []),
+      ];
       return (
         <AnalysisBarChart
           title={
@@ -176,20 +206,7 @@ export function HomeWidgetRenderer({
               : title
           }
           data={chartData}
-          series={[
-            {
-              key: "engage",
-              label: "CA engagé",
-              color: "var(--chart-2)",
-              stackId: "ca",
-            },
-            {
-              key: "previsionnel",
-              label: "CA prévisionnel",
-              color: "var(--chart-1)",
-              stackId: "ca",
-            },
-          ]}
+          series={barSeries}
           layout="vertical"
           showLegend
           valueFormatter={(v) => formatOpportunityPrice(v)}

@@ -349,21 +349,24 @@ export function OpportunitiesAnalysisPanel({ data }: Props) {
         label: string;
         color: string;
         stackId: string;
+        yearTotal: number;
       }> = [];
       if (sumEngage > 0) {
         entries.push({
           key: `c${c}_engage`,
-          label: `${client.label} · engagé`,
+          label: `${client.label} · engagé (${formatOpportunityPrice(sumEngage)})`,
           color: CLIENT_CHART_COLORS_ENGAGE[c] ?? "var(--chart-2)",
           stackId: `c${c}`,
+          yearTotal: sumEngage,
         });
       }
       if (sumPrev > 0) {
         entries.push({
           key: `c${c}_previsionnel`,
-          label: `${client.label} · prévisionnel`,
+          label: `${client.label} · prévisionnel (${formatOpportunityPrice(sumPrev)})`,
           color: CLIENT_CHART_COLORS_PREV[c] ?? "var(--chart-1)",
           stackId: `c${c}`,
+          yearTotal: sumPrev,
         });
       }
       return entries;
@@ -531,10 +534,10 @@ export function OpportunitiesAnalysisPanel({ data }: Props) {
   return (
     <div className="space-y-6">
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] lg:items-stretch">
-        <div className="flex min-h-0 flex-col gap-4 lg:h-full">
-          <div className="min-h-0 flex-1">
+        <div className="flex flex-col gap-4 lg:h-full lg:min-h-0">
+          <div className="lg:min-h-0 lg:flex-1">
             <AnalysisKpiGrid
-              className="h-full sm:grid-cols-2 xl:grid-cols-2"
+              className="sm:grid-cols-2 xl:grid-cols-2 lg:h-full"
               items={[
                 {
                   label: `Total des sommes engagées${yearSuffix}`,
@@ -547,7 +550,7 @@ export function OpportunitiesAnalysisPanel({ data }: Props) {
               ]}
             />
           </div>
-          <Card className="flex min-h-0 flex-1 flex-col">
+          <Card className="flex flex-col lg:min-h-0 lg:flex-1">
             <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0 pb-2">
               <CardTitle className="text-base">Objectif de CA</CardTitle>
               <div className="flex shrink-0 items-center gap-1.5">
@@ -565,7 +568,7 @@ export function OpportunitiesAnalysisPanel({ data }: Props) {
                 </IconActionButton>
               </div>
             </CardHeader>
-            <CardContent className="flex flex-1 flex-col justify-center gap-2">
+            <CardContent className="flex flex-col justify-center gap-2 lg:flex-1">
               <p className="text-sm text-muted-foreground">
                 Année {pipelineYear}
               </p>

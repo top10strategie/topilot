@@ -734,10 +734,10 @@ CREATE TABLE public.audit_log (
   id               uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   collaborator_id  uuid REFERENCES public.collaborator(id) ON DELETE RESTRICT,
   entity_type      text NOT NULL CHECK (entity_type = ANY (ARRAY[
-                      'category', 'team', 'collaborator', 'client', 'contact_client',
+                      'category', 'category_business', 'team', 'collaborator', 'client', 'contact_client',
                       'opportunity', 'mission', 'mission_series', 'document_type', 'document',
                       'tool', 'tool_access', 'tool_subscription', 'tool_subscription_price',
-                      'exchange_rate', 'wiki', 'setting', 'note'
+                      'exchange_rate', 'wiki', 'setting', 'note', 'data_purge'
                     ]::text[])),
   entity_id        uuid NOT NULL,
   action           public.audit_action_enum NOT NULL,
