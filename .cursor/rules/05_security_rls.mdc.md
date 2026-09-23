@@ -36,7 +36,7 @@ CREATE POLICY "actifs_seulement" ON collaborator
 
 |Entité|Lecture|Écriture (INSERT/UPDATE)|Suppression définitive (`DELETE`)|
 |---|---|---|---|
-|`client`, `mission`, `opportunity`|Tous les actifs|Tous les actifs|❌ Personne|
+|`client`, `mission`, `opportunity`|Tous les actifs|Tous les actifs|❌ Pas de policy DELETE ; purge annuelle via RPC `purge_year_data` (Manager/Direction, SECURITY DEFINER)|
 |`collaborator`|Tous les actifs|**INSERT réservé Manager/Direction** ; UPDATE : tous les actifs (champs sensibles `role`/`status` réservés Manager/Direction, cf. trigger dédié ci-dessous)|❌ Personne (anonymisation Manager/Direction uniquement)|
 |`team`|Tous les actifs|Tous les actifs|Manager + Direction|
 |`wiki`|Tous les actifs|Tous les actifs|Tous les actifs|
@@ -45,7 +45,7 @@ CREATE POLICY "actifs_seulement" ON collaborator
 |`tool_access` (`is_private = false`)|Tous les actifs|Tous les actifs|Tous les actifs|
 |`tool_access` (`is_private = true`)|Manager + Direction|Manager + Direction|Manager + Direction|
 |`exchange_rate`|Tous les actifs|Service role uniquement|Tous les actifs|
-|`audit_log`|Tous les actifs|Trigger uniquement|❌ Personne|
+|`audit_log`|Tous les actifs|Trigger uniquement (+ insert `data_purge` via RPC)|❌ Pas de policy DELETE ; purge annuelle d'une année via RPC `purge_year_data` uniquement|
 
 ### Règles spécifiques aux contraintes de cohérence
 
@@ -74,12 +74,12 @@ La policy `DELETE` varie selon la table, contrairement à SELECT/INSERT/UPDATE q
 
 |Groupe de tables|Policy `DELETE`|
 |---|---|
-|`client`, `mission`, `opportunity`|**Aucune policy `DELETE`** — suppression impossible pour tous les rôles|
+|`client`, `mission`, `opportunity`|**Aucune policy `DELETE`** — hard-delete uniquement via RPC `purge_year_data` (Manager/Direction)|
 |`collaborator`|**Aucune policy `DELETE`** — offboarding via `anonymize_collaborator` uniquement, réservé Manager/Direction (contrôlé en server action, pas en RLS)|
 |`team`|Manager/Direction uniquement|
 |`tool_access` où `is_private = true`|Manager/Direction uniquement|
 |`tool_access` où `is_private = false`, `tool`, `document`, `wiki`, `contact_client`, `category`, `document_type`, `tool_subscription`, `tool_subscription_price`, `exchange_rate`, `setting`|Tout collaborateur actif|
-|`audit_log`|**Aucune policy `DELETE`**, pour aucun rôle|
+|`audit_log`|**Aucune policy `DELETE`** — purge d'une année calendaire uniquement via RPC `purge_year_data`|
 |Tables de jonction (`mission_category`, `mission_tool`, `client_wiki`, etc.)|Tout collaborateur actif (suppression en cascade via la table parente, ou suppression directe du lien)|
 
 ```sql
@@ -96,7 +96,8 @@ CREATE POLICY "<table>_delete_manager_direction" ON public.<table>
     AND public.current_collaborator_role() IN ('manager', 'direction')
   );
 
--- client, mission, opportunity, collaborator, audit_log : aucune policy DELETE créée.
+-- client, mission, opportunity, collaborator, audit_log : aucune policy DELETE créée
+-- (purge annuelle = RPC SECURITY DEFINER purge_year_data).
 ```
 
 ---

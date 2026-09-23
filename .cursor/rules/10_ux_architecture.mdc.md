@@ -471,7 +471,7 @@ Page à **plat, sans onglets** (contrairement à Client/Opportunité/Mission) :
 - Identification de l'entité : "Gestion admin"
 - Groupe de boutons d'action : recherche contextuelle + icône de gestion (`pencil-simple`) — **pas de filtre, pas de switch de vue** sur cette page (contenus simples, vue Cartes uniquement, cf. onglets ci-dessous).
 
-**Contenu - Tabs** : "Catégories" | "Types" | "Collaborateurs & Pôles"
+**Contenu - Tabs** : "Catégories métier" | "Catégories utilitaire" | "Types" | "Collaborateurs & Pôles" | "Données"
 
 - **Catégories** (`category`) :
     - Grille de cartes "Catégorie" (Titre uniquement), chacune avec icônes crayon (édition) et poubelle (suppression directe, sans passer par une édition préalable — modale de confirmation générique : "Toute suppression d'une catégorie est définitive. Êtes-vous sûr de vouloir supprimer cette catégorie ?").
@@ -484,6 +484,9 @@ Page à **plat, sans onglets** (contrairement à Client/Opportunité/Mission) :
     - **Suppression** :
         - Suppression d'un **Pôle** : modale de confirmation générique classique, suppression SQL réelle (`team` n'a pas de contrainte particulière hors permissions).
         - Suppression d'un **Collaborateur** : le bouton déclenche en réalité le flux d'**anonymisation** (`anonymize_collaborator`, cf. `04_database_schema.mdc`/`05_security_rls.mdc`) et non une suppression SQL — `collaborator` n'a aucune policy `DELETE`. Le texte de la modale ("Toute suppression d'un pôle/collaborateur est définitive...") reste identique en façade pour les deux cas, mais recouvre deux mécanismes différents côté serveur.
+- **Données** (Manager / Direction uniquement) :
+    - **Exports CSV** : trois blocs indépendants (opportunités, missions, analyses opportunités) avec période From/To + case « appliquer les mêmes dates aux trois ».
+    - **Purge annuelle** : hard-delete année ≤ N−3 ; re-saisie MDP (cookie session) ; prévisualisation des volumes ; taper l'année + case « J'ai exporté mes données » avant exécution (RPC `purge_year_data`).
 
 ### Home (`/`)
 

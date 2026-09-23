@@ -19,7 +19,8 @@ export type AuditEntityType =
   | "exchange_rate"
   | "wiki"
   | "setting"
-  | "note";
+  | "note"
+  | "data_purge";
 
 export type AuditLogListItem = {
   id: string;

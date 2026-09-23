@@ -24,14 +24,17 @@ alwaysApply: true
 |Lire les données métier|✅|✅|✅|
 |Créer / modifier objets métier|✅|✅|✅|
 |Archiver|✅|✅|✅|
-|Supprimer définitivement (`client`, `mission`, `opportunity`)|❌|❌|❌|
+|Supprimer définitivement (`client`, `mission`, `opportunity`) hors purge annuelle|❌|❌|❌|
+|Supprimer définitivement une **année entière** (purge Admin → Données)|❌|✅|✅|
 |Supprimer définitivement (`collaborator`, `team`)|❌|✅|✅|
 |Supprimer définitivement (`tool_access` privé)|❌|✅|✅|
 |Supprimer définitivement (toute autre table : `document`, `wiki`, `contact_client`, `tool`, `tool_access` non privé, `category`, `document_type`, `tool_subscription`, `tool_subscription_price`, `exchange_rate`, `setting`)|✅|✅|✅|
 |Privatiser un accès toolbox|❌|✅|✅|
 |Voir un accès toolbox privé|❌|✅|✅|
 
-> `client`, `mission` et `opportunity` ne sont **jamais** supprimables définitivement, par aucun rôle — uniquement archivables (`is_active` / `kanban_status`). `collaborator` n'a **jamais** de vraie suppression SQL, même par Manager/Direction — l'offboarding passe exclusivement par anonymisation + `status = sorti` (voir `04_database_schema.mdc` et `05_security_rls.mdc`). `audit_log` n'est supprimable par **aucun** rôle.
+> `client`, `mission` et `opportunity` ne sont **jamais** supprimables définitivement au fil de l'eau — uniquement archivables (`is_active` / `kanban_status`). Exception **Manager/Direction** : purge annuelle hard-delete via Admin → Données (RPC `purge_year_data`, année ≤ N−3, re-auth MDP + confirmation). `collaborator` n'a **jamais** de vraie suppression SQL, même par Manager/Direction — l'offboarding passe exclusivement par anonymisation + `status = sorti` (voir `04_database_schema.mdc` et `05_security_rls.mdc`). `audit_log` n'est pas supprimable ligne à ligne ; seule la purge annuelle peut effacer les lignes d'une année calendaire (Paris), puis écrit une trace `entity_type = data_purge`.
+
+**Purge annuelle** : page Admin onglet Données uniquement ; cookie de re-auth session + saisie de l'année + case « J'ai exporté mes données ». Critères : opportunités `gagne`/`perdue` avec `closed_at` et année d'éligibilité = max(`closed_at`, `end_at`, échéances) ; missions `terminee`/`archivee` avec `year(end_at)` ; `mission_series` avec `year(ends_on)` ; documents liés miroirés vers `client_document` quand un client existe.
 
 ### Règles transverses
 
@@ -277,13 +280,13 @@ Ces trois règles sont mutualisées via un composant de stack de drawers réutil
 
 ### Contrainte `audit_log.entity_type`
 
-```sql
+```
 CHECK (entity_type = ANY (ARRAY[
   'category', 'category_business', 'team', 'collaborator', 'client', 'contact_client',
   'opportunity', 'mission', 'mission_series', 'document_type', 'document',
   'tool', 'tool_access', 'tool_subscription', 'tool_subscription_price',
-  'exchange_rate', 'wiki', 'setting', 'note'
+  'exchange_rate', 'wiki', 'setting', 'note', 'data_purge'
 ]::text[]))
 ```
 
-> Libellé UI unique « Catégorie » pour `category` et `category_business`. `entity_id` peut pointer vers une entité supprimée → afficher "entité supprimée". L'historique est exclu de la recherche transverse.
+> Libellé UI unique « Catégorie » pour `category` et `category_business`. `entity_id` peut pointer vers une entité supprimée → afficher "entité supprimée". L'historique est exclu de la recherche transverse. `data_purge` : trace des purges annuelles (écrit par RPC `purge_year_data`, jamais via trigger de table).

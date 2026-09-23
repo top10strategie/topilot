@@ -17,6 +17,8 @@ export type AnalysisLineSeries = {
   key: string;
   label: string;
   color?: string;
+  /** Cumul annuel — affiché inline dans le tooltip si défini. */
+  yearTotal?: number;
 };
 
 type AnalysisLineChartProps = {
@@ -29,8 +31,17 @@ type AnalysisLineChartProps = {
   axisTickFormatter?: (value: number) => string;
   emptyMessage?: string;
   headerAction?: ReactNode;
+  /** Affiché à droite sur sm+, sous le titre/année sur mobile. */
+  headerSecondary?: ReactNode;
   className?: string;
   height?: number;
+};
+
+type TooltipPayloadEntry = {
+  dataKey?: string | number;
+  name?: string | number;
+  value?: number | string;
+  color?: string;
 };
 
 const defaultFormat = (value: number) =>
@@ -46,6 +57,52 @@ const DEFAULT_COLORS = [
   "var(--chart-5)",
 ];
 
+function LineTooltipContent({
+  active,
+  payload,
+  label,
+  series,
+  valueFormatter,
+}: {
+  active?: boolean;
+  payload?: TooltipPayloadEntry[];
+  label?: string | number;
+  series: AnalysisLineSeries[];
+  valueFormatter: (value: number) => string;
+}) {
+  if (!active || !payload?.length) return null;
+
+  return (
+    <div className="rounded-md border border-border bg-popover px-3 py-2 text-xs text-popover-foreground shadow-md">
+      {label != null && label !== "" ? (
+        <p className="mb-1.5 font-medium">{String(label)}</p>
+      ) : null}
+      <ul className="space-y-1">
+        {payload.map((entry) => {
+          const key = String(entry.dataKey ?? entry.name ?? "");
+          const seriesDef = series.find((s) => s.key === key);
+          const seriesLabel = seriesDef?.label ?? String(entry.name ?? key);
+          const monthValue =
+            typeof entry.value === "number" ? entry.value : Number(entry.value);
+          const monthFormatted = Number.isFinite(monthValue)
+            ? valueFormatter(monthValue)
+            : "—";
+          const yearPart =
+            seriesDef?.yearTotal != null
+              ? ` (${valueFormatter(seriesDef.yearTotal)})`
+              : "";
+          return (
+            <li key={key} className="font-medium" style={{ color: entry.color }}>
+              {seriesLabel} — {monthFormatted}
+              {yearPart}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
 export function AnalysisLineChart({
   title,
   data,
@@ -54,6 +111,7 @@ export function AnalysisLineChart({
   axisTickFormatter,
   emptyMessage = "Aucune donnée.",
   headerAction,
+  headerSecondary,
   className,
   height = 280,
 }: AnalysisLineChartProps) {
@@ -64,15 +122,24 @@ export function AnalysisLineChart({
       return typeof v === "number" && v > 0;
     }),
   );
+  const hasActions = Boolean(headerAction || headerSecondary);
 
   return (
     <Card className={className}>
-      <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0 pb-2">
-        <CardTitle className="text-base">{title}</CardTitle>
-        {headerAction ? (
-          <div className="flex shrink-0 flex-wrap items-center gap-2">
-            {headerAction}
-          </div>
+      <CardHeader className="space-y-3 pb-2">
+        <div className="flex flex-row items-start justify-between gap-3 space-y-0">
+          <CardTitle className="text-base">{title}</CardTitle>
+          {hasActions ? (
+            <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+              {headerSecondary ? (
+                <div className="hidden sm:block">{headerSecondary}</div>
+              ) : null}
+              {headerAction}
+            </div>
+          ) : null}
+        </div>
+        {headerSecondary ? (
+          <div className="w-full sm:hidden">{headerSecondary}</div>
         ) : null}
       </CardHeader>
       <CardContent>
@@ -105,13 +172,19 @@ export function AnalysisLineChart({
                   tick={AXIS_TICK}
                 />
                 <Tooltip
-                  formatter={(value, name) => {
-                    const num =
-                      typeof value === "number" ? value : Number(value);
-                    const seriesLabel =
-                      series.find((s) => s.key === name)?.label ?? String(name);
-                    return [valueFormatter(num), seriesLabel];
-                  }}
+                  content={(props) => (
+                    <LineTooltipContent
+                      active={props.active}
+                      payload={
+                        props.payload as unknown as
+                          | TooltipPayloadEntry[]
+                          | undefined
+                      }
+                      label={props.label as string | number | undefined}
+                      series={series}
+                      valueFormatter={valueFormatter}
+                    />
+                  )}
                 />
                 <Legend
                   formatter={(value) =>
