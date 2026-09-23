@@ -180,6 +180,7 @@ export function HomeWidgetRenderer({
               {
                 key: "engage",
                 label: `CA engagé (${formatOpportunityPrice(sumEngage)})`,
+                tooltipLabel: "CA engagé",
                 color: "var(--chart-2)",
                 stackId: "ca",
                 yearTotal: sumEngage,
@@ -191,6 +192,7 @@ export function HomeWidgetRenderer({
               {
                 key: "previsionnel",
                 label: `CA prévisionnel (${formatOpportunityPrice(sumPrev)})`,
+                tooltipLabel: "CA prévisionnel",
                 color: "var(--chart-1)",
                 stackId: "ca",
                 yearTotal: sumPrev,

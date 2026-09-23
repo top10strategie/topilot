@@ -21,8 +21,10 @@ export type AnalysisBarSeries = {
   color: string;
   /** Même `stackId` = barres empilées ; ids différents = groupes côte à côte. */
   stackId?: string;
-  /** Cumul annuel de la série (affiché dans le tooltip au-dessus du mois). */
+  /** Cumul annuel de la série (ligne 2 du tooltip). */
   yearTotal?: number;
+  /** Libellé court pour le tooltip (sans total année). */
+  tooltipLabel?: string;
 };
 
 type AnalysisBarChartProps = {
@@ -39,6 +41,8 @@ type AnalysisBarChartProps = {
   axisTickFormatter?: (value: number) => string;
   emptyMessage?: string;
   headerAction?: ReactNode;
+  /** Affiché à droite sur sm+, sous le titre/année sur mobile. */
+  headerSecondary?: ReactNode;
   className?: string;
   /** Hauteur du conteneur chart (px). */
   height?: number;
@@ -81,30 +85,60 @@ function SeriesTooltipContent({
         {payload.map((entry) => {
           const key = String(entry.dataKey ?? entry.name ?? "");
           const seriesDef = series?.find((s) => s.key === key);
-          const seriesLabel = seriesDef?.label ?? String(entry.name ?? key);
+          const baseLabel =
+            seriesDef?.tooltipLabel ??
+            seriesDef?.label ??
+            String(entry.name ?? key);
           const monthValue =
             typeof entry.value === "number" ? entry.value : Number(entry.value);
+          const monthFormatted = Number.isFinite(monthValue)
+            ? valueFormatter(monthValue)
+            : "—";
           return (
             <li key={key} className="space-y-0.5">
               <p className="font-medium" style={{ color: entry.color }}>
-                {seriesLabel}
+                {baseLabel} — {monthFormatted}
               </p>
               {seriesDef?.yearTotal != null ? (
                 <p className="text-muted-foreground">
                   Total année : {valueFormatter(seriesDef.yearTotal)}
                 </p>
               ) : null}
-              <p>
-                Mois :{" "}
-                {Number.isFinite(monthValue)
-                  ? valueFormatter(monthValue)
-                  : "—"}
-              </p>
             </li>
           );
         })}
       </ul>
     </div>
+  );
+}
+
+function ChartCardHeader({
+  title,
+  headerAction,
+  headerSecondary,
+}: {
+  title: string;
+  headerAction?: ReactNode;
+  headerSecondary?: ReactNode;
+}) {
+  const hasActions = Boolean(headerAction || headerSecondary);
+  return (
+    <CardHeader className="space-y-3 pb-2">
+      <div className="flex flex-row items-start justify-between gap-3 space-y-0">
+        <CardTitle className="text-base">{title}</CardTitle>
+        {hasActions ? (
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+            {headerSecondary ? (
+              <div className="hidden sm:block">{headerSecondary}</div>
+            ) : null}
+            {headerAction}
+          </div>
+        ) : null}
+      </div>
+      {headerSecondary ? (
+        <div className="w-full sm:hidden">{headerSecondary}</div>
+      ) : null}
+    </CardHeader>
   );
 }
 
@@ -117,6 +151,7 @@ export function AnalysisBarChart({
   axisTickFormatter,
   emptyMessage = "Aucune donnée.",
   headerAction,
+  headerSecondary,
   className,
   height = 280,
   showLegend = false,
@@ -147,14 +182,11 @@ export function AnalysisBarChart({
 
   return (
     <Card className={className}>
-      <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0 pb-2">
-        <CardTitle className="text-base">{title}</CardTitle>
-        {headerAction ? (
-          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-            {headerAction}
-          </div>
-        ) : null}
-      </CardHeader>
+      <ChartCardHeader
+        title={title}
+        headerAction={headerAction}
+        headerSecondary={headerSecondary}
+      />
       <CardContent>
         {chartData.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted-foreground">

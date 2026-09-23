@@ -350,11 +350,13 @@ export function OpportunitiesAnalysisPanel({ data }: Props) {
         color: string;
         stackId: string;
         yearTotal: number;
+        tooltipLabel: string;
       }> = [];
       if (sumEngage > 0) {
         entries.push({
           key: `c${c}_engage`,
           label: `${client.label} · engagé (${formatOpportunityPrice(sumEngage)})`,
+          tooltipLabel: `${client.label} · engagé`,
           color: CLIENT_CHART_COLORS_ENGAGE[c] ?? "var(--chart-2)",
           stackId: `c${c}`,
           yearTotal: sumEngage,
@@ -364,6 +366,7 @@ export function OpportunitiesAnalysisPanel({ data }: Props) {
         entries.push({
           key: `c${c}_previsionnel`,
           label: `${client.label} · prévisionnel (${formatOpportunityPrice(sumPrev)})`,
+          tooltipLabel: `${client.label} · prévisionnel`,
           color: CLIENT_CHART_COLORS_PREV[c] ?? "var(--chart-1)",
           stackId: `c${c}`,
           yearTotal: sumPrev,
@@ -401,7 +404,12 @@ export function OpportunitiesAnalysisPanel({ data }: Props) {
       });
 
     const series = clients.flatMap((client, c) => {
-      const entries: Array<{ key: string; label: string; color: string }> = [];
+      const entries: Array<{
+        key: string;
+        label: string;
+        color: string;
+        yearTotal: number;
+      }> = [];
       const specs = [
         {
           key: `c${c}_${y}_engage`,
@@ -425,7 +433,8 @@ export function OpportunitiesAnalysisPanel({ data }: Props) {
         },
       ];
       for (const spec of specs) {
-        if (seriesYearSum(months, spec.key) > 0) entries.push(spec);
+        const total = seriesYearSum(months, spec.key);
+        if (total > 0) entries.push({ ...spec, yearTotal: total });
       }
       return entries;
     });
@@ -643,25 +652,25 @@ export function OpportunitiesAnalysisPanel({ data }: Props) {
           axisTickFormatter={formatAxisEuro}
           emptyMessage="Sélectionnez un client pour afficher le CA mensuel."
           headerAction={
-            <>
-              <ClientMultiSelect
-                options={data.caClientOptions}
-                value={selectedClients}
-                onChange={setSelectedClients}
-              />
-              <AnalysisYearSelect
-                years={years}
-                value={clientYear}
-                onChange={(year) => {
-                  setClientYear(year);
-                  if (selectedClients.length === 0) {
-                    const topId = topClientIdForYear(data, year);
-                    const opt = data.caClientOptions.find((c) => c.id === topId);
-                    if (opt) setSelectedClients([opt]);
-                  }
-                }}
-              />
-            </>
+            <AnalysisYearSelect
+              years={years}
+              value={clientYear}
+              onChange={(year) => {
+                setClientYear(year);
+                if (selectedClients.length === 0) {
+                  const topId = topClientIdForYear(data, year);
+                  const opt = data.caClientOptions.find((c) => c.id === topId);
+                  if (opt) setSelectedClients([opt]);
+                }
+              }}
+            />
+          }
+          headerSecondary={
+            <ClientMultiSelect
+              options={data.caClientOptions}
+              value={selectedClients}
+              onChange={setSelectedClients}
+            />
           }
         />
         <AnalysisLineChart
@@ -673,18 +682,18 @@ export function OpportunitiesAnalysisPanel({ data }: Props) {
           axisTickFormatter={formatAxisEuro}
           emptyMessage="Sélectionnez un client pour comparer le CA."
           headerAction={
-            <>
-              <ClientMultiSelect
-                options={data.caClientOptions}
-                value={selectedCompareClients}
-                onChange={setSelectedCompareClients}
-              />
-              <AnalysisYearSelect
-                years={years}
-                value={clientCompareYear}
-                onChange={setClientCompareYear}
-              />
-            </>
+            <AnalysisYearSelect
+              years={years}
+              value={clientCompareYear}
+              onChange={setClientCompareYear}
+            />
+          }
+          headerSecondary={
+            <ClientMultiSelect
+              options={data.caClientOptions}
+              value={selectedCompareClients}
+              onChange={setSelectedCompareClients}
+            />
           }
         />
       </div>
