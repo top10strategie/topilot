@@ -8,7 +8,7 @@ function ChartFallback() {
 }
 
 /**
- * Un seul import() → un chunk Recharts partagé (bar + line).
+ * Un seul import() → un chunk Recharts partagé (bar + line + composed).
  */
 const loadCharts = () => import("@/components/analyses/analysis-charts");
 
@@ -19,5 +19,10 @@ export const AnalysisBarChart = dynamic(
 
 export const AnalysisLineChart = dynamic(
   () => loadCharts().then((mod) => mod.AnalysisLineChart),
+  { ssr: false, loading: ChartFallback },
+);
+
+export const AnalysisComposedChart = dynamic(
+  () => loadCharts().then((mod) => mod.AnalysisComposedChart),
   { ssr: false, loading: ChartFallback },
 );

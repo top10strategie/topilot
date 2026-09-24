@@ -1,5 +1,21 @@
 # Suivi des actions — TOPilot
 
+## **[2026-09-24] — Analyses Opportunités : KPI facturation + pipeline composé**
+
+**Type :** `feature`
+**Fichiers concernés :** `supabase/migrations/20260924160000_analyses_kpi_pipeline.sql`, `lib/analyses/{types,empty-payload}.ts`, `components/analyses/{analysis-kpi-grid,analysis-composed-chart,analysis-charts,analysis-bar-chart-lazy,opportunities-analysis-panel}.tsx`, `components/home/home-widget-renderer.tsx`, `.cursor/rules/{03_business_rules,10_ux_architecture}.mdc.md`, `suivi.md`
+
+### Description
+
+Recalcul des KPI Opportunités (engagé = échéances gagnées de l’année ; pondéré = ouverts avec pondération + fallback `due_date_at`), pipeline Commercial en barres empilées + lignes (objectif, engagé N−1), suppression du graphique YoY pipeline dédié.
+
+### Détails techniques
+
+- RPC `load_analyses_payload` : `sumPrice` / `sumAveragePrice` / `sumPrevisionnel` / `missingEngageBillingCount`
+- `AnalysisComposedChart` (Recharts `ComposedChart`) ; `AnalysisKpiGrid.secondary`
+- Libellé warning : « sans informations de facturation »
+
+---
 ## **[2026-09-21] — Analyses Missions : pipeline Produit ; doc schéma**
 
 **Type :** `feature`

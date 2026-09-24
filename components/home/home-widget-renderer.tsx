@@ -110,12 +110,14 @@ export function HomeWidgetRenderer({
                 value: formatOpportunityPrice(
                   analyses.opportunities.kpis.sumPrice,
                 ),
+                secondary: `nombre d'engagée non renseigné : ${analyses.opportunities.kpis.missingEngageBillingCount}`,
               },
               {
                 label: `Total des sommes pondérées - ${analyses.opportunities.defaultYear}`,
                 value: formatOpportunityPrice(
                   analyses.opportunities.kpis.sumAveragePrice,
                 ),
+                secondary: `total prévisionnel : ${formatOpportunityPrice(analyses.opportunities.kpis.sumPrevisionnel)}`,
               },
             ]}
           />

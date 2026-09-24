@@ -23,6 +23,8 @@ export function emptyAnalysesPayload(): AnalysesPayload {
         count: 0,
         sumPrice: 0,
         sumAveragePrice: 0,
+        sumPrevisionnel: 0,
+        missingEngageBillingCount: 0,
         conversionRate: 0,
       },
       byStatus: [],

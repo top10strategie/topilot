@@ -171,7 +171,10 @@ Même dans un formulaire d'ajout rapide (ex : depuis le drawer de création de m
   - Modes **séquentiels** (`unique` / `mensuel` / `trimestriel` / `annuel`) : début = `closed_at` (engagé) ou `due_date_at` (prévisionnel) ; montant / échéance = `price / n` ; `unique` → mois de `end_at` ; `mensuel` → chaque mois de début → `end_at` inclus ; `trimestriel` / `annuel` → 1re échéance = mois suivant le début, puis +3 / +12 tant que ≤ `end_at`.
   - Mode **`echellonne`** : table enfant `invoice_schedule` (2 à 12 lignes, `invoice_at` + `amount` > 0, un échelon max par mois calendaire, somme des `amount` = `price` exact) ; chaque échéance est placée sur le mois calendaire de `invoice_at` avec son `amount` brut ; `closed_at` / `end_at` / `due_date_at` **n’influencent pas** le placement CA.
   - Passage séquentiel → `echellonne` : `end_at` nullifié. Passage `echellonne` → séquentiel : confirmation UI puis suppression des lignes `invoice_schedule` ; `end_at` redevient optionnel.
-  - Sans fréquence, ou fréquence séquentielle sans `end_at`, ou `echellonne` sans échéancier → hors graphiques CA (compteur sous le pipeline).
+  - Sans fréquence, ou fréquence séquentielle sans `end_at`, ou `echellonne` sans échéancier → hors graphiques CA (compteur sous le pipeline : « sans informations de facturation »).
+  - **KPI Analyses (année Paris courante)** :
+    - Sommes engagées = somme des échéances **engagé** (`gagne`) dont le mois ∈ Jan–Déc ; gagnées sans facturation exclues du total (compteur secondaire sur la carte).
+    - Sommes pondérées = échéances des **ouverts** (hors `gagne`/`perdue`) × `probability_confirmation/100` ; sans facturation → `average_price` sur le mois de `due_date_at` ; ligne secondaire = même agrégat en `price` brut.
 - Champ de texte libre : **`notes`**, couplé à `notes_updated_at`, historisé dans `audit_log`.
 - Création et édition via **drawer latéral droit** (sans URL) accessible depuis `/opportunities` :
     1. **Bloc identification** : Titre, Client, Contact, Responsable opportunité, Date de dernière rencontre, Échéance (obligatoire), Début de la facturation (`closed_at`, optionnel) — sauvegardé via un bouton "Enregistrer" dédié, qui crée l'opportunité en base (nécessaire pour permettre l'ajout de documents liés qui requièrent un `opportunity_id` existant).
