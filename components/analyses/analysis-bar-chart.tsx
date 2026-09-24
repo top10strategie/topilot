@@ -166,6 +166,24 @@ export function AnalysisBarChart({
 
   const isHorizontalBars = layout === "horizontal";
 
+  /** Dernier index de chaque pile : seul ce segment reçoit le radius (évite un trou visuel). */
+  const lastIndexByStack = new Map<string, number>();
+  if (series) {
+    series.forEach((s, i) => {
+      if (s.stackId) lastIndexByStack.set(s.stackId, i);
+    });
+  }
+
+  const barRadius = (
+    index: number,
+    stackId: string | undefined,
+  ): [number, number, number, number] => {
+    const isOuter =
+      stackId == null || lastIndexByStack.get(stackId) === index;
+    if (!isOuter) return [0, 0, 0, 0];
+    return isHorizontalBars ? [0, 4, 4, 0] : [4, 4, 0, 0];
+  };
+
   const tooltip = (
     <Tooltip
       content={(props) => (
@@ -220,14 +238,14 @@ export function AnalysisBarChart({
                   {tooltip}
                   {showLegend && series ? <Legend /> : null}
                   {isMulti && series
-                    ? series.map((s) => (
+                    ? series.map((s, index) => (
                         <Bar
                           key={s.key}
                           dataKey={s.key}
                           name={s.label}
                           stackId={s.stackId}
                           fill={s.color}
-                          radius={[0, 4, 4, 0]}
+                          radius={barRadius(index, s.stackId)}
                         />
                       ))
                     : (
@@ -260,14 +278,14 @@ export function AnalysisBarChart({
                   {tooltip}
                   {showLegend && series ? <Legend /> : null}
                   {isMulti && series
-                    ? series.map((s) => (
+                    ? series.map((s, index) => (
                         <Bar
                           key={s.key}
                           dataKey={s.key}
                           name={s.label}
                           stackId={s.stackId}
                           fill={s.color}
-                          radius={[4, 4, 0, 0]}
+                          radius={barRadius(index, s.stackId)}
                         />
                       ))
                     : (

@@ -4,6 +4,8 @@ import { cn } from "@/lib/utils";
 export type KpiItem = {
   label: string;
   value: string;
+  /** Ligne secondaire sous la valeur (ex. total prévisionnel). */
+  secondary?: string;
 };
 
 type AnalysisKpiGridProps = {
@@ -26,8 +28,11 @@ export function AnalysisKpiGrid({ items, className }: AnalysisKpiGridProps) {
               {item.label}
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-1">
             <p className="text-2xl font-semibold tracking-tight">{item.value}</p>
+            {item.secondary ? (
+              <p className="text-sm text-muted-foreground">{item.secondary}</p>
+            ) : null}
           </CardContent>
         </Card>
       ))}

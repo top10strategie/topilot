@@ -14,8 +14,14 @@ export type StackedCaDatum = {
 
 export type OpportunityKpis = {
   count: number;
+  /** Somme des échéances facturées (année Paris) pour opportunités gagnées. */
   sumPrice: number;
+  /** Somme pondérée des échéances / fallback due_date (ouverts, année Paris). */
   sumAveragePrice: number;
+  /** Même logique que sumAveragePrice sans pondération (price brut). */
+  sumPrevisionnel: number;
+  /** Gagnées sans infos de facturation (closed_at année Paris ou NULL). */
+  missingEngageBillingCount: number;
   conversionRate: number;
 };
 

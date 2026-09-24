@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Eye, StackPlus } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
 import { AnalysisBarChart } from "@/components/analyses/analysis-bar-chart-lazy";
+import { AnalysisComposedChart } from "@/components/analyses/analysis-bar-chart-lazy";
 import { AnalysisLineChart } from "@/components/analyses/analysis-bar-chart-lazy";
 import { AnalysisKpiGrid } from "@/components/analyses/analysis-kpi-grid";
 import { AnalysisYearSelect } from "@/components/analyses/analysis-period-selects";
@@ -60,9 +61,19 @@ const CA_STACK_SERIES = [
   },
 ] as const;
 
-const PIPELINE_SERIES = [
-  { key: "engage", label: "CA engagé", color: "var(--chart-2)" },
-  { key: "previsionnel", label: "CA prévisionnel", color: "var(--chart-1)" },
+const PIPELINE_BAR_SERIES = [
+  {
+    key: "engage",
+    label: "CA engagé",
+    color: "var(--chart-2)",
+    stackId: "pipeline",
+  },
+  {
+    key: "previsionnel",
+    label: "CA prévisionnel",
+    color: "var(--chart-1)",
+    stackId: "pipeline",
+  },
 ] as const;
 
 const OBJECTIF_SERIES = {
@@ -207,9 +218,6 @@ export function OpportunitiesAnalysisPanel({ data }: Props) {
       : [data.defaultYear];
 
   const [pipelineYear, setPipelineYear] = useState(data.defaultYear);
-  const [pipelineCompareYear, setPipelineCompareYear] = useState(
-    data.defaultYear,
-  );
   const [teamYear, setTeamYear] = useState(data.defaultYear);
   const [teamCompareYear, setTeamCompareYear] = useState(data.defaultYear);
   const [clientYear, setClientYear] = useState(data.defaultYear);
@@ -232,21 +240,43 @@ export function OpportunitiesAnalysisPanel({ data }: Props) {
   });
 
   const pipeline = data.pipelineByYear[pipelineYear] ?? [];
+  const pipelinePrevYear = pipelineYear - 1;
+  const pipelinePrev = data.pipelineByYear[pipelinePrevYear] ?? [];
   const caByTeam = data.caByTeamByYear[teamYear] ?? [];
   const pipelineAimAmount = data.revenueAimsByYear[pipelineYear];
   const hasPipelineAim = pipelineAimAmount != null;
   const monthlyObjectif = hasPipelineAim ? pipelineAimAmount / 12 : null;
 
-  const pipelineChartData = pipeline.map((p) => ({
-    label: p.label,
-    engage: p.engage,
-    previsionnel: p.previsionnel,
-    ...(monthlyObjectif != null ? { objectif: monthlyObjectif } : {}),
-  }));
+  const pipelineChartData = Array.from({ length: 12 }, (_, i) => {
+    const curr = pipeline[i];
+    const prev = pipelinePrev[i];
+    return {
+      label: curr?.label ?? prev?.label ?? `M${i + 1}`,
+      engage: curr?.engage ?? 0,
+      previsionnel: curr?.previsionnel ?? 0,
+      engagePrev: prev?.engage ?? 0,
+      ...(monthlyObjectif != null ? { objectif: monthlyObjectif } : {}),
+    };
+  });
 
-  const pipelineSeries = hasPipelineAim
-    ? [...PIPELINE_SERIES, OBJECTIF_SERIES]
-    : [...PIPELINE_SERIES];
+  const pipelineBarSeries = [...PIPELINE_BAR_SERIES];
+  const engagePrevYearTotal = pipelineChartData.reduce(
+    (sum, row) => sum + Number(row.engagePrev ?? 0),
+    0,
+  );
+  const pipelineLineSeries = [
+    ...(hasPipelineAim ? [OBJECTIF_SERIES] : []),
+    ...(engagePrevYearTotal > 0
+      ? [
+          {
+            key: "engagePrev",
+            label: `CA engagé ${pipelinePrevYear}`,
+            color: "color-mix(in oklab, var(--chart-2) 55%, white)",
+            yearTotal: engagePrevYearTotal,
+          },
+        ]
+      : []),
+  ];
 
   const openCreateRevenueAim = () => {
     void pushDrawer<RevenueAimFormResult>({
@@ -277,46 +307,6 @@ export function OpportunitiesAnalysisPanel({ data }: Props) {
     engage: d.engage,
     previsionnel: d.previsionnel,
   }));
-
-  const pipelineCompare = useMemo(() => {
-    const y = pipelineCompareYear;
-    const prev = y - 1;
-    const currSeries = data.pipelineByYear[y] ?? [];
-    const prevSeries = data.pipelineByYear[prev] ?? [];
-    const months = Array.from({ length: 12 }, (_, i) => ({
-      label: currSeries[i]?.label ?? prevSeries[i]?.label ?? `M${i + 1}`,
-      [`engage_${y}`]: currSeries[i]?.engage ?? 0,
-      [`previsionnel_${y}`]: currSeries[i]?.previsionnel ?? 0,
-      [`engage_${prev}`]: prevSeries[i]?.engage ?? 0,
-      [`previsionnel_${prev}`]: prevSeries[i]?.previsionnel ?? 0,
-    }));
-
-    const candidates = [
-      {
-        key: `engage_${y}`,
-        label: `CA engagé · ${y}`,
-        color: "var(--chart-2)",
-      },
-      {
-        key: `previsionnel_${y}`,
-        label: `CA prévisionnel · ${y}`,
-        color: "var(--chart-1)",
-      },
-      {
-        key: `engage_${prev}`,
-        label: `CA engagé · ${prev}`,
-        color: "color-mix(in oklab, var(--chart-2) 55%, white)",
-      },
-      {
-        key: `previsionnel_${prev}`,
-        label: `CA prévisionnel · ${prev}`,
-        color: "color-mix(in oklab, var(--chart-1) 55%, white)",
-      },
-    ];
-
-    const series = candidates.filter((s) => seriesYearSum(months, s.key) > 0);
-    return { months, series };
-  }, [data.pipelineByYear, pipelineCompareYear]);
 
   const clientChart = useMemo(() => {
     const byClient = data.caByClientByYear[clientYear] ?? {};
@@ -551,10 +541,12 @@ export function OpportunitiesAnalysisPanel({ data }: Props) {
                 {
                   label: `Total des sommes engagées${yearSuffix}`,
                   value: formatOpportunityPrice(data.kpis.sumPrice),
+                  secondary: `nombre d'engagée non renseigné : ${data.kpis.missingEngageBillingCount}`,
                 },
                 {
                   label: `Total des sommes pondérées${yearSuffix}`,
                   value: formatOpportunityPrice(data.kpis.sumAveragePrice),
+                  secondary: `total prévisionnel : ${formatOpportunityPrice(data.kpis.sumPrevisionnel)}`,
                 },
               ]}
             />
@@ -606,14 +598,17 @@ export function OpportunitiesAnalysisPanel({ data }: Props) {
         {data.missingBillingCount > 0 ? (
           <p className="text-sm text-destructive">
             {data.missingBillingCount} opportunité
-            {data.missingBillingCount > 1 ? "s" : ""} sans délais de
+            {data.missingBillingCount > 1 ? "s" : ""} sans informations de
             facturation (remplir la date de fin de facturation)
           </p>
         ) : null}
-        <AnalysisLineChart
+        <AnalysisComposedChart
           title="Évolution du pipeline Commercial"
           data={pipelineChartData}
-          series={pipelineSeries}
+          barSeries={pipelineBarSeries}
+          lineSeries={pipelineLineSeries}
+          legendOrder={["objectif", "engage", "previsionnel", "engagePrev"]}
+          height={500}
           valueFormatter={(v) => formatOpportunityPrice(v)}
           axisTickFormatter={formatAxisEuro}
           headerAction={
@@ -621,20 +616,6 @@ export function OpportunitiesAnalysisPanel({ data }: Props) {
               years={years}
               value={pipelineYear}
               onChange={setPipelineYear}
-            />
-          }
-        />
-        <AnalysisLineChart
-          title="Comparaison de la pipeline avec l'année précédente"
-          data={pipelineCompare.months}
-          series={pipelineCompare.series}
-          valueFormatter={(v) => formatOpportunityPrice(v)}
-          axisTickFormatter={formatAxisEuro}
-          headerAction={
-            <AnalysisYearSelect
-              years={years}
-              value={pipelineCompareYear}
-              onChange={setPipelineCompareYear}
             />
           }
         />
