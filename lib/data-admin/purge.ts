@@ -1,4 +1,4 @@
-/** Cookie session : re-auth purge (sans Max-Age → fin à fermeture navigateur). */
+/** Cookie session : re-auth purge (HMAC + TTL, lié au collaborateur). */
 export const PURGE_REAUTH_COOKIE = "topilot_purge_reauth";
 
 export type PurgeYearResult = {

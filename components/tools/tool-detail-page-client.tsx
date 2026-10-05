@@ -465,7 +465,7 @@ export function ToolDetailPageClient({
         <PasswordRevealDialog
           open
           onClose={() => setRevealAccess(null)}
-          vaultSecretId={revealAccess.vault_secret_id}
+          toolAccessId={revealAccess.id}
           accessLabel={revealAccess.label}
           accessIdentifier={revealAccess.identifier}
         />
@@ -479,7 +479,6 @@ export function ToolDetailPageClient({
           }}
           accessLabel={accessPendingDelete.label}
           accessId={accessPendingDelete.id}
-          vaultSecretId={accessPendingDelete.vault_secret_id}
           onDeleted={() => {
             setAccessPendingDelete(null);
             router.refresh();

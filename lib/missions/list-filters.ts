@@ -1,8 +1,9 @@
 /** Pagination / filtres URL pour `/missions`. */
 
+import { LIST_PAGE_SIZE } from "@/lib/list-page-size";
 import type { MissionKanbanStatus, MissionScope } from "./types";
 
-export const MISSIONS_PAGE_SIZE = 24;
+export const MISSIONS_PAGE_SIZE = LIST_PAGE_SIZE;
 
 /** Colonnes kanban chargées en vague 1 (premier paint). */
 export const MISSION_OPEN_KANBAN_STATUSES: MissionKanbanStatus[] = [

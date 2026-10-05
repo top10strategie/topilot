@@ -47,6 +47,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { fetchClientsListFilterOptions } from "@/actions/clients";
+import { usePersistedListView } from "@/hooks/use-persisted-list-view";
 import type { CategoryItem } from "@/lib/categories/types";
 import {
   CLIENTS_PAGE_SIZE,
@@ -125,7 +126,7 @@ export function ClientsPageClient({
   const router = useRouter();
   const { pushDrawer } = useDrawerStack();
   const [isPending, startTransition] = useTransition();
-  const [view, setView] = useState<"cards" | "table">("cards");
+  const [view, setView] = usePersistedListView("clients");
   const [draftFilters, setDraftFilters] = useState<DialogFilters>(() =>
     toDialogFilters(filters),
   );

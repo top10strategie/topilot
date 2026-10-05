@@ -138,14 +138,14 @@ $$ LANGUAGE sql STABLE SECURITY DEFINER;
 ## Supabase Vault — règles absolues
 
 - Les mots de passe toolbox ne sont **jamais** stockés dans les tables standard.
-- `tool_access.vault_secret_id` contient uniquement la **référence** (nom) du secret dans le Vault — jamais le mot de passe lui-même.
-- La révélation d'un mot de passe doit **obligatoirement** passer par une **server action** serveur (ex. `readVaultSecret` dans `actions/vault.ts`) — jamais depuis le client seul.
+- `tool_access.vault_secret_id` contient uniquement la **référence** (nom) du secret dans le Vault — jamais le mot de passe lui-même. Colonne **`UNIQUE`**. **`REVOKE SELECT (vault_secret_id)`** pour `anon` / `authenticated` : PostgREST ne peut pas la lire ; seul `service_role` (server actions) y accède après preuve RLS sur l’`id` de ligne.
+- La révélation d'un mot de passe doit **obligatoirement** passer par une **server action** (`readVaultSecret(toolAccessId)` dans `actions/vault.ts`) — jamais depuis le client, jamais par le nom Vault.
 - Cette action vérifie **systématiquement** :
     1. Session Supabase active et valide + collaborateur `actif` (`requireActiveCollaboratorAction`).
-    2. **Lecture d'une ligne `tool_access` associée au secret** avec le client session (RLS) : un accès `is_private = true` n'est visible que pour les rôles `manager` et `direction` — aligné sur `can_read_tool_access_row` en base.
-    3. Déchiffrement via service role **uniquement** après cette preuve d'accès.
-- Si la session est expirée : **reconnexion obligatoire** avant révélation — pas de contournement.
-- Côté client : afficher `••••••••` par défaut. Après succès de la server action, affichage ponctuel possible dans un **`Dialog`** (mot de passe uniquement en état local jusqu'à fermeture — pas de `localStorage`, pas de persistance URL).
+    2. **`SELECT id` sur `tool_access`** avec le client session (RLS) : un accès `is_private = true` n'est visible que pour `manager` / `direction`.
+    3. Lecture de `vault_secret_id` puis déchiffrement **via service role uniquement** après cette preuve.
+- Le client ne reçoit **jamais** `vault_secret_id`. Afficher `••••••••` par défaut ; révélation ponctuelle dans un **`Dialog`** (état local jusqu'à fermeture).
+- `audit_trigger_fn` passe les JSON par `audit_redact_jsonb` (retire `vault_secret_id`, `file_path`, `notes`, `identifier`). Les notes restent sur `entity_type = note`.
 
 ---
 
@@ -299,7 +299,7 @@ CREATE POLICY "team_delete_manager_direction" ON public.team
 - **Ne jamais exposer** ce champ dans l'UI.
 - Mis à jour **exclusivement** via service role (`SUPABASE_SERVICE_ROLE_KEY`) — trigger `enforce_setting_must_change_password` refuse toute modification hors `service_role`.
 - RLS `setting` : SELECT/UPDATE limités à **sa propre ligne** (`current_collaborator_id()`). Pas de policy INSERT/DELETE authenticated (création via trigger collaborateur).
-- Flux forcé `/auth/update-password` : server action `completeForcedPasswordChange(password)` qui fait `updateUser` **puis** clear du flag — ne pas exposer un clear autonome.
+- Flux `/auth/update-password` : server action `completeForcedPasswordChange(password)` **uniquement** si `must_change_password = true` **ou** session Auth `amr` `recovery` / `invite`. Sinon : refus (changement volontaire → `/settings`). `updateUser` **après** ce contrôle ; clear du flag **seulement** s’il était vrai. Ne pas exposer un clear autonome.
 - Si `true` au moment du login : bloquer l'accès aux routes métier jusqu'au changement effectif.
 
 ## `collaborator` — UPDATE
@@ -323,14 +323,18 @@ CREATE POLICY "team_delete_manager_direction" ON public.team
 - Table en écriture **uniquement** via triggers PostgreSQL (`audit_trigger_fn`, `audit_notes_trigger_fn`) — jamais depuis un composant client ou une route publique.
 - Les fonctions de triggers `SECURITY DEFINER` doivent conserver `GRANT EXECUTE TO authenticated` : PostgreSQL vérifie ce droit pour le rôle qui déclenche le trigger. Ne pas les révoquer pour `authenticated` (sinon toute écriture métier échoue avec `permission denied for function …`).
 - **Policies SELECT sur `mission` / `opportunity`** : ne pas appeler `can_access_mission(id)` / `can_access_opportunity(id)` (re-SELECT de la même table). Inliner le contrôle sur les colonnes de la ligne (`client_id`, etc.) — sinon `INSERT…RETURNING` échoue en 42501 pour les Collaborateurs. Les helpers `can_access_*` restent pour les tables de jonction.
+- SELECT : **Manager / Direction** uniquement (`is_active_collaborator()` + `is_manager_or_direction()`). Un Collaborateur ne peut pas lire `audit_log` via PostgREST.
+- JSON `old_value` / `new_value` : redacted (`audit_redact_jsonb`).
 - **Jamais** de suppression, pour aucun rôle — aucune policy `DELETE`.
-- Les lectures sont autorisées selon RLS (lecture seule, compacte, sur le dashboard).
 
 ```sql
 ALTER TABLE public.audit_log ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "audit_log_select_active" ON public.audit_log
-  FOR SELECT USING (public.is_active_collaborator());
+CREATE POLICY "audit_log_select_manager_direction" ON public.audit_log
+  FOR SELECT USING (
+    public.is_active_collaborator()
+    AND public.is_manager_or_direction()
+  );
 ```
 
 > Aucune policy `INSERT`/`UPDATE`/`DELETE` : seules les fonctions `audit_trigger_fn()` et `audit_notes_trigger_fn()` (en `SECURITY DEFINER`) peuvent y écrire.

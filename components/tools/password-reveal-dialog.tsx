@@ -16,7 +16,7 @@ import {
 export type PasswordRevealDialogProps = {
   open: boolean;
   onClose: () => void;
-  vaultSecretId: string;
+  toolAccessId: string;
   accessLabel: string;
   accessIdentifier: string;
 };
@@ -28,7 +28,7 @@ export type PasswordRevealDialogProps = {
 export function PasswordRevealDialog({
   open,
   onClose,
-  vaultSecretId,
+  toolAccessId,
   accessLabel,
   accessIdentifier,
 }: PasswordRevealDialogProps) {
@@ -56,7 +56,7 @@ export function PasswordRevealDialog({
       setError(null);
       setCopied(false);
 
-      const result = await readVaultSecret(vaultSecretId);
+      const result = await readVaultSecret(toolAccessId);
       if (cancelled) return;
       if (result.success) {
         setPassword(result.data.password);
@@ -69,7 +69,7 @@ export function PasswordRevealDialog({
     return () => {
       cancelled = true;
     };
-  }, [open, vaultSecretId]);
+  }, [open, toolAccessId]);
 
   const handleCopy = async () => {
     if (!password) return;

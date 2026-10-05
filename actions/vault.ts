@@ -1,6 +1,5 @@
 "use server";
 
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireActiveCollaboratorAction } from "@/lib/auth/require-action";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { looseClient } from "@/lib/supabase/loose";
@@ -58,36 +57,6 @@ function isNameBasedVaultRef(ref: string): boolean {
   return ref.startsWith(TOOL_ACCESS_NAME_PREFIX);
 }
 
-/**
- * - `linked_visible` : ligne `tool_access` lisible (RLS) pour la session.
- * - `linked_hidden` : ligne existante mais masquée (ex. privé sans rôle Manager).
- * - `orphan` : aucune ligne ne référence ce secret.
- */
-type VaultSecretLink = "linked_visible" | "linked_hidden" | "orphan";
-
-async function classifyVaultSecretForSession(
-  userSupabase: SupabaseClient,
-  vaultSecretRef: string,
-): Promise<VaultSecretLink> {
-  const { data: visible } = await userSupabase
-    .from("tool_access")
-    .select("id")
-    .eq("vault_secret_id", vaultSecretRef)
-    .maybeSingle();
-
-  if (visible) return "linked_visible";
-
-  const admin = looseClient(createAdminClient());
-  const { count, error } = await admin
-    .from("tool_access")
-    .select("id", { count: "exact", head: true })
-    .eq("vault_secret_id", vaultSecretRef);
-
-  if (error) return "linked_hidden";
-  if ((count ?? 0) > 0) return "linked_hidden";
-  return "orphan";
-}
-
 function parseReadSecretValue(data: unknown): string | null {
   if (data == null) return null;
   if (typeof data === "string") return data;
@@ -99,87 +68,92 @@ function parseReadSecretValue(data: unknown): string | null {
 }
 
 /**
- * Crée un secret via RPC `insert_secret` (service role).
- * Retourne le nom métier (`vault_secret_id`).
+ * Preuve RLS sur la ligne, puis lecture admin de `vault_secret_id`
+ * (colonne révoquée pour `authenticated`).
  */
-export async function createVaultSecret(
-  toolId: string,
-  password: string,
-  label: string,
-): Promise<VaultActionResult<{ vaultSecretId: string }>> {
-  const session = await requireActiveCollaboratorAction();
-  if (!session.success) {
-    return { success: false, error: session.error };
-  }
-
-  const tid = toolId.trim();
-  if (!isUuid(tid)) {
-    return { success: false, error: "Outil invalide." };
-  }
-  if (!password) {
-    return { success: false, error: "Le mot de passe est obligatoire." };
-  }
-
-  const secretName = buildToolAccessSecretName(tid, label);
-
-  try {
-    const admin = looseClient(createAdminClient());
-    const { error } = await admin.rpc("insert_secret", {
-      secret_name: secretName,
-      secret_value: password,
-    });
-
-    if (error) {
-      return {
-        success: false,
-        error: withOptionalRpcHint(ERR_CREATE, error),
-      };
-    }
-
-    return { success: true, data: { vaultSecretId: secretName } };
-  } catch (e) {
-    return {
-      success: false,
-      error:
-        isDevEnv() && e instanceof Error
-          ? `${ERR_CREATE} (${e.message})`
-          : ERR_CREATE,
-    };
-  }
-}
-
-/**
- * Met à jour le mot de passe si la session peut lire la ligne `tool_access`.
- */
-export async function updateVaultSecret(
-  vaultSecretRef: string,
-  newPassword: string,
-): Promise<VaultActionResult<null>> {
-  const ref = vaultSecretRef.trim();
-  if (!ref) {
+async function resolveVaultRefForVisibleAccess(
+  toolAccessId: string,
+): Promise<VaultActionResult<{ ref: string }>> {
+  if (!isUuid(toolAccessId)) {
     return { success: false, error: ERR_NOT_FOUND };
-  }
-  if (!newPassword) {
-    return { success: false, error: "Le mot de passe est obligatoire." };
-  }
-
-  const session = await requireActiveCollaboratorAction();
-  if (!session.success) {
-    return { success: false, error: session.error };
   }
 
   const supabase = await createClient();
-  const link = await classifyVaultSecretForSession(supabase, ref);
-  if (link === "linked_hidden") {
+  const { data: visible, error: visibleError } = await supabase
+    .from("tool_access")
+    .select("id")
+    .eq("id", toolAccessId)
+    .maybeSingle();
+
+  if (visibleError) {
     return { success: false, error: ERR_FORBIDDEN };
   }
-  if (link === "orphan") {
+
+  const admin = looseClient(createAdminClient());
+  const { data: row, error: adminError } = await admin
+    .from("tool_access")
+    .select("vault_secret_id")
+    .eq("id", toolAccessId)
+    .maybeSingle();
+
+  if (adminError || !row) {
     return { success: false, error: ERR_NOT_FOUND };
   }
 
-  try {
-    const admin = looseClient(createAdminClient());
+  if (!visible) {
+    return { success: false, error: ERR_FORBIDDEN };
+  }
 
+  const ref = String(row.vault_secret_id ?? "").trim();
+  if (!ref) {
+    return { success: false, error: ERR_NOT_FOUND };
+  }
+  return { success: true, data: { ref } };
+}
+
+async function deleteVaultSecretByRef(
+  ref: string,
+): Promise<VaultActionResult<null>> {
+  const admin = looseClient(createAdminClient());
+
+  try {
+    if (isLegacyVaultUuidRef(ref)) {
+      const { data, error } = await admin
+        .schema("vault")
+        .from("secrets")
+        .delete()
+        .eq("id", ref)
+        .select("id");
+
+      if (error) {
+        return { success: false, error: ERR_DELETE };
+      }
+      if (!data || data.length === 0) {
+        return { success: false, error: ERR_NOT_FOUND };
+      }
+      return { success: true, data: null };
+    }
+
+    const { error } = await admin.rpc("delete_secret", { secret_name: ref });
+    if (error) {
+      return {
+        success: false,
+        error: withOptionalRpcHint(ERR_DELETE, error),
+      };
+    }
+    return { success: true, data: null };
+  } catch {
+    return { success: false, error: ERR_DELETE };
+  }
+}
+
+async function updateVaultSecretByRef(
+  ref: string,
+  newPassword: string,
+): Promise<VaultActionResult<null>> {
+  const admin = looseClient(createAdminClient());
+
+  try {
     if (isLegacyVaultUuidRef(ref)) {
       const { data: meta, error: metaError } = await admin
         .schema("vault")
@@ -233,92 +207,12 @@ export async function updateVaultSecret(
   }
 }
 
-/**
- * Supprime un secret Vault (nom métier ou UUID hérité).
- * Autorisé si la ligne est visible ou orpheline (nettoyage après échec d'insert).
- */
-export async function deleteVaultSecret(
-  vaultSecretRef: string,
-): Promise<VaultActionResult<null>> {
-  const ref = vaultSecretRef.trim();
-  if (!ref) {
-    return { success: false, error: ERR_NOT_FOUND };
-  }
-
-  const session = await requireActiveCollaboratorAction();
-  if (!session.success) {
-    return { success: false, error: session.error };
-  }
-
-  const supabase = await createClient();
-  const link = await classifyVaultSecretForSession(supabase, ref);
-  if (link === "linked_hidden") {
-    return { success: false, error: ERR_FORBIDDEN };
-  }
-
-  try {
-    const admin = looseClient(createAdminClient());
-
-    if (isLegacyVaultUuidRef(ref)) {
-      const { data, error } = await admin
-        .schema("vault")
-        .from("secrets")
-        .delete()
-        .eq("id", ref)
-        .select("id");
-
-      if (error) {
-        return { success: false, error: ERR_DELETE };
-      }
-      if (!data || data.length === 0) {
-        return { success: false, error: ERR_NOT_FOUND };
-      }
-      return { success: true, data: null };
-    }
-
-    const { error } = await admin.rpc("delete_secret", { secret_name: ref });
-    if (error) {
-      return {
-        success: false,
-        error: withOptionalRpcHint(ERR_DELETE, error),
-      };
-    }
-    return { success: true, data: null };
-  } catch {
-    return { success: false, error: ERR_DELETE };
-  }
-}
-
-/**
- * Lit le mot de passe déchiffré uniquement si la session peut lire
- * la ligne `tool_access` associée (preuve RLS, cf. `05_security_rls.mdc`).
- */
-export async function readVaultSecret(
-  vaultSecretRef: string,
+async function readVaultSecretByRef(
+  ref: string,
 ): Promise<VaultActionResult<{ password: string }>> {
-  const ref = vaultSecretRef.trim();
-  if (!ref) {
-    return { success: false, error: ERR_NOT_FOUND };
-  }
-
-  const session = await requireActiveCollaboratorAction();
-  if (!session.success) {
-    return { success: false, error: session.error };
-  }
-
-  const supabase = await createClient();
-  const link = await classifyVaultSecretForSession(supabase, ref);
-
-  if (link === "linked_hidden") {
-    return { success: false, error: "Accès refusé." };
-  }
-  if (link === "orphan") {
-    return { success: false, error: ERR_NOT_FOUND };
-  }
+  const admin = looseClient(createAdminClient());
 
   try {
-    const admin = looseClient(createAdminClient());
-
     if (isLegacyVaultUuidRef(ref)) {
       const { data: row, error } = await admin
         .schema("vault")
@@ -358,4 +252,147 @@ export async function readVaultSecret(
   } catch {
     return { success: false, error: ERR_NOT_FOUND };
   }
+}
+
+/**
+ * Crée un secret via RPC `insert_secret` (service role).
+ * Retourne le nom métier (`vault_secret_id`) — usage interne serveur uniquement.
+ */
+export async function createVaultSecret(
+  toolId: string,
+  password: string,
+  label: string,
+): Promise<VaultActionResult<{ vaultSecretId: string }>> {
+  const session = await requireActiveCollaboratorAction();
+  if (!session.success) {
+    return { success: false, error: session.error };
+  }
+
+  const tid = toolId.trim();
+  if (!isUuid(tid)) {
+    return { success: false, error: "Outil invalide." };
+  }
+  if (!password) {
+    return { success: false, error: "Le mot de passe est obligatoire." };
+  }
+
+  const secretName = buildToolAccessSecretName(tid, label);
+
+  try {
+    const admin = looseClient(createAdminClient());
+    const { error } = await admin.rpc("insert_secret", {
+      secret_name: secretName,
+      secret_value: password,
+    });
+
+    if (error) {
+      return {
+        success: false,
+        error: withOptionalRpcHint(ERR_CREATE, error),
+      };
+    }
+
+    return { success: true, data: { vaultSecretId: secretName } };
+  } catch (e) {
+    return {
+      success: false,
+      error:
+        isDevEnv() && e instanceof Error
+          ? `${ERR_CREATE} (${e.message})`
+          : ERR_CREATE,
+    };
+  }
+}
+
+/** Nettoyage d'un secret orphelin après échec d'INSERT `tool_access`. */
+export async function deleteOrphanVaultSecret(
+  vaultSecretRef: string,
+): Promise<VaultActionResult<null>> {
+  const session = await requireActiveCollaboratorAction();
+  if (!session.success) {
+    return { success: false, error: session.error };
+  }
+
+  const ref = vaultSecretRef.trim();
+  if (!ref) {
+    return { success: false, error: ERR_NOT_FOUND };
+  }
+
+  const admin = looseClient(createAdminClient());
+  const { count, error } = await admin
+    .from("tool_access")
+    .select("id", { count: "exact", head: true })
+    .eq("vault_secret_id", ref);
+
+  if (error) {
+    return { success: false, error: ERR_DELETE };
+  }
+  if ((count ?? 0) > 0) {
+    return { success: false, error: ERR_FORBIDDEN };
+  }
+
+  return deleteVaultSecretByRef(ref);
+}
+
+/**
+ * Met à jour le mot de passe si la session peut lire la ligne `tool_access`.
+ */
+export async function updateVaultSecret(
+  toolAccessId: string,
+  newPassword: string,
+): Promise<VaultActionResult<null>> {
+  if (!newPassword) {
+    return { success: false, error: "Le mot de passe est obligatoire." };
+  }
+
+  const session = await requireActiveCollaboratorAction();
+  if (!session.success) {
+    return { success: false, error: session.error };
+  }
+
+  const resolved = await resolveVaultRefForVisibleAccess(toolAccessId.trim());
+  if (!resolved.success) {
+    return resolved;
+  }
+  return updateVaultSecretByRef(resolved.data.ref, newPassword);
+}
+
+/**
+ * Supprime le secret Vault lié à un accès visible (RLS).
+ */
+export async function deleteVaultSecret(
+  toolAccessId: string,
+): Promise<VaultActionResult<null>> {
+  const session = await requireActiveCollaboratorAction();
+  if (!session.success) {
+    return { success: false, error: session.error };
+  }
+
+  const resolved = await resolveVaultRefForVisibleAccess(toolAccessId.trim());
+  if (!resolved.success) {
+    return resolved;
+  }
+  return deleteVaultSecretByRef(resolved.data.ref);
+}
+
+/**
+ * Lit le mot de passe déchiffré uniquement si la session peut lire
+ * la ligne `tool_access` (preuve RLS, cf. `05_security_rls.mdc`).
+ */
+export async function readVaultSecret(
+  toolAccessId: string,
+): Promise<VaultActionResult<{ password: string }>> {
+  const session = await requireActiveCollaboratorAction();
+  if (!session.success) {
+    return { success: false, error: session.error };
+  }
+
+  const resolved = await resolveVaultRefForVisibleAccess(toolAccessId.trim());
+  if (!resolved.success) {
+    return {
+      success: false,
+      error: resolved.error === ERR_FORBIDDEN ? "Accès refusé." : resolved.error,
+    };
+  }
+  return readVaultSecretByRef(resolved.data.ref);
 }

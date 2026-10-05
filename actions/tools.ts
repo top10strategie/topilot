@@ -221,7 +221,7 @@ export async function deleteToolRecord(id: string): Promise<DeleteToolResult> {
 
   const { data: accesses, error: accessesErr } = await supabase
     .from("tool_access")
-    .select("id, vault_secret_id")
+    .select("id")
     .eq("tool_id", id);
 
   if (accessesErr) {
@@ -232,12 +232,9 @@ export async function deleteToolRecord(id: string): Promise<DeleteToolResult> {
   }
 
   for (const access of accesses ?? []) {
-    const vaultRef = String(access.vault_secret_id ?? "").trim();
-    if (vaultRef) {
-      const delVault = await deleteVaultSecret(vaultRef);
-      if (!delVault.success) {
-        return { success: false, error: delVault.error };
-      }
+    const delVault = await deleteVaultSecret(access.id as string);
+    if (!delVault.success) {
+      return { success: false, error: delVault.error };
     }
   }
 

@@ -140,7 +140,7 @@ Structure Hero + Tabs :
 - **Vue Tableau** (cf. section 5.2) : colonnes Nom Client (+ logo), Statut, Apporteur d’affaires (`facilitator` : « oui » / vide), Catégories, Site (`website`), Téléphone, Email, Nom du responsable.
     - Téléphone et Email affichent les coordonnées du contact **principal** (`contact_client` où `is_main = true`) rattaché au client — ce ne sont pas des champs propres à l'entité `client` (voir `03_business_rules.mdc`).
     - Clic sur la ligne : redirection vers `/clients/[id]`, idem vue Cartes.
-- **Pagination et compteur** (cf. section 5.3) : "Nombre de clients" (total, en bas à gauche) + pagination 25/page avec "Page : x/y" et navigation précédent/suivant (en bas à droite).
+- **Pagination et compteur** (cf. section 5.3) : "Nombre de clients" (total, en bas à gauche) + pagination 24/page avec "Page : x/y" et navigation précédent/suivant (en bas à droite).
 - **Filtre** (modale, cf. section 5.4) :
     - Filtre par catégorie (`client_category`, multi-sélection)
     - Filtre par responsable client (`main_collaborator_id`, multi-sélection)
@@ -214,7 +214,7 @@ Structure Hero + Tabs :
     - Clic sur la carte : redirection vers `/opportunities/[id]` (page de liste principale, cf. section 9.3).
 - **Vue Tableau** (cf. section 5.2) : colonnes Nom Opportunité, Client, Responsable opportunité, Statut, Urgence, Catégories, Échéance, Montant.
     - Clic sur la ligne : redirection vers `/opportunities/[id]`, idem vue Cartes.
-- **Pagination et compteur** (Cartes/Tableau uniquement, cf. section 5.3) : "Nombre d'opportunités" (total, en bas à gauche) + pagination 25/page avec "Page : x/y" et navigation précédent/suivant (en bas à droite).
+- **Pagination et compteur** (Cartes/Tableau uniquement, cf. section 5.3) : "Nombre d'opportunités" (total, en bas à gauche) + pagination 24/page avec "Page : x/y" et navigation précédent/suivant (en bas à droite).
 - **Filtre** (modale, cf. section 5.4) :
     - Filtre par client (multi-sélection)
     - Filtre par responsable opportunité (multi-sélection)
@@ -276,7 +276,7 @@ Structure Hero + Tabs :
     - Clic sur la carte : redirection vers `/missions/[id]` (page de liste principale, cf. section 9.3).
 - **Vue Tableau** (cf. section 5.2) : colonnes Nom Missions, Client, Responsable mission, Statut, Catégories, Date de début, Date de fin, Scope.
     - Clic sur la ligne : redirection vers `/missions/[id]`, idem vue Cartes.
-- **Pagination et compteur** (Cartes/Tableau uniquement, cf. section 5.3) : "Nombre de missions" (total, en bas à gauche) + pagination 25/page avec "Page : x/y" et navigation précédent/suivant (en bas à droite).
+- **Pagination et compteur** (Cartes/Tableau uniquement, cf. section 5.3) : "Nombre de missions" (total, en bas à gauche) + pagination 24/page avec "Page : x/y" et navigation précédent/suivant (en bas à droite).
 - **Filtre** (modale, cf. section 5.4) :
     - Filtre par client (multi-sélection)
     - Filtre par responsable mission (multi-sélection)
@@ -334,7 +334,7 @@ Structure Hero + Tabs :
 - **Vue Tableau** (cf. section 5.2) : colonnes Nom Outils, Lien direct (URL), Catégories, Description, Coût mensuel, puis une colonne dédiée à l'icône de suppression directe (même comportement/modale que la vue Cartes).
     - Coût mensuel : prix actif de l'abonnement (`tool_subscription_price` où `valid_to IS NULL`), affiché en lecture ; vide si aucun abonnement actif.
     - Clic sur la ligne (hors icône suppression) : redirection vers `/tools/[id]`, idem vue Cartes.
-- **Pagination et compteur** (cf. section 5.3) : "Nombre d'outils" (total, en bas à gauche) + pagination 25/page avec "Page : x/y" et navigation précédent/suivant (en bas à droite).
+- **Pagination et compteur** (cf. section 5.3) : "Nombre d'outils" (total, en bas à gauche) + pagination 24/page avec "Page : x/y" et navigation précédent/suivant (en bas à droite).
 - **Filtre** (modale, cf. section 5.4) :
     - Filtre par catégorie (multi-sélection)
     - Filtre par coût mensuel (tranches : < 10 €, 10 € ≤ coût ≤ 20 €, > 20 €)
@@ -385,7 +385,7 @@ Page à **plat, sans onglets** (contrairement à Client/Opportunité/Mission) :
     - Footer : date d'ajout à gauche ; 5 icônes d'action à droite (éditer, historique, aperçu, télécharger, supprimer).
     - **5 icônes d'action** (pas de page dédiée) : crayon (édition), `clock-counter-clockwise` (tiroir historique des versions), œil (aperçu modale), téléchargement, poubelle (suppression — choix version / lignée).
 - **Vue Tableau** (cf. section 5.2) : colonnes Nom document, Type, **Lié à** (nom de l'entité liée, même logique que la carte), Date d'ajout, Version, Actions (mêmes 5 icônes que la vue Cartes).
-- **Pagination et compteur** (cf. section 5.3) : "Nombre de documents" (total, en bas à gauche) + pagination 25/page avec "Page : x/y" et navigation précédent/suivant (en bas à droite).
+- **Pagination et compteur** (cf. section 5.3) : "Nombre de documents" (total, en bas à gauche) + pagination 24/page avec "Page : x/y" et navigation précédent/suivant (en bas à droite).
 - **Filtre** (modale, cf. section 5.4) :
     - Filtre par type (`document_type`, multi-sélection)
     - Filtre par version (multi-sélection, ex. V1/V2/V3 — permet de faire remonter des versions antérieures à la dernière, normalement masquées par défaut)
@@ -423,7 +423,7 @@ Page à **plat, sans onglets** (contrairement à Client/Opportunité/Mission) :
     - Carte : Titre (`title`) ; Catégories (`wiki_category`) ; Tags (`tags`) ; Date création (`created_at`) ; Date mise à jour (`updated_at`).
     - 2 icônes d'action directement sur la carte (pas de page dédiée à consulter séparément) : crayon (édition, ouvre le tiroir "Edition Wiki") ; poubelle (suppression, modale de confirmation générique — "Toute suppression d'un wiki est définitive. Êtes-vous sûr de vouloir supprimer ce wiki ?").
 - **Vue Tableau** (cf. section 5.2) : colonnes Titre, Catégories, Tags, Date d'ajout, Actions (mêmes 2 icônes que la vue Cartes).
-- **Pagination et compteur** (cf. section 5.3) : "Nombre de wikis" (total, en bas à gauche) + pagination 25/page avec "Page : x/y" et navigation précédent/suivant (en bas à droite).
+- **Pagination et compteur** (cf. section 5.3) : "Nombre de wikis" (total, en bas à gauche) + pagination 24/page avec "Page : x/y" et navigation précédent/suivant (en bas à droite).
 - **Filtre** (modale, cf. section 5.4) :
     - Filtre par catégorie (`wiki_category`, multi-sélection)
     - Boutons "Effacer" (vide les filtres)/ "Filtrer"
@@ -477,7 +477,7 @@ Page à **plat, sans onglets** (contrairement à Client/Opportunité/Mission) :
 
 - **Catégories** (`category`) :
     - Grille de cartes "Catégorie" (Titre uniquement), chacune avec icônes crayon (édition) et poubelle (suppression directe, sans passer par une édition préalable — modale de confirmation générique : "Toute suppression d'une catégorie est définitive. Êtes-vous sûr de vouloir supprimer cette catégorie ?").
-    - Pagination 25/page (cf. section 5.3), compteur "Nombre de catégories".
+    - Pagination 24/page (cf. section 5.3), compteur "Nombre de catégories".
     - Le crayon de gestion du Hero ouvre le tiroir **"Nouvelle catégorie"** — sauvegarde unique : Titre (`label`, obligatoire), footer Annuler/Enregistrer. Suppression ouverte à tout collaborateur actif (cf. `05_security_rls.mdc`).
 - **Types** (`document_type`) : structure et comportement identiques à l'onglet Catégories (grille de cartes "Type", crayon/poubelle inline, tiroir "Nouveau type documentaire" à un seul champ Titre (`label`), même modale de suppression adaptée au libellé "type documentaire"). Suppression ouverte à tout collaborateur actif.
 - **Collaborateurs & Pôles** (`team` / `collaborator`) : 2 sous-sections sur le même onglet, chacune avec son propre bouton d'ajout à droite du sous-titre. Accessible uniquement aux collaborateur avec rôle "manager" et "direction"

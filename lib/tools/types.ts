@@ -34,7 +34,6 @@ export type ToolAccessItem = {
   client: ToolClientRef | null;
   label: string;
   identifier: string;
-  vault_secret_id: string;
   is_private: boolean;
 };
 

@@ -48,6 +48,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { usePersistedListView } from "@/hooks/use-persisted-list-view";
 import type { CategoryItem } from "@/lib/categories/types";
 import type { ClientOption } from "@/lib/clients/types";
 import type { CollaboratorListItem } from "@/lib/collaborators/types";
@@ -132,7 +133,7 @@ export function ToolsPageClient({
   const router = useRouter();
   const { pushDrawer } = useDrawerStack();
   const [isPending, startTransition] = useTransition();
-  const [view, setView] = useState<"cards" | "table">("cards");
+  const [view, setView] = usePersistedListView("tools");
   const [draftFilters, setDraftFilters] = useState<DialogFilters>(() =>
     toDialogFilters(filters),
   );
