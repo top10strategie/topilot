@@ -4,7 +4,6 @@ import { useMemo, useState, useTransition } from "react";
 import {
   ClockCounterClockwise,
   FunnelSimple,
-  MagnifyingGlass,
 } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { fetchAuditLogsForPage } from "@/actions/audit-logs";
@@ -12,6 +11,7 @@ import { AuditHistoryTable } from "@/components/audit/audit-history-table";
 import { IconActionButton } from "@/components/layout/icon-action-button";
 import { ListPaginationFooter } from "@/components/layout/list-pagination-footer";
 import { PageHero } from "@/components/layout/page-hero";
+import { PageSearchInput } from "@/components/layout/page-search-input";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -165,20 +165,12 @@ export function HistoryPageClient({
         title="Historique du CRM"
         actions={
           <div className="flex w-full max-w-md items-center gap-2 md:w-auto md:max-w-none">
-            <div className="relative min-w-0 flex-1 md:w-72 md:flex-none">
-              <MagnifyingGlass
-                className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
-                aria-hidden
-              />
-              <Input
-                type="search"
-                placeholder="Rechercher…"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                className="pl-8"
-                aria-label="Recherche dans l'historique (page courante)"
-              />
-            </div>
+            <PageSearchInput
+              value={query}
+              onSearch={setQuery}
+              aria-label="Recherche dans l'historique (page courante)"
+              className="flex-1 md:w-72 md:flex-none"
+            />
             <IconActionButton
               label="Filtres"
               onClick={() => {

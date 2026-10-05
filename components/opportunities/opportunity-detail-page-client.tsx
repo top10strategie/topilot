@@ -11,7 +11,6 @@ import { useRouter } from "next/navigation";
 import {
   CirclesThreePlus,
   CopySimple,
-  MagnifyingGlass,
   PencilSimple,
   Trash,
 } from "@phosphor-icons/react";
@@ -35,12 +34,12 @@ import { EntityDetailsColumns } from "@/components/layout/entity-details-columns
 import { EntityFormDocumentationBlock } from "@/components/layout/entity-form-documentation-block";
 import { IconActionButton } from "@/components/layout/icon-action-button";
 import { PageHero } from "@/components/layout/page-hero";
+import { PageSearchInput } from "@/components/layout/page-search-input";
 import { MissionConsultationDrawer } from "@/components/missions/mission-consultation-drawer-lazy";
 import { MissionFormDrawer } from "@/components/missions/mission-form-drawer-lazy";
 import { OpportunityFormDrawer } from "@/components/opportunities/opportunity-form-drawer-lazy";
 import { EntityNotesEditor } from "@/components/notes/entity-notes-editor";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { CategoryItem } from "@/lib/categories/types";
@@ -345,20 +344,13 @@ export function OpportunityDetailPageClient({
         title={opportunity.opportunity_name}
         actions={
           <div className="flex w-full max-w-md items-center gap-2 md:w-auto md:max-w-none">
-            <div className="relative min-w-0 flex-1 md:w-72 md:flex-none">
-              <MagnifyingGlass
-                className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
-                aria-hidden
-              />
-              <Input
-                type="search"
-                placeholder="Rechercher dans l'onglet…"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                className="pl-8"
-                aria-label="Recherche contextuelle fiche opportunité"
-              />
-            </div>
+            <PageSearchInput
+              value={query}
+              onSearch={setQuery}
+              placeholder="Rechercher dans l'onglet…"
+              aria-label="Recherche contextuelle fiche opportunité"
+              className="flex-1 md:w-72 md:flex-none"
+            />
             <IconActionButton
               label="Édition Opportunité"
               onClick={() => void openEdit()}
