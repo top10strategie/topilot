@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   FolderSimplePlus,
-  MagnifyingGlass,
   PencilSimple,
   StackPlus,
   Trash,
@@ -39,13 +38,13 @@ import { TeamFormDrawer } from "@/components/collaborators/team-form-drawer";
 import { useDrawerStack } from "@/components/drawers/drawer-stack-context";
 import { IconActionButton } from "@/components/layout/icon-action-button";
 import { PageHero } from "@/components/layout/page-hero";
+import { PageSearchInput } from "@/components/layout/page-search-input";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   getCollaboratorFullName,
@@ -450,27 +449,12 @@ export function AdministrationPageClient({
         title="Gestion Admin"
         actions={
           <div className="flex w-full max-w-md items-center gap-2 md:w-auto md:max-w-none">
-            <div className="relative min-w-0 flex-1 md:w-72 md:flex-none lg:w-80">
-              <MagnifyingGlass
-                className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
-                aria-hidden
-              />
-              <Input
-                type="search"
-                name="admin-search"
-                placeholder="Rechercher…"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                className="pl-8"
-                aria-label="Recherche contextuelle administration"
-                autoComplete="off"
-                autoCorrect="off"
-                spellCheck={false}
-                data-1p-ignore
-                data-lpignore="true"
-                data-form-type="other"
-              />
-            </div>
+            <PageSearchInput
+              value={query}
+              onSearch={setQuery}
+              aria-label="Recherche contextuelle administration"
+              className="flex-1 md:w-72 md:flex-none lg:w-80"
+            />
             <IconActionButton
               label={heroCreateLabel}
               disabled={heroCreateDisabled}

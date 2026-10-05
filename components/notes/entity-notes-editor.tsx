@@ -8,8 +8,6 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
-const DEBOUNCE_MS = 1800;
-
 type EntityNotesEditorProps = {
   entity: NotesEntity;
   entityId: string;
@@ -21,7 +19,8 @@ type EntityNotesEditorProps = {
 type SaveStatus = "idle" | "dirty" | "saving" | "saved" | "error";
 
 /**
- * Notes texte libre avec autosave (debounce + blur).
+ * Notes texte libre : enregistrement à Entrée ou au blur.
+ * Maj+Entrée insère une nouvelle ligne.
  */
 export function EntityNotesEditor({
   entity,
@@ -35,19 +34,12 @@ export function EntityNotesEditor({
   const [error, setError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
   const lastSavedRef = useRef(initialNotes ?? "");
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     setValue(initialNotes ?? "");
     lastSavedRef.current = initialNotes ?? "";
     setStatus("idle");
   }, [entityId, initialNotes]);
-
-  useEffect(() => {
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, []);
 
   const persist = (next: string) => {
     if (next === lastSavedRef.current) {
@@ -72,14 +64,6 @@ export function EntityNotesEditor({
     });
   };
 
-  const scheduleSave = (next: string) => {
-    setStatus("dirty");
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => {
-      persist(next);
-    }, DEBOUNCE_MS);
-  };
-
   const statusLabel =
     status === "saving"
       ? "Enregistrement…"
@@ -97,20 +81,24 @@ export function EntityNotesEditor({
         value={value}
         rows={rows}
         onChange={(event) => {
-          const next = event.target.value;
-          setValue(next);
-          scheduleSave(next);
+          setValue(event.target.value);
+          setStatus("dirty");
+        }}
+        onKeyDown={(event) => {
+          if (event.key !== "Enter" || event.shiftKey) return;
+          if (event.nativeEvent.isComposing) return;
+          event.preventDefault();
+          persist(value);
         }}
         onBlur={() => {
-          if (timerRef.current) {
-            clearTimeout(timerRef.current);
-            timerRef.current = null;
-          }
           persist(value);
         }}
         placeholder="Saisir une note…"
         className="min-h-[8rem] resize-y text-sm"
       />
+      <p className="text-xs text-muted-foreground">
+        Entrée pour enregistrer, Maj+Entrée pour une nouvelle ligne.
+      </p>
       {statusLabel ? (
         <p
           className={cn(

@@ -1,7 +1,6 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { MagnifyingGlass } from "@phosphor-icons/react";
 import { DuplicateConfirmDialog } from "@/components/layout/duplicate-confirm-dialog";
 import { ListPaginationFooter } from "@/components/layout/list-pagination-footer";
 import {
@@ -10,6 +9,7 @@ import {
   type ListViewTab,
 } from "@/components/layout/list-view-tabs";
 import { PageHero } from "@/components/layout/page-hero";
+import { PageSearchInput } from "@/components/layout/page-search-input";
 import {
   Dialog,
   DialogContent,
@@ -17,7 +17,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 type EntityListPageShellProps = {
@@ -27,7 +26,8 @@ type EntityListPageShellProps = {
   onViewChange: (value: string) => void;
   viewTabs: ListViewTab[];
   query: string;
-  onQueryChange: (value: string) => void;
+  onSearch: (query: string) => void;
+  searchDisabled?: boolean;
   /** Actions après search + switcher (filtres, créer, …). */
   toolbarActions?: ReactNode;
   /** Contenu des TabsContent (kanban / cartes / tableau). */
@@ -70,7 +70,8 @@ export function EntityListPageShell({
   onViewChange,
   viewTabs,
   query,
-  onQueryChange,
+  onSearch,
+  searchDisabled = false,
   toolbarActions,
   children,
   kanbanLayout = false,
@@ -84,20 +85,12 @@ export function EntityListPageShell({
         title={title}
         actions={
           <div className="flex w-full max-w-xl flex-wrap items-center gap-2 md:w-auto md:max-w-none md:flex-nowrap">
-            <div className="relative min-w-0 flex-1 basis-full sm:basis-auto md:w-72 md:flex-none lg:w-80">
-              <MagnifyingGlass
-                className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
-                aria-hidden
-              />
-              <Input
-                type="search"
-                placeholder="Rechercher…"
-                value={query}
-                onChange={(event) => onQueryChange(event.target.value)}
-                className="pl-8"
-                aria-label={searchAriaLabel}
-              />
-            </div>
+            <PageSearchInput
+              value={query}
+              onSearch={onSearch}
+              aria-label={searchAriaLabel}
+              disabled={searchDisabled}
+            />
             <ListViewTabsSwitcher tabs={viewTabs} showLabels={false} />
             {toolbarActions}
           </div>

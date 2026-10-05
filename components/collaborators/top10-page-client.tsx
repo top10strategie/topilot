@@ -1,9 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { MagnifyingGlass } from "@phosphor-icons/react";
 import { PageHero } from "@/components/layout/page-hero";
-import { Input } from "@/components/ui/input";
+import { PageSearchInput } from "@/components/layout/page-search-input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TeamCard } from "@/components/collaborators/team-card";
 import { CollaboratorCard } from "@/components/collaborators/collaborator-card";
@@ -211,20 +210,13 @@ export function Top10PageClient({
       <PageHero
         title="Top 10 Stratégie"
         actions={
-          <div className="relative w-full max-w-sm">
-            <MagnifyingGlass
-              className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-              aria-hidden
-            />
-            <Input
-              type="search"
-              placeholder="Rechercher un pôle ou un collaborateur…"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              className="pl-8"
-              aria-label="Recherche contextuelle pôles et collaborateurs"
-            />
-          </div>
+          <PageSearchInput
+            value={query}
+            onSearch={setQuery}
+            placeholder="Rechercher un pôle ou un collaborateur…"
+            aria-label="Recherche contextuelle pôles et collaborateurs"
+            className="w-full max-w-sm"
+          />
         }
       />
 
