@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import {
   Cards,
   FunnelSimple,
-  MagnifyingGlass,
   StackPlus,
   Table,
   Trash,
@@ -23,6 +22,7 @@ import {
   type ListViewTab,
 } from "@/components/layout/list-view-tabs";
 import { PageHero } from "@/components/layout/page-hero";
+import { PageSearchInput } from "@/components/layout/page-search-input";
 import { DeleteToolDialog } from "@/components/tools/delete-tool-dialog";
 import { ToolFormDrawer } from "@/components/tools/tool-form-drawer-lazy";
 import { Badge } from "@/components/ui/badge";
@@ -40,7 +40,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -133,7 +132,6 @@ export function ToolsPageClient({
   const router = useRouter();
   const { pushDrawer } = useDrawerStack();
   const [isPending, startTransition] = useTransition();
-  const [query, setQuery] = useState(filters.q);
   const [view, setView] = useState<"cards" | "table">("cards");
   const [draftFilters, setDraftFilters] = useState<DialogFilters>(() =>
     toDialogFilters(filters),
@@ -153,23 +151,8 @@ export function ToolsPageClient({
   };
 
   useEffect(() => {
-    setQuery(filters.q);
-  }, [filters.q]);
-
-  useEffect(() => {
     setDraftFilters(toDialogFilters(filters));
   }, [filters]);
-
-  useEffect(() => {
-    const trimmed = query.trim();
-    if (trimmed === filters.q) return;
-    const handle = window.setTimeout(() => {
-      navigate({ ...filters, q: trimmed, page: 1 });
-    }, 300);
-    return () => window.clearTimeout(handle);
-    // Intentionnel : debounce sur la saisie locale uniquement.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query]);
 
   const visibleTools = useMemo(
     () => tools.filter((tool) => !optimisticallyRemovedIds.has(tool.id)),
@@ -271,21 +254,12 @@ export function ToolsPageClient({
         title="Outils"
         actions={
           <div className="flex w-full max-w-xl flex-wrap items-center gap-2 md:w-auto md:max-w-none md:flex-nowrap">
-            <div className="relative min-w-0 flex-1 basis-full sm:basis-auto md:w-72 md:flex-none lg:w-80">
-              <MagnifyingGlass
-                className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
-                aria-hidden
-              />
-              <Input
-                type="search"
-                placeholder="Rechercher…"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                className="pl-8"
-                aria-label="Recherche contextuelle outils"
-                disabled={isPending}
-              />
-            </div>
+            <PageSearchInput
+              value={filters.q}
+              onSearch={(q) => navigate({ ...filters, q, page: 1 })}
+              aria-label="Recherche contextuelle outils"
+              disabled={isPending}
+            />
             <ListViewTabsSwitcher tabs={TOOL_VIEW_TABS} showLabels={false} />
             <IconActionButton
               label="Filtres"

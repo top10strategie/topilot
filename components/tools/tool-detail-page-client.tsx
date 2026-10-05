@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import {
   Eye,
   LockKey,
-  MagnifyingGlass,
   PencilSimple,
   StackPlus,
   Trash,
@@ -15,6 +14,7 @@ import { AuditHistoryButton } from "@/components/audit/audit-history-button";
 import { EntityDetailsColumns } from "@/components/layout/entity-details-columns";
 import { IconActionButton } from "@/components/layout/icon-action-button";
 import { PageHero } from "@/components/layout/page-hero";
+import { PageSearchInput } from "@/components/layout/page-search-input";
 import { DeleteToolAccessDialog } from "@/components/tools/delete-tool-access-dialog";
 import { DeleteToolSubscriptionDialog } from "@/components/tools/delete-tool-subscription-dialog";
 import { PasswordRevealDialog } from "@/components/tools/password-reveal-dialog";
@@ -23,7 +23,6 @@ import { ToolFormDrawer } from "@/components/tools/tool-form-drawer-lazy";
 import { ToolSubscriptionInlineForm } from "@/components/tools/tool-subscription-inline-form";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import type { CategoryItem } from "@/lib/categories/types";
 import type { CollaboratorListItem } from "@/lib/collaborators/types";
@@ -171,20 +170,12 @@ export function ToolDetailPageClient({
         title={tool.tool_name}
         actions={
           <div className="flex w-full max-w-md items-center gap-2 md:w-auto md:max-w-none">
-            <div className="relative min-w-0 flex-1 md:w-72 md:flex-none">
-              <MagnifyingGlass
-                className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
-                aria-hidden
-              />
-              <Input
-                type="search"
-                placeholder="Rechercher…"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                className="pl-8"
-                aria-label="Recherche contextuelle fiche outil"
-              />
-            </div>
+            <PageSearchInput
+              value={query}
+              onSearch={setQuery}
+              aria-label="Recherche contextuelle fiche outil"
+              className="flex-1 md:w-72 md:flex-none"
+            />
             <IconActionButton label="Édition Outil" onClick={openEdit}>
               <PencilSimple className="size-4" />
             </IconActionButton>

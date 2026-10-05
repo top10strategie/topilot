@@ -157,7 +157,6 @@ export function OpportunitiesPageClient({
   const router = useRouter();
   const { pushDrawer } = useDrawerStack();
   const [isPending, startTransition] = useTransition();
-  const [query, setQuery] = useState(filters.q);
   const [draftFilters, setDraftFilters] = useState<DialogFilters>(() =>
     toDialogFilters(filters),
   );
@@ -186,10 +185,6 @@ export function OpportunitiesPageClient({
       router.push(opportunitiesListHref(next));
     });
   };
-
-  useEffect(() => {
-    setQuery(filters.q);
-  }, [filters.q]);
 
   useEffect(() => {
     setDraftFilters(toDialogFilters(filters));
@@ -248,17 +243,6 @@ export function OpportunitiesPageClient({
     setOptionsLoaded(true);
     return true;
   };
-
-  useEffect(() => {
-    const trimmed = query.trim();
-    if (trimmed === filters.q) return;
-    const handle = window.setTimeout(() => {
-      navigate({ ...filters, q: trimmed, page: 1 });
-    }, 300);
-    return () => window.clearTimeout(handle);
-    // Intentionnel : debounce sur la saisie locale uniquement.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query]);
 
   const draftSelectedCategories = useMemo(
     () =>
@@ -415,8 +399,9 @@ export function OpportunitiesPageClient({
         });
       }}
       viewTabs={OPPORTUNITY_VIEW_TABS}
-      query={query}
-      onQueryChange={setQuery}
+      query={filters.q}
+      onSearch={(q) => navigate({ ...filters, q, page: 1 })}
+      searchDisabled={isPending}
       toolbarActions={
         <>
           <IconActionButton
@@ -698,7 +683,7 @@ export function OpportunitiesPageClient({
                 navigate({
                   ...filters,
                   ...draftFilters,
-                  q: query.trim(),
+                  q: filters.q,
                   page: 1,
                 });
               }}
