@@ -223,11 +223,11 @@ Quand un nouveau fichier est uploadé sur un document existant :
 
 ## Notes
 
-- Champ `notes` (texte simple) présent sur : `client`, `mission`, `team`, `contact_client`.
+- Champ `notes` (texte simple) présent sur : `client`, `mission`, `team`, `contact_client`, `opportunity`.
 - Un seul champ par entité — la dernière saisie remplace la précédente.
 - Chaque entité possède `notes_updated_at` pour horodater la dernière modification.
 - Les notes sont toujours partagées — pas de note privée.
-- **Toute modification de note sur ces 4 entités est historisée dans `audit_log`** (`entity_type = note`).
+- **Toute modification de note sur ces 5 entités est historisée dans `audit_log`** (`entity_type = note`).
 
 ---
 
@@ -279,7 +279,7 @@ Ces trois règles sont mutualisées via un composant de stack de drawers réutil
 Éléments historisés en V1 (correspond exactement à la liste `04_database_schema.mdc` — `audit_log.entity_type`) :
 
 - Création / modification / suppression de : `category`, `team`, `collaborator`, `client`, `contact_client`, `opportunity`, `mission`, `mission_series`, `document_type`, `document`, `tool`, `tool_access`, `tool_subscription`, `tool_subscription_price`, `exchange_rate`, `wiki`, `setting`.
-- Modification d'une **note** sur `client`, `mission`, `team` ou `contact_client` (`entity_type = note`) — historisée via un trigger dédié, distinct du trigger générique par table.
+- Modification d'une **note** sur `client`, `mission`, `team`, `contact_client` ou `opportunity` (`entity_type = note`) — historisée via un trigger dédié, distinct du trigger générique par table.
 
 ### Contrainte `audit_log.entity_type`
 

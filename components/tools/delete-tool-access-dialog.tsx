@@ -8,7 +8,6 @@ type DeleteToolAccessDialogProps = {
   onOpenChange: (open: boolean) => void;
   accessLabel: string;
   accessId: string;
-  vaultSecretId: string;
   onDeleted: () => void;
 };
 
@@ -17,7 +16,6 @@ export function DeleteToolAccessDialog({
   onOpenChange,
   accessLabel,
   accessId,
-  vaultSecretId,
   onDeleted,
 }: DeleteToolAccessDialogProps) {
   return (
@@ -40,7 +38,7 @@ export function DeleteToolAccessDialog({
       confirmLabel="Supprimer"
       pendingLabel="Suppression…"
       successMessage="Accès supprimé."
-      onConfirm={() => deleteToolAccessRecord(accessId, vaultSecretId)}
+      onConfirm={() => deleteToolAccessRecord(accessId)}
       onSuccess={onDeleted}
     />
   );

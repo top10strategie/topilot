@@ -1,6 +1,7 @@
 "use server";
 
 import { cookies } from "next/headers";
+import { isPasswordRecoveryOrInviteSession } from "@/lib/auth/password-recovery-session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { PURGE_REAUTH_COOKIE } from "@/lib/data-admin/purge";
 import { createClient } from "@/lib/supabase/server";
@@ -29,9 +30,8 @@ export async function signOutAction(): Promise<{
 }
 
 /**
- * Flux forcé `/auth/update-password` : met à jour le mot de passe **puis**
- * remet `must_change_password` à false via service role.
- * Ne peut plus être appelé seul pour contourner le flag sans changer le MDP.
+ * Flux `/auth/update-password` : reset e-mail / invitation / must_change_password.
+ * Interdit pour une session login normale (changement volontaire → /settings).
  */
 export async function completeForcedPasswordChange(password: string): Promise<{
   success: boolean;
@@ -55,19 +55,11 @@ export async function completeForcedPasswordChange(password: string): Promise<{
     return { success: false, error: "Session invalide ou expirée." };
   }
 
-  const { error: updateError } = await supabase.auth.updateUser({
-    password: trimmed,
-  });
-  if (updateError) {
-    console.error("completeForcedPasswordChange — updateUser:", updateError);
-    return {
-      success: false,
-      error: updateError.message || "Impossible de mettre à jour le mot de passe.",
-    };
-  }
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
 
   const admin = createAdminClient();
-
   const { data: collaborator, error: collaboratorError } = await admin
     .from("collaborator")
     .select("id")
@@ -80,18 +72,48 @@ export async function completeForcedPasswordChange(password: string): Promise<{
       "completeForcedPasswordChange — lecture collaborator:",
       collaboratorError,
     );
-    return {
-      success: false,
-      error: `Mot de passe mis à jour, mais la préférence n'a pas pu être synchronisée : ${collaboratorError.message}`,
-    };
+    return { success: false, error: "Impossible de vérifier le compte." };
   }
 
-  if (!collaborator) {
+  let mustChange = false;
+  if (collaborator) {
+    const { data: setting, error: settingReadError } = await admin
+      .from("setting")
+      .select("must_change_password")
+      .eq("collaborator_id", collaborator.id)
+      .maybeSingle();
+    if (settingReadError) {
+      console.error(
+        "completeForcedPasswordChange — lecture setting:",
+        settingReadError,
+      );
+      return { success: false, error: "Impossible de vérifier le compte." };
+    }
+    mustChange = Boolean(setting?.must_change_password);
+  }
+
+  const recovery = isPasswordRecoveryOrInviteSession(session);
+  if (!mustChange && !recovery) {
     return {
       success: false,
       error:
-        "Mot de passe mis à jour, mais collaborateur actif introuvable pour cette session.",
+        "Utilisez la page Paramètres pour un changement de mot de passe volontaire.",
     };
+  }
+
+  const { error: updateError } = await supabase.auth.updateUser({
+    password: trimmed,
+  });
+  if (updateError) {
+    console.error("completeForcedPasswordChange — updateUser:", updateError);
+    return {
+      success: false,
+      error: updateError.message || "Impossible de mettre à jour le mot de passe.",
+    };
+  }
+
+  if (!mustChange || !collaborator) {
+    return { success: true };
   }
 
   const { error: settingError } = await admin

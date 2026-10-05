@@ -5,7 +5,6 @@ export const ALLOWED_IMAGE_MIME_TYPES = [
   "image/png",
   "image/webp",
   "image/gif",
-  "image/svg+xml",
   "image/avif",
 ] as const;
 
@@ -13,21 +12,20 @@ export type AllowedImageMimeType = (typeof ALLOWED_IMAGE_MIME_TYPES)[number];
 
 const ALLOWED_MIME_SET = new Set<string>(ALLOWED_IMAGE_MIME_TYPES);
 
-/** Extensions de secours quand `file.type` est vide (ex. certains SVG). */
+/** Extensions de secours quand `file.type` est vide. */
 const EXTENSION_TO_MIME: Record<string, AllowedImageMimeType> = {
   jpg: "image/jpeg",
   jpeg: "image/jpeg",
   png: "image/png",
   webp: "image/webp",
   gif: "image/gif",
-  svg: "image/svg+xml",
   avif: "image/avif",
 };
 
 export const IMAGE_MAX_BYTES = 5 * 1024 * 1024;
 
 export const IMAGE_UNSUPPORTED_MESSAGE =
-  "Format d'image non supporté (JPEG, PNG, WebP, GIF, SVG ou AVIF).";
+  "Format d'image non supporté (JPEG, PNG, WebP, GIF ou AVIF).";
 
 export const IMAGE_TOO_LARGE_MESSAGE = "L'image ne doit pas dépasser 5 Mo.";
 

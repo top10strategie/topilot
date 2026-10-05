@@ -6,6 +6,8 @@ import {
   VISUELS_BUCKET,
 } from "@/lib/documents/constants";
 import { assertSafeExternalUrl } from "@/lib/documents/external-url";
+import { assertResolvedPublicHostname } from "@/lib/documents/external-url-dns";
+import { isOwnedDocumentFilePath } from "@/lib/documents/owned-file-path";
 import { publicVisuelUrl } from "@/lib/documents/storage";
 import { isUuid } from "@/lib/uuid";
 
@@ -84,6 +86,10 @@ export async function GET(request: Request, context: RouteContext) {
     if (!safe.ok) {
       return NextResponse.json({ error: safe.error }, { status: 400 });
     }
+    const resolved = await assertResolvedPublicHostname(safe.hostname);
+    if (!resolved.ok) {
+      return NextResponse.json({ error: resolved.error }, { status: 400 });
+    }
     if (!wantDownload) {
       return NextResponse.redirect(safe.href);
     }
@@ -110,6 +116,10 @@ export async function GET(request: Request, context: RouteContext) {
   }
 
   if (!document.file_path || document.file_path === "pending") {
+    return NextResponse.json({ error: "Fichier manquant." }, { status: 404 });
+  }
+
+  if (!isOwnedDocumentFilePath(document.id, document.file_path)) {
     return NextResponse.json({ error: "Fichier manquant." }, { status: 404 });
   }
 

@@ -277,7 +277,6 @@ type ToolAccessRow = {
   client_id: string | null;
   label: string;
   identifier: string;
-  vault_secret_id: string;
   is_private: boolean;
   client: { id: string; client_name: string } | null;
 };
@@ -295,7 +294,6 @@ async function listToolAccessesByToolId(
       client_id,
       label,
       identifier,
-      vault_secret_id,
       is_private,
       client:client_id ( id, client_name )
     `,
@@ -317,7 +315,6 @@ async function listToolAccessesByToolId(
       : null,
     label: row.label,
     identifier: row.identifier,
-    vault_secret_id: row.vault_secret_id,
     is_private: row.is_private,
   }));
 }

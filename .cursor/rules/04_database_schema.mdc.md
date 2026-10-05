@@ -482,6 +482,9 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER trg_set_opportunity_kanban_defaults
 BEFORE INSERT OR UPDATE ON public.opportunity
 FOR EACH ROW EXECUTE FUNCTION public.set_opportunity_kanban_defaults();
+
+CREATE TRIGGER trg_audit_notes AFTER UPDATE ON public.opportunity
+  FOR EACH ROW EXECUTE FUNCTION public.audit_notes_trigger_fn();
 ```
 
 > Comportement de `is_active` à la sortie d'un statut terminal (`ELSIF` ci-dessus) : symétrie confirmée — un retour en arrière dans le Kanban désarchive l'opportunité.
@@ -601,7 +604,7 @@ CREATE TABLE public.tool_access (
   client_id         uuid REFERENCES public.client(id) ON DELETE RESTRICT,
   label             text NOT NULL,
   identifier        text NOT NULL,
-  vault_secret_id   text NOT NULL,
+  vault_secret_id   text NOT NULL UNIQUE,
   is_private        boolean NOT NULL DEFAULT false,
   created_at        timestamptz NOT NULL DEFAULT now(),
   updated_at        timestamptz
@@ -611,7 +614,7 @@ CREATE INDEX idx_tool_access_tool_id ON public.tool_access(tool_id);
 CREATE INDEX idx_tool_access_client_id ON public.tool_access(client_id);
 ```
 
-> **Règle applicative (non exprimable en `CHECK` SQL)** : le secret doit être créé dans Vault **avant** l'insertion de la ligne `tool_access` ; si l'insertion Vault échoue, aucune ligne `tool_access` n'est créée. À la suppression, l'ordre est inverse (secret Vault supprimé, puis ligne `tool_access`) — et la ligne n'est supprimée que si le `vault_secret_id` fourni correspond exactement à celui stocké (protection contre une suppression Vault sur une mauvaise ligne). Suppression ouverte à tout actif si `is_private = false` ; réservée Manager/Direction si `is_private = true` (voir `05_security_rls.mdc`).
+> **Règle applicative** : le secret Vault est créé **avant** l'INSERT `tool_access`. À la suppression, le secret est retiré puis la ligne, en s'appuyant sur l'`id` de l'accès (preuve RLS) — le client ne transmet jamais `vault_secret_id`. `vault_secret_id` n'est pas SELECT-able par `authenticated`. Suppression ouverte à tout actif si `is_private = false` ; réservée Manager/Direction si `is_private = true` (voir `05_security_rls.mdc`).
 
 ### `tool_subscription`
 
@@ -786,7 +789,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 ```sql
 -- Historisation dédiée des notes : uniquement quand le champ `notes` change,
--- sur les 4 tables qui en disposent (client, mission, team, contact_client).
+-- sur les 5 tables qui en disposent (client, mission, team, contact_client, opportunity).
 CREATE OR REPLACE FUNCTION public.audit_notes_trigger_fn()
 RETURNS trigger AS $$
 DECLARE
@@ -816,7 +819,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 ```
 
-> À appliquer (`AFTER UPDATE ... FOR EACH ROW`) sur `client`, `mission`, `team`, `contact_client` — en complément du trigger générique `audit_trigger_fn` déjà appliqué à `client`/`mission`/`team`/`contact_client` pour le reste de leurs colonnes.
+> À appliquer (`AFTER UPDATE ... FOR EACH ROW`) sur `client`, `mission`, `team`, `contact_client`, `opportunity` — en complément du trigger générique `audit_trigger_fn` déjà appliqué à ces tables pour le reste de leurs colonnes.
 
 ### `mission_category`
 
@@ -1019,3 +1022,9 @@ $$ LANGUAGE plpgsql;
 ```
 
 À appliquer (`BEFORE UPDATE ... FOR EACH ROW`) sur : `team, tool, collaborator, client, contact_client, opportunity, mission, mission_series, document, tool_access, tool_subscription, wiki, setting`.
+
+## Recherche
+
+- **Globale** (`search_global`, Cmd+K) : FTS `search_vector` (limite de hits, ce n’est pas une pagination de liste).
+- **Listes** (`list_clients_page`, `list_missions_page`, `list_opportunities_page`, `list_tools_page`, `list_documents_page`, et filtrage wiki/admin côté client) : `ILIKE` sur le texte saisi dans le Hero.
+- Taille de page applicative : **24** (`LIST_PAGE_SIZE`). Les RPC acceptent `p_page_size` avec un plafond technique (100) ; l’UI n’envoie jamais plus de 24.
