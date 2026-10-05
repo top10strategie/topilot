@@ -47,9 +47,11 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import type { CategoryItem } from "@/lib/categories/types";
+import { LIST_PAGE_SIZE } from "@/lib/list-page-size";
 import type { WikiListItem } from "@/lib/wiki/types";
+import { usePersistedListView } from "@/hooks/use-persisted-list-view";
 
-const PAGE_SIZE = 25;
+const PAGE_SIZE = LIST_PAGE_SIZE;
 
 const WIKI_VIEW_TABS: ListViewTab[] = [
   {
@@ -91,7 +93,7 @@ export function WikisPageClient({
   const router = useRouter();
   const { pushDrawer } = useDrawerStack();
   const [query, setQuery] = useState("");
-  const [view, setView] = useState<"cards" | "table">("cards");
+  const [view, setView] = usePersistedListView("wikis");
   const [page, setPage] = useState(1);
   const [categoryIds, setCategoryIds] = useState<string[]>([]);
   const [draftCategoryIds, setDraftCategoryIds] = useState<string[]>([]);

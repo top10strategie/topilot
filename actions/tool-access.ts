@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import {
   createVaultSecret,
+  deleteOrphanVaultSecret,
   deleteVaultSecret,
   updateVaultSecret,
 } from "@/actions/vault";
@@ -20,7 +21,7 @@ export type DeleteToolAccessResult =
   | { success: false; error: string };
 
 const ACCESS_SELECT =
-  "id, tool_id, client_id, label, identifier, vault_secret_id, is_private, created_at, updated_at";
+  "id, tool_id, client_id, label, identifier, is_private, created_at, updated_at";
 
 function revalidateTool(toolId: string) {
   revalidatePath("/tools");
@@ -99,7 +100,7 @@ export async function createToolAccessRecord(input: {
     .single();
 
   if (insErr || !inserted) {
-    await deleteVaultSecret(vault.data.vaultSecretId);
+    await deleteOrphanVaultSecret(vault.data.vaultSecretId);
     return {
       success: false,
       error: insErr?.message
@@ -180,10 +181,7 @@ export async function updateToolAccessRecord(input: {
 
   const newPassword = input.password?.trim() ?? "";
   if (newPassword) {
-    const vault = await updateVaultSecret(
-      existing.vault_secret_id as string,
-      newPassword,
-    );
+    const vault = await updateVaultSecret(id, newPassword);
     if (!vault.success) {
       return { success: false, error: vault.error };
     }
@@ -223,12 +221,10 @@ export async function updateToolAccessRecord(input: {
 }
 
 /**
- * Supprime le secret Vault puis la ligne `tool_access`
- * (après vérification de cohérence id / vault_secret_id).
+ * Supprime le secret Vault puis la ligne `tool_access`.
  */
 export async function deleteToolAccessRecord(
   id: string,
-  vaultSecretId: string,
 ): Promise<DeleteToolAccessResult> {
   const auth = await requireActiveCollaboratorAction();
   if (!auth.success) {
@@ -239,15 +235,10 @@ export async function deleteToolAccessRecord(
     return { success: false, error: "Identifiants invalides." };
   }
 
-  const vaultRef = vaultSecretId.trim();
-  if (!vaultRef) {
-    return { success: false, error: "Référence coffre invalide." };
-  }
-
   const supabase = await createClient();
   const { data: row, error: rowErr } = await supabase
     .from("tool_access")
-    .select("id, tool_id, vault_secret_id")
+    .select("id, tool_id")
     .eq("id", id)
     .maybeSingle();
 
@@ -255,11 +246,7 @@ export async function deleteToolAccessRecord(
     return { success: false, error: "Accès introuvable." };
   }
 
-  if (row.vault_secret_id !== vaultRef) {
-    return { success: false, error: "Opération non autorisée." };
-  }
-
-  const delVault = await deleteVaultSecret(vaultRef);
+  const delVault = await deleteVaultSecret(id);
   if (!delVault.success) {
     return { success: false, error: delVault.error };
   }

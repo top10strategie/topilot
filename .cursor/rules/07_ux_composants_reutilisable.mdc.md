@@ -86,7 +86,7 @@ Au format téléphone, le contenu aligné à droite passe dans la barre de menu 
 
 - Icône Phosphor : `flashlight`.
 - Ouvre une **modale de recherche** superposée à la page actuelle.
-- Recherche sur **toutes les entités** du CRM (recherche globale, distincte de la recherche de filtre contextuel décrite en 5.4).
+- La recherche globale (⌘K) interroge le FTS PostgreSQL (`search_vector` / RPC `search_global`). Elle est distincte de la recherche contextuelle du Hero, qui filtre les listes via `ILIKE` dans les RPC `list_*_page`.
 - Raccourci clavier prévu : '⌘K', non affiché à l'écran.
 
 ### 3.2 Toggle dark/light
@@ -129,6 +129,7 @@ Au format téléphone, le contenu aligné à droite passe dans la barre de menu 
 - Exception : **Opportunités** et **Missions** disposent en plus d'une vue **Kanban**.
 - Sauf indication contraire dans la documentation d'une page, la vue **Cartes** est la vue par défaut à l'ouverture. Exception : **`/opportunities` et `/missions`** s'ouvre par défaut en vue **Kanban**.
 - Garder en mémoire local la dernière présentation demandée par l'utilisateur afin que lorsqu'il revient sur la page en question, il soit présenter avec la même présentation
+- **Opportunités** et **Missions** : la vue (Kanban / Cartes / Tableau) est dans le paramètre d'URL `view`. **Clients, outils, documents, wikis** : dernière vue Cartes/Tableau dans `localStorage`.
 
 ---
 
@@ -151,7 +152,7 @@ Au format téléphone, le contenu aligné à droite passe dans la barre de menu 
 
 ### 5.3 Pagination et filtrage des entités
 
-- Pagination fixée à **25 entités par page** pour toutes les vues liste (Cartes, Tableau), à l'exception du Kanban qui a sa propre organisation.
+- Pagination fixée à **24 entités par page** pour toutes les vues liste (Cartes, Tableau), y compris l'historique CRM et les grilles admin (catégories, types). Exception : le Kanban a sa propre organisation (plafond de chargement distinct, pas une pagination 24).
 - Les entités au statut **archivé** sont masquées par défaut des listes.
     - Elles peuvent réapparaître via le filtre "statut" en sélectionnant explicitement "archivé".
     - Pour les clients, les clients archivé sont ceux ayant `is_active = false` . Leur affichage peut être modifié dans les filtres.

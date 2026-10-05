@@ -9,8 +9,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { LIST_PAGE_SIZE } from "@/lib/list-page-size";
 
-const PAGE_SIZE = 25;
+const PAGE_SIZE = LIST_PAGE_SIZE;
 
 type LabelEntity = {
   id: string;

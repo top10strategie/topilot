@@ -48,6 +48,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { usePersistedListView } from "@/hooks/use-persisted-list-view";
 import type { DocumentTypeItem } from "@/lib/categories/types";
 import type { ClientOption } from "@/lib/clients/types";
 import { getDocumentFileFormat } from "@/lib/documents/format";
@@ -135,7 +136,7 @@ export function DocumentsPageClient({
   const router = useRouter();
   const { pushDrawer } = useDrawerStack();
   const [isPending, startTransition] = useTransition();
-  const [view, setView] = useState<"cards" | "table">("cards");
+  const [view, setView] = usePersistedListView("documents");
   const [draftFilters, setDraftFilters] = useState<DialogFilters>(() =>
     toDialogFilters(filters),
   );

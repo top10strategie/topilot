@@ -8,6 +8,11 @@ import {
   PURGE_REAUTH_COOKIE,
   type PurgeYearResult,
 } from "@/lib/data-admin/purge";
+import {
+  createPurgeReauthCookieValue,
+  PURGE_REAUTH_TTL_SECONDS,
+  verifyPurgeReauthCookieValue,
+} from "@/lib/data-admin/purge-reauth";
 import { createClient } from "@/lib/supabase/server";
 
 export type DataPurgeActionResult =
@@ -18,15 +23,20 @@ export type PurgeReauthResult =
   | { success: true }
   | { success: false; error: string; fieldErrors?: { password?: string } };
 
-async function hasPurgeReauthCookie(): Promise<boolean> {
+async function hasValidPurgeReauth(
+  collaboratorId: string,
+): Promise<boolean> {
   const jar = await cookies();
-  return jar.get(PURGE_REAUTH_COOKIE)?.value === "1";
+  return verifyPurgeReauthCookieValue(
+    jar.get(PURGE_REAUTH_COOKIE)?.value,
+    collaboratorId,
+  );
 }
 
 export async function checkPurgeReauthStatus(): Promise<{ reauthenticated: boolean }> {
   const auth = await requireManagerOrDirectionAction();
   if (!auth.success) return { reauthenticated: false };
-  return { reauthenticated: await hasPurgeReauthCookie() };
+  return { reauthenticated: await hasValidPurgeReauth(auth.collaborator.id) };
 }
 
 /**
@@ -67,11 +77,12 @@ export async function reauthForPurge(password: string): Promise<PurgeReauthResul
   }
 
   const jar = await cookies();
-  jar.set(PURGE_REAUTH_COOKIE, "1", {
+  jar.set(PURGE_REAUTH_COOKIE, createPurgeReauthCookieValue(auth.collaborator.id), {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
+    maxAge: PURGE_REAUTH_TTL_SECONDS,
   });
 
   return { success: true };
@@ -81,7 +92,7 @@ export async function previewPurgeYear(year: number): Promise<DataPurgeActionRes
   const auth = await requireManagerOrDirectionAction();
   if (!auth.success) return { success: false, error: auth.error };
 
-  if (!(await hasPurgeReauthCookie())) {
+  if (!(await hasValidPurgeReauth(auth.collaborator.id))) {
     return {
       success: false,
       error: "Veuillez ressaisir votre mot de passe avant la purge.",
@@ -113,7 +124,7 @@ export async function executePurgeYear(year: number): Promise<DataPurgeActionRes
   const auth = await requireManagerOrDirectionAction();
   if (!auth.success) return { success: false, error: auth.error };
 
-  if (!(await hasPurgeReauthCookie())) {
+  if (!(await hasValidPurgeReauth(auth.collaborator.id))) {
     return {
       success: false,
       error: "Veuillez ressaisir votre mot de passe avant la purge.",

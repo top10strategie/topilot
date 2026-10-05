@@ -1,5 +1,15 @@
 # Suivi des actions — TOPilot
 
+## **[2026-10-05] — Sécurité P0 : Vault, audit_log, MDP, documents, CSP**
+
+**Type :** `fix`
+**Fichiers concernés :** `supabase/migrations/20261005150000_security_audit_p0.sql`, `actions/{vault,tool-access,tools,auth,data-purge,documents}.ts`, `app/api/documents/[id]/file/route.ts`, `lib/documents/{external-url,external-url-dns,owned-file-path}.ts`, `lib/auth/password-recovery-session.ts`, `lib/data-admin/purge-reauth.ts`, `lib/visuels/allowed-image-types.ts`, `next.config.ts`, `components/tools/*`, `.cursor/rules/{04_database_schema,05_security_rls}.mdc.md`, `suivi.md`
+
+### Description
+
+Colmatage des 8 findings de l’audit : secrets Vault hors PostgREST (redaction logs, UNIQUE, REVOKE colonne, API par `tool_access.id`), SELECT `audit_log` Manager/Direction, `completeForcedPasswordChange` gated (flag ou session recovery/invite), `file_path` lié à l’id document, SSRF DNS, plus de SVG visuels, cookie purge HMAC+TTL, CSP Next. Limite server actions 50 Mo conservée (`DOCUMENT_MAX_BYTES`).
+
+---
 ## **[2026-09-24] — Analyses Opportunités : KPI facturation + pipeline composé**
 
 **Type :** `feature`

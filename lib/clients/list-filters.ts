@@ -1,6 +1,8 @@
 /** Pagination / filtres URL pour `/clients`. */
 
-export const CLIENTS_PAGE_SIZE = 24;
+import { LIST_PAGE_SIZE } from "@/lib/list-page-size";
+
+export const CLIENTS_PAGE_SIZE = LIST_PAGE_SIZE;
 
 export type ClientsListStatus = "active" | "inactive" | "all";
 export type ClientsMissionBucket = "all" | "lt5" | "5to20" | "gt20";

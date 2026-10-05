@@ -1,6 +1,8 @@
 /** Pagination / filtres URL pour `/tools`. */
 
-export const TOOLS_PAGE_SIZE = 24;
+import { LIST_PAGE_SIZE } from "@/lib/list-page-size";
+
+export const TOOLS_PAGE_SIZE = LIST_PAGE_SIZE;
 
 /** Sentinelle URL / filtre : outil sans client lié (`client_tool` vide). */
 export const TOOLS_OWNER_INTERNE_ID = "__interne__";

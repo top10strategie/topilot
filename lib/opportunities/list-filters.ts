@@ -1,11 +1,12 @@
 /** Pagination / filtres URL pour `/opportunities`. */
 
+import { LIST_PAGE_SIZE } from "@/lib/list-page-size";
 import type {
   OpportunityKanbanStatus,
   OpportunityPriority,
 } from "./types";
 
-export const OPPORTUNITIES_PAGE_SIZE = 24;
+export const OPPORTUNITIES_PAGE_SIZE = LIST_PAGE_SIZE;
 
 /** Colonnes kanban chargées en vague 1 (premier paint). */
 export const OPPORTUNITY_OPEN_KANBAN_STATUSES: OpportunityKanbanStatus[] = [
