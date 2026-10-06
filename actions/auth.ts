@@ -1,7 +1,9 @@
 "use server";
 
 import { cookies } from "next/headers";
+import { canCompleteForcedPasswordChange } from "@/lib/auth/forced-password-change";
 import { isPasswordRecoveryOrInviteSession } from "@/lib/auth/password-recovery-session";
+import { validateNewPassword } from "@/lib/auth/password-policy";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { PURGE_REAUTH_COOKIE } from "@/lib/data-admin/purge";
 import { createClient } from "@/lib/supabase/server";
@@ -38,10 +40,11 @@ export async function completeForcedPasswordChange(password: string): Promise<{
   error?: string;
 }> {
   const trimmed = password.trim();
-  if (trimmed.length < 8) {
+  const lengthError = validateNewPassword(trimmed);
+  if (lengthError) {
     return {
       success: false,
-      error: "Le mot de passe doit contenir au moins 8 caractères.",
+      error: lengthError,
     };
   }
 
@@ -93,7 +96,7 @@ export async function completeForcedPasswordChange(password: string): Promise<{
   }
 
   const recovery = isPasswordRecoveryOrInviteSession(session);
-  if (!mustChange && !recovery) {
+  if (!canCompleteForcedPasswordChange({ mustChange, recoveryOrInvite: recovery })) {
     return {
       success: false,
       error:

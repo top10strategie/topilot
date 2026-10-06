@@ -4,6 +4,10 @@
     "components/ui/**",
     "lib/supabase/database.types.ts"
   ],
+  "vitest": {
+    "config": ["vitest.config.ts"],
+    "entry": ["tests/**/*.test.ts"]
+  },
   "ignoreDependencies": [
     "eslint-config-next",
     "postcss-load-config"

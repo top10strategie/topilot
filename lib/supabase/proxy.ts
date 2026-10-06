@@ -2,25 +2,17 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import {
   ACCESS_DENIED_PATH,
-  AUTH_PUBLIC_PREFIXES,
   FORCE_PASSWORD_CHANGE_PATH,
   LOGIN_PATH,
 } from "@/lib/auth/constants";
+import {
+  isPublicAuthPath,
+  resolveAuthGatePath,
+} from "@/lib/auth/auth-gate-path";
 import type { AuthGateState } from "@/lib/auth/types";
 import type { Database } from "./database.types";
 import { getSupabaseAnonKey, getSupabaseUrl, hasEnvVars } from "./env";
 
-function isPublicAuthPath(pathname: string): boolean {
-  return AUTH_PUBLIC_PREFIXES.some(
-    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
-  );
-}
-
-/**
- * Redirection en conservant les cookies de session éventuellement rafraîchis
- * sur `supabaseResponse`. Sans cette copie, le navigateur garde un refresh
- * token déjà consommé → `Refresh Token Not Found` et déconnexion.
- */
 function redirectTo(
   request: NextRequest,
   pathname: string,
@@ -103,28 +95,9 @@ export async function updateSession(request: NextRequest) {
     | AuthGateState
     | undefined;
 
-  if (!gate || gate.status !== "actif") {
-    if (pathname === ACCESS_DENIED_PATH || isPublicAuthPath(pathname)) {
-      return supabaseResponse;
-    }
-    return redirectTo(request, ACCESS_DENIED_PATH, supabaseResponse);
-  }
-
-  if (gate.must_change_password) {
-    if (pathname === FORCE_PASSWORD_CHANGE_PATH) {
-      return supabaseResponse;
-    }
-    return redirectTo(request, FORCE_PASSWORD_CHANGE_PATH, supabaseResponse);
-  }
-
-  // Mot de passe déjà à jour : inutile de rester sur la page forcée.
-  if (pathname === FORCE_PASSWORD_CHANGE_PATH) {
-    return redirectTo(request, "/", supabaseResponse);
-  }
-
-  // Utilisateur déjà connecté et actif : pas besoin des pages login / forgot.
-  if (isPublicAuthPath(pathname) && pathname !== "/auth/error") {
-    return redirectTo(request, "/", supabaseResponse);
+  const decision = resolveAuthGatePath(pathname, gate);
+  if (decision.action === "redirect") {
+    return redirectTo(request, decision.pathname, supabaseResponse);
   }
 
   return supabaseResponse;

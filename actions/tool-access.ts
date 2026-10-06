@@ -10,6 +10,10 @@ import {
 import { isManagerOrDirection } from "@/lib/auth/roles";
 import { requireActiveCollaboratorAction } from "@/lib/auth/require-action";
 import { createClient } from "@/lib/supabase/server";
+import {
+  hasToolAccessPassword,
+  shouldUpdateVaultPassword,
+} from "@/lib/tools/tool-access-password";
 import { isUuid } from "@/lib/uuid";
 
 export type ToolAccessActionResult =
@@ -53,7 +57,7 @@ export async function createToolAccessRecord(input: {
   const label = input.label.trim();
   const identifier = input.identifier.trim();
   const password = input.password;
-  if (!label || !identifier || !password) {
+  if (!label || !identifier || !hasToolAccessPassword(password)) {
     return {
       success: false,
       error: "Label, identifiant et mot de passe sont obligatoires.",
@@ -180,7 +184,7 @@ export async function updateToolAccessRecord(input: {
   }
 
   const newPassword = input.password?.trim() ?? "";
-  if (newPassword) {
+  if (shouldUpdateVaultPassword(input.password)) {
     const vault = await updateVaultSecret(id, newPassword);
     if (!vault.success) {
       return { success: false, error: vault.error };

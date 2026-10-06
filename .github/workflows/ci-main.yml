@@ -45,6 +45,9 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Tests unitaires
+        run: npm test
+
       - name: Knip (dead code)
         run: npm run knip
 

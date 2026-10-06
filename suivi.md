@@ -1,5 +1,51 @@
 # Suivi des actions — TOPilot
 
+## **[2026-10-06] — Tests unitaires mots de passe (utilisateurs et outils)**
+
+**Type :** `test`
+**Fichiers concernés :** `lib/auth/{password-policy,forced-password-change,auth-gate-path}.ts`, `lib/tools/{vault-ref,tool-access-password}.ts`, `lib/supabase/proxy.ts`, `actions/{auth,settings,vault,tool-access}.ts`, `tests/auth/*`, `tests/tools/{vault-ref,tool-access-password}.test.ts`, `tests/data-admin/purge-reauth.test.ts`, `suivi.md`
+
+### Description
+
+Ajout de tests unitaires (sans Auth/Vault réels) sur la politique mot de passe, le gate `must_change_password`, les sessions recovery/invite, le cookie de ré-auth purge, les références Vault et le mot de passe d’accès outil (obligatoire à la création, inchangé si vide à l’édition).
+
+### Détails techniques
+
+- Helpers extraits puis branchés dans le proxy et les server actions
+- 62 tests au total (lot cœur métier + ce lot)
+
+---
+## **[2026-10-06] — Déplacement des tests vers `tests/`**
+
+**Type :** `test`
+**Fichiers concernés :** `tests/**/*.test.ts`, `vitest.config.ts`, `knip.json`, `suivi.md`
+
+### Description
+
+Regroupement de tous les fichiers de tests unitaires dans un dossier `tests/` à la racine (sous-dossiers par domaine), au lieu d’une colocalisation dans `lib/`.
+
+### Détails techniques
+
+- Include Vitest : `tests/**/*.test.ts`
+- Knip : entrée `tests/**/*.test.ts` pour le plugin Vitest
+
+---
+## **[2026-10-06] — Tests unitaires du cœur métier (Vitest)**
+
+**Type :** `test`
+**Fichiers concernés :** `vitest.config.ts`, `package.json`, `.github/workflows/{ci-dev,ci-main}.yml`, `lib/missions/{scope,recurrence-dates}.ts`, `lib/opportunities/invoice-schedule.ts`, `lib/missions/generate-recurrence.ts`, `actions/{missions,opportunities}.ts`, `lib/**/*.test.ts`, `suivi.md`
+
+### Description
+
+Mise en place de Vitest et d’une première série de tests unitaires (sans navigateur ni base) pour verrouiller le cœur métier : rôles, cohérence mission interne/client, kanban + rétention 1 mois, récurrence J−10, pricing outils, éligibilité purge N−3, Bearer cron / redirections Auth, échéancier opportunité.
+
+### Détails techniques
+
+- Helpers pures extraits : `assertMissionScopeClientCoherence`, dates de récurrence, `parseInvoiceScheduleFormData` / `validateEchellonneSchedule`
+- Scripts `test` / `test:watch` ; CI `dev` et `main` lancent `npm test` après le typecheck
+- Vitest 3 (compatibilité `@types/node` ^20)
+
+---
 ## **[2026-10-05] — Sécurité P0 : Vault, audit_log, MDP, documents, CSP**
 
 **Type :** `fix`
