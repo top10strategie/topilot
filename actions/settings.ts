@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireActiveCollaboratorAction } from "@/lib/auth/require-action";
+import { validateVoluntaryPasswordChange } from "@/lib/auth/password-policy";
 import { resolveProfilePictureIdFromForm } from "@/lib/documents/resolve-profile-picture-form";
 import { formText } from "@/lib/form-data";
 import {
@@ -56,31 +57,15 @@ export async function updateOwnPassword(input: {
   const auth = await requireActiveCollaboratorAction();
   if (!auth.success) return { success: false, error: auth.error };
 
-  const currentPassword = input.currentPassword.trim();
-  const password = input.password.trim();
-  const confirm = input.confirm.trim();
-
-  if (!currentPassword) {
+  const parsed = validateVoluntaryPasswordChange(input);
+  if (!parsed.ok) {
     return {
       success: false,
-      error: "Le mot de passe actuel est obligatoire.",
-      fieldErrors: { currentPassword: "Obligatoire." },
+      error: parsed.error,
+      fieldErrors: parsed.fieldErrors,
     };
   }
-  if (password.length < 8) {
-    return {
-      success: false,
-      error: "Le mot de passe doit contenir au moins 8 caractères.",
-      fieldErrors: { password: "Minimum 8 caractères." },
-    };
-  }
-  if (password !== confirm) {
-    return {
-      success: false,
-      error: "Les mots de passe ne correspondent pas.",
-      fieldErrors: { confirm: "Ne correspond pas." },
-    };
-  }
+  const { currentPassword, password } = parsed;
 
   const supabase = await createClient();
   const {

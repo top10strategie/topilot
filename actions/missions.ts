@@ -27,6 +27,7 @@ import {
   listMissionsByOpportunityId,
   listMissionsPage,
 } from "@/lib/missions/queries";
+import { assertMissionScopeClientCoherence } from "@/lib/missions/scope";
 import { createClient } from "@/lib/supabase/server";
 import { isUuid } from "@/lib/uuid";
 
@@ -59,8 +60,6 @@ const KANBAN_STATUSES = new Set<MissionKanbanStatus>([
   "terminee",
   "archivee",
 ]);
-
-const SCOPES = new Set<MissionScope>(["client", "interne"]);
 
 function formOptionalNumber(
   formData: FormData,
@@ -169,18 +168,15 @@ export async function createMissionRecord(
   if (!mission_name) {
     fieldErrors.mission_name = "Le titre est obligatoire.";
   }
-  if (!SCOPES.has(mission_scope)) {
-    fieldErrors.mission_scope = "Le périmètre est invalide.";
+  const scopeCheck = assertMissionScopeClientCoherence(
+    mission_scope,
+    client_id,
+  );
+  if (!scopeCheck.ok) {
+    fieldErrors[scopeCheck.field] = scopeCheck.message;
   }
   if (!collaborator_id) {
     fieldErrors.collaborator_id = "Le responsable mission est obligatoire.";
-  }
-  if (mission_scope === "client" && !client_id) {
-    fieldErrors.client_id = "Le client est obligatoire pour une mission client.";
-  }
-  if (mission_scope === "interne" && client_id) {
-    fieldErrors.client_id =
-      "Une mission interne ne doit pas avoir de client.";
   }
   if (!end_at) {
     fieldErrors.end_at = "La date de fin est obligatoire.";
@@ -358,18 +354,15 @@ export async function updateMissionRecord(
   if (!mission_name) {
     fieldErrors.mission_name = "Le titre est obligatoire.";
   }
-  if (!SCOPES.has(mission_scope)) {
-    fieldErrors.mission_scope = "Le périmètre est invalide.";
+  const scopeCheck = assertMissionScopeClientCoherence(
+    mission_scope,
+    client_id,
+  );
+  if (!scopeCheck.ok) {
+    fieldErrors[scopeCheck.field] = scopeCheck.message;
   }
   if (!collaborator_id) {
     fieldErrors.collaborator_id = "Le responsable mission est obligatoire.";
-  }
-  if (mission_scope === "client" && !client_id) {
-    fieldErrors.client_id = "Le client est obligatoire pour une mission client.";
-  }
-  if (mission_scope === "interne" && client_id) {
-    fieldErrors.client_id =
-      "Une mission interne ne doit pas avoir de client.";
   }
   if (!end_at) {
     fieldErrors.end_at = "La date de fin est obligatoire.";

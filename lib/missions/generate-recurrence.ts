@@ -1,40 +1,14 @@
-import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  MISSION_RECURRENCE_LEAD_DAYS,
+  nextOccurrenceEnd,
+  nextOccurrenceStart,
+  shouldGenerateOccurrence,
+} from "@/lib/missions/recurrence-dates";
 import type {
   MissionRecurrenceFrequency,
   MissionScope,
 } from "@/lib/missions/types";
-
-const LEAD_DAYS = 10;
-
-function addMonthsYmd(ymd: string, months: number): string {
-  const [y, m, d] = ymd.split("-").map(Number);
-  const date = new Date(Date.UTC(y, m - 1, d));
-  date.setUTCMonth(date.getUTCMonth() + months);
-  return date.toISOString().slice(0, 10);
-}
-
-function addDaysYmd(ymd: string, days: number): string {
-  const [y, m, d] = ymd.split("-").map(Number);
-  const date = new Date(Date.UTC(y, m - 1, d));
-  date.setUTCDate(date.getUTCDate() + days);
-  return date.toISOString().slice(0, 10);
-}
-
-function nextOccurrenceStart(
-  anchor: string,
-  frequency: MissionRecurrenceFrequency,
-): string {
-  switch (frequency) {
-    case "hebdomadaire":
-      return addDaysYmd(anchor, 7);
-    case "mensuelle":
-      return addMonthsYmd(anchor, 1);
-    case "trimestrielle":
-      return addMonthsYmd(anchor, 3);
-    case "annuelle":
-      return addMonthsYmd(anchor, 12);
-  }
-}
+import { createAdminClient } from "@/lib/supabase/admin";
 
 function todayYmd(): string {
   return new Date().toISOString().slice(0, 10);
@@ -118,13 +92,14 @@ export async function generateDueMissionOccurrences(): Promise<MissionRecurrence
       const anchor = last.start_at ?? series.starts_on;
       const nextStart = nextOccurrenceStart(anchor, series.frequency);
 
-      if (series.ends_on && nextStart > series.ends_on) {
-        summary.skipped += 1;
-        continue;
-      }
-
-      const generateFrom = addDaysYmd(nextStart, -LEAD_DAYS);
-      if (today < generateFrom) {
+      if (
+        !shouldGenerateOccurrence({
+          today,
+          nextStart,
+          endsOn: series.ends_on,
+          leadDays: MISSION_RECURRENCE_LEAD_DAYS,
+        })
+      ) {
         summary.skipped += 1;
         continue;
       }
@@ -145,17 +120,11 @@ export async function generateDueMissionOccurrences(): Promise<MissionRecurrence
         continue;
       }
 
-      let nextEnd: string | null = null;
-      if (last.start_at && last.end_at) {
-        const start = new Date(`${last.start_at}T00:00:00Z`);
-        const end = new Date(`${last.end_at}T00:00:00Z`);
-        const durationDays = Math.round(
-          (end.getTime() - start.getTime()) / (24 * 60 * 60 * 1000),
-        );
-        if (Number.isFinite(durationDays) && durationDays >= 0) {
-          nextEnd = addDaysYmd(nextStart, durationDays);
-        }
-      }
+      const nextEnd = nextOccurrenceEnd(
+        last.start_at,
+        last.end_at,
+        nextStart,
+      );
 
       const { data: created, error: createError } = await admin
         .from("mission")

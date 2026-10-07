@@ -4,6 +4,13 @@ import { requireActiveCollaboratorAction } from "@/lib/auth/require-action";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { looseClient } from "@/lib/supabase/loose";
 import { createClient } from "@/lib/supabase/server";
+import {
+  buildToolAccessSecretName,
+  isLegacyVaultUuidRef,
+  isNameBasedVaultRef,
+  parseReadSecretValue,
+} from "@/lib/tools/vault-ref";
+import { hasToolAccessPassword } from "@/lib/tools/tool-access-password";
 import { isUuid } from "@/lib/uuid";
 
 export type VaultActionResult<T> =
@@ -16,8 +23,6 @@ const ERR_FORBIDDEN = "Opération non autorisée.";
 const ERR_UPDATE = "Impossible de mettre à jour le secret sécurisé.";
 const ERR_DELETE = "Impossible de supprimer le secret sécurisé.";
 
-const TOOL_ACCESS_NAME_PREFIX = "tool_access_";
-
 function isDevEnv(): boolean {
   return process.env.NODE_ENV === "development";
 }
@@ -29,42 +34,6 @@ function withOptionalRpcHint(
   if (!isDevEnv() || !err?.message) return base;
   const hint = [err.code, err.message].filter(Boolean).join(" — ");
   return `${base} [${hint}]`;
-}
-
-function slugifyAccessLabel(label: string): string {
-  const s = label
-    .normalize("NFD")
-    .replace(/\p{M}/gu, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_|_$/g, "")
-    .slice(0, 48);
-  return s.length > 0 ? s : "access";
-}
-
-/** Nom unique stocké dans `tool_access.vault_secret_id`. */
-function buildToolAccessSecretName(toolId: string, label: string): string {
-  const slug = slugifyAccessLabel(label.trim());
-  const uniq = globalThis.crypto.randomUUID().replace(/-/g, "").slice(0, 12);
-  return `${TOOL_ACCESS_NAME_PREFIX}${toolId}_${slug}_${uniq}`;
-}
-
-function isLegacyVaultUuidRef(ref: string): boolean {
-  return isUuid(ref);
-}
-
-function isNameBasedVaultRef(ref: string): boolean {
-  return ref.startsWith(TOOL_ACCESS_NAME_PREFIX);
-}
-
-function parseReadSecretValue(data: unknown): string | null {
-  if (data == null) return null;
-  if (typeof data === "string") return data;
-  if (typeof data === "object" && data !== null && "read_secret" in data) {
-    const v = (data as { read_secret?: unknown }).read_secret;
-    return typeof v === "string" ? v : null;
-  }
-  return null;
 }
 
 /**
@@ -272,7 +241,7 @@ export async function createVaultSecret(
   if (!isUuid(tid)) {
     return { success: false, error: "Outil invalide." };
   }
-  if (!password) {
+  if (!hasToolAccessPassword(password)) {
     return { success: false, error: "Le mot de passe est obligatoire." };
   }
 
@@ -341,7 +310,7 @@ export async function updateVaultSecret(
   toolAccessId: string,
   newPassword: string,
 ): Promise<VaultActionResult<null>> {
-  if (!newPassword) {
+  if (!hasToolAccessPassword(newPassword)) {
     return { success: false, error: "Le mot de passe est obligatoire." };
   }
 
